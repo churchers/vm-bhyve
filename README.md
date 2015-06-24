@@ -54,16 +54,17 @@ List the configured switches and their associated bridge device
     
 ##Virtual Machines
 
-Create a new 20G virtual machine using the `default.conf` standard template, and a second 40G ubuntu machine using the `ubuntu.conf` template.
+Create a new 20G virtual machine using the `default.conf` standard template, and a second 40G ubuntu machine using the `ubuntu.conf` template:
 
     # vm create -s 20G vm1
     # vm create -t ubuntu -s 40G vm2
     
-Download an ISO file for installation
+Download an ISO file for installation:
 
     # vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.1/FreeBSD-10.1-RELEASE-amd64-disc1.iso
 
-Start the install
+Start the install:
+
 This will run the bootloader then start bhyve in the background. Connect to the console to complete the install
 Once complete, if you reboot the machine at the end of the install process, the machine will reboot as expected and boot up normally. Reboots will work as expected and the machine can be shutdown from the guest in the normal way.
 
@@ -75,8 +76,9 @@ To stop a single virtual machine, or all virtual machines from the host:
     # vm stop vm1
     # vm stopall
     
-To start all virtual machines listed in /etc/rc.conf from the host. To account for the possibility of shared storage being used that contains other machines we don't want running on this host, the list of machines to start is set via the `vm_list=""` variable in `/etc/rc.conf`
+Start all virtual machines listed in /etc/rc.conf from the host:
 
+To account for the possibility of shared storage being used which contains other machines we don't want running on this host, the list of machines to start is set via the `vm_list=""` variable in `/etc/rc.conf`
 
     # vm startall
 

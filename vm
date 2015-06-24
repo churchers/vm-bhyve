@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=0.1.19
+VERSION=0.1.20
 LOG_TAG=vm-bhyve
 
 # cmd: vm ...
@@ -10,13 +10,8 @@ __parse_cmd(){
 
         case "${_cmd}" in
                 init)
-                        # use vmm load status as rudimentary way to tell if init done
-                        # means vmm shouldn't be configured to load by user
-                        kldstat -qm vmm
-                        if [ $? -ne 0 ]; then
-                                __setup
-                                __switch_init
-                        fi
+                        __setup
+                        __switch_init
                         ;;
                 switch)
                         __parse_switch_cmd "$@"
@@ -114,11 +109,16 @@ __switch_init(){
 
         if [ -n "${_switchlist}" ]; then
                 for _switch in ${_switchlist}; do
-                        _id=$(ifconfig bridge create)
-                        [ $? -ne 0 ] && __err "failed to create bridge interface"
-                        ifconfig "${_id}" description "vm-${_switch}" up
+                        _id=$(__switch_get_ident "${_switch}")
 
-                        __switch_add_allmembers "${_switch}" "${_id}"
+                        # not already loaded?
+                        if [ -z "${_id}" ]; then
+                                _id=$(ifconfig bridge create)
+                                [ $? -ne 0 ] && __err "failed to create bridge interface"
+                                ifconfig "${_id}" description "vm-${_switch}-" up
+
+                                __switch_add_allmembers "${_switch}" "${_id}"
+                        fi
                 done
         fi
 }
@@ -157,7 +157,7 @@ __switch_create(){
 
         _id=$(ifconfig bridge create)
         [ $? -ne 0 ] && __err "failed to create bridge interface"
-        ifconfig "${_id}" description "vm-${_switch}" up
+        ifconfig "${_id}" description "vm-${_switch}-" up
 }
 
 # remove a virtual switch
@@ -256,7 +256,7 @@ __switch_configure_port(){
                 if [ -z "${_vid}" ]; then
                         _vid=$(ifconfig vlan create)
                         [ $? -ne 0 ] && __err "failed to create vlan interface"
-                        ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}"
+                        ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}-"
                 fi
 
                 ifconfig ${_id} addm ${_vid}
@@ -301,7 +301,7 @@ __switch_unconfigure_port(){
         [ $? -ne 0 ] && __err "failed to remove member from the virtual switch"
 
         if [ -n "${_vlan}" -a -n "${_vid}" ]; then
-                _usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan} ")
+                _usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan}-")
                 [ -z "${_usage}" ] && ifconfig "${_vid}" destroy
         fi
 }
@@ -324,7 +324,7 @@ __switch_get_ident(){
         local _switch="$1"
         local _id
 
-        _id=$(ifconfig -a | grep -B 1 "vm-${_switch}" | head -n 1 | awk -F: '{print $1}')
+        _id=$(ifconfig -a | grep -B 1 "vm-${_switch}-" | head -n 1 | awk -F: '{print $1}')
         echo "${_id}"
 }
 
@@ -640,10 +640,14 @@ __vm_run(){
                         -l com1,/dev/${_com} \
                         ${_name}
 
+                # break bhyve loop if not restart
                 _exit=$?
                 [ $_exit -ne 0 ] && break
 
                 logger -t "${LOG_TAG}" "${_name}: restarting"
+
+                # remove install iso so loader runs
+                # after install bhyve will still get install cd until a full shutdown+restart
                 _iso=""
         done
 

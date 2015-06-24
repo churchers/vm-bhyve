@@ -27,9 +27,6 @@ Initialise all kernel modules and finish creating the directory structure:
 
 This command needs to be run once after each host reboot (this is normally handled by the rc.d script included)
 
-**vmm.ko should not be loaded at this point**
-In order to stop the init rountine running more than once I currently run a simple check and exit if vmm.ko is loaded. This will be improved in a future update.
-
     # vm init
     
 Copy the sample templates to the folder `/path/to/my/vms/.templates/`

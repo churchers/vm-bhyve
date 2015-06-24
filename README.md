@@ -23,18 +23,23 @@ Update `/etc/rc.conf`
     vm_list="" # list to start automatically on boot
     vm_delay="5" # seconds delay between starting machines
     
-Initialise all kernel modules and finish creating the directory structure
+Initialise all kernel modules and finish creating the directory structure:
+
 This command needs to be run once after each host reboot (this is normally handled by the rc.d script included)
+
 **vmm.ko should not be loaded at this point**
+In order to stop the init rountine running more than once I currently run a simple check and exit if vmm.ko is loaded. This will be improved in a future update.
 
     # vm init
     
 Copy the sample templates to the folder `/path/to/my/vms/.templates/`
+
 This completes the basic setup
 
 ##Virtual Switch Management
 
-Create a new virtual switch and assign em0 to it:
+Create a new virtual switch called 'public' and assign em0 to it:
+You can use any name you like (lan/internet/etc), although the included templates are set to create one interface on a switch called 'public'. (Obviously you can change the templates if you like)
 
     # vm switch create public
     # vm switch add public em0
@@ -81,7 +86,7 @@ As an additional example, a private switch to allow two guests to communicate ca
 
     # vm switch create private
     
-Then add the following to the `/path/to/my/vms/vmname/vmname.conf` file for each guest and shutdown/restart.
+Then add the following to the `/path/to/my/vms/vmname/vmname.conf` file for each guest and then shutdown/restart the guests.
 
     network1_type="virtio-net"
     network1_switch="private"

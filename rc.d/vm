@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# PROVIDE: vm
+# REQUIRE: NETWORKING SERVERS DAEMON LOGIN
+# KEYWORD: shutdown nojail
+
+. /etc/rc.subr
+
+name="vm"
+rcvar=vm_enable
+command="/usr/local/sbin/${name}"
+start_cmd="vm_start"
+stop_cmd="vm_stop"
+
+load_rc_config $name
+
+vm_start(){
+        ${command} init
+        ${command} startall >/dev/null &
+}
+
+vm_stop(){
+        ${command} stopall
+}
+
+run_rc_command "$1"

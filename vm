@@ -1,0 +1,782 @@
+#!/bin/sh
+
+VERSION=0.1.19
+LOG_TAG=vm-bhyve
+
+# cmd: vm ...
+__parse_cmd(){
+        local _cmd="$1"
+        shift
+
+        case "${_cmd}" in
+                init)
+                        # use vmm load status as rudimentary way to tell if init done
+                        # means vmm shouldn't be configured to load by user
+                        kldstat -qm vmm
+                        if [ $? -ne 0 ]; then
+                                __setup
+                                __switch_init
+                        fi
+                        ;;
+                switch)
+                        __parse_switch_cmd "$@"
+                        ;;
+                create)
+                        __vm_create "$@"
+                        ;;
+                install)
+                        __vm_install "$@"
+                        ;;
+                start)
+                        __vm_start "$@"
+                        ;;
+                stop)
+                        __vm_stop "$@"
+                        ;;
+                startall)
+                        __vm_startall
+                        ;;
+                stopall)
+                        __vm_stopall
+                        ;;
+                console)
+                        __vm_console "$@"
+                        ;;
+                _run)
+                        __vm_run "$@"
+                        ;;
+                iso)
+                        __vm_iso "$@"
+                        ;;
+                *)
+                         __usage
+                        ;;
+        esac
+}
+
+# cmd: vm switch ...
+__parse_switch_cmd(){
+        local _cmd="$1"
+        shift
+
+        case "${_cmd}" in
+                create)
+                        __switch_create "$@"
+                        ;;
+                list)
+                        __switch_list
+                        ;;
+                destroy)
+                        __switch_remove "$@"
+                        ;;
+                add)
+                        __switch_add_member "$@"
+                        ;;
+                remove)
+                        __switch_remove_member "$@"
+                        ;;
+                vlan)
+                        __switch_vlan "$@"
+                        ;;
+                *)
+                        __usage
+                        ;;
+        esac
+}
+
+# make sure we have the right environment
+__setup(){
+        __load_module "vmm"
+        __load_module "nmdm"
+        __load_module "if_bridge"
+        __load_module "if_tap"
+
+        sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
+}
+
+__load_module(){
+        local _mod="$1"
+        kldstat -n ${_mod} >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+                kldload ${_mod} >/dev/null 2>&1
+                if [ $? -ne 0 ]; then
+                        __err "unable to load ${_mod}.ko!"
+                        exit 1
+                fi
+        fi
+}
+
+# create switches from rc list on init
+__switch_init(){
+        local _switchlist _switch _id
+
+        _switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+
+        if [ -n "${_switchlist}" ]; then
+                for _switch in ${_switchlist}; do
+                        _id=$(ifconfig bridge create)
+                        [ $? -ne 0 ] && __err "failed to create bridge interface"
+                        ifconfig "${_id}" description "vm-${_switch}" up
+
+                        __switch_add_allmembers "${_switch}" "${_id}"
+                done
+        fi
+}
+
+# list switches, currently just from stored configuration
+__switch_list(){
+        local _switchlist _portlist _switch _port _vlan
+        local _id _format="%-19s %-19s %10s %-20s\n"
+
+        _switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+
+        printf "${_format}" "NAME" "IDENT" "VLAN" "PORTS"
+
+        for _switch in ${_switchlist}; do
+                _id=$(__switch_get_ident "${_switch}")
+                [ -z "${_id}" ] && _id="-"
+
+                _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+                _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+                [ -z "${_portlist}" ] && _portlist="-"
+                [ -z "${_vlan}" ] && _vlan="-"
+
+                printf "${_format}" "${_switch}" "${_id}" "${_vlan}" "${_portlist}"
+        done
+}
+
+# create a new virtual switch
+__switch_create(){
+        local _switch="$1"
+        local _id
+
+        echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+        [ $? -ne 0 ] && __err "invalid switch name"
+
+        __rc_append_string ".config/switch" "switch_list" "${_switch}"
+
+        _id=$(ifconfig bridge create)
+        [ $? -ne 0 ] && __err "failed to create bridge interface"
+        ifconfig "${_id}" description "vm-${_switch}" up
+}
+
+# remove a virtual switch
+__switch_remove(){
+        local _switch="$1"
+        local _id
+
+
+        _id=$(__switch_get_ident "${_switch}")
+        __switch_remove_allmembers "${_switch}" "${_id}"
+        __rc_splice_string ".config/switch" "switch_list" "${_switch}"
+        sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}"
+
+        if [ -n "${_id}" ]; then
+                ifconfig "${_id}" destroy
+                [ $? -ne 0 ] && __warn "removed configuration but failed to remove bridge"
+        else
+                __warn "removed configuration but failed to remove bridge"
+        fi
+}
+
+# set vlan number for a switch
+__switch_vlan(){
+        local _switch="$1"
+        local _vlan="$2"
+
+        [ -z "${_switch}" -o -z "${_vlan}" ] && __usage
+
+        echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
+        [ $? -ne 0 ] && __err "invalid vlan number"
+        [ ${_vlan} -ge 4095 ] && __err "invalid vlan number"
+
+        __switch_remove_allmembers "${_switch}"
+
+        if [ "${_vlan}" = "0" ]; then
+                sysrc -inxqf "${vm_dir}/.config/switch" "vlan_${_switch}" >/dev/null 2>&1
+        else
+                sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}"="${_vlan}" >/dev/null 2>&1
+        fi
+
+        __switch_add_allmembers "${_switch}"
+}
+
+# add all configured members to a switch
+__switch_add_allmembers(){
+        local _switch="$1"
+        local _id="$2"
+        local _portlist _port
+
+        if [ -z "${_id}" ]; then
+                _id=$(__switch_get_ident "${_switch}")
+                [ -z "${_id}" ] && __err "failed to get switch id while adding members"
+        fi
+
+        _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+
+        if [ -n "${_portlist}" ]; then
+                for _port in ${_portlist}; do
+                        __switch_configure_port "${_switch}" "${_id}" "${_port}"
+                done
+        fi
+}
+
+# remove all configured members from a switch
+__switch_remove_allmembers(){
+        local _switch="$1"
+        local _id="$2"
+        local _portlist _port
+
+        if [ -z "${_id}" ]; then
+                _id=$(__switch_get_ident "${_switch}")
+                [ -z "${_id}" ] && __err "failed to get switch id while removing members"
+        fi
+
+        _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+
+        if [ -n "${_portlist}" ]; then
+                for _port in ${_portlist}; do
+                        __switch_unconfigure_port "${_switch}" "${_id}" "${_port}"
+                done
+        fi
+}
+
+# adds a port to a virtual switch
+__switch_configure_port(){
+        local _switch="$1"
+        local _id="$2"
+        local _member="$3"
+        local _vlan _vid
+
+        _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+
+        if [ -n "${_vlan}" ]; then
+                _vid=$(__switch_get_ident "vlan-${_member}-${_vlan}")
+
+                if [ -z "${_vid}" ]; then
+                        _vid=$(ifconfig vlan create)
+                        [ $? -ne 0 ] && __err "failed to create vlan interface"
+                        ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}"
+                fi
+
+                ifconfig ${_id} addm ${_vid}
+        else
+                ifconfig ${_id} addm ${_member}
+        fi
+
+        [ $? -ne 0 ] && __err "failed to add member to the virtual switch"
+}
+
+# configure a member interface to a "switch"
+__switch_add_member(){
+        local _switch="$1"
+        local _member="$2"
+        local _id
+
+        _id=$(__switch_get_ident "${_switch}")
+        [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
+
+        __switch_configure_port "${_switch}" "${_id}" "${_member}"
+        __rc_append_string ".config/switch" "ports_${_switch}" "${_member}"
+}
+
+# physically remove a port from a virtual switch / bridge
+__switch_unconfigure_port(){
+        local _switch="$1"
+        local _id="$2"
+        local _member="$3"
+        local _id _vlan _vid _usage
+
+        _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+
+        if [ -n "${_vlan}" ]; then
+                _vid=$(__switch_get_ident "vlan-${_member}-${_vlan}")
+                [ -z "${_vid}" ] && __err "unable to find relevent vlan interface for ${_member}"
+
+                ifconfig ${_id} deletem ${_vid} >/dev/null 2>&1
+        else
+                ifconfig ${_id} deletem ${_member} >/dev/null 2>&1
+        fi
+
+        [ $? -ne 0 ] && __err "failed to remove member from the virtual switch"
+
+        if [ -n "${_vlan}" -a -n "${_vid}" ]; then
+                _usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan} ")
+                [ -z "${_usage}" ] && ifconfig "${_vid}" destroy
+        fi
+}
+
+# remove a member interface from a switch configuration
+__switch_remove_member(){
+        local _switch="$1"
+        local _member="$2"
+        local _id
+
+        _id=$(__switch_get_ident "${_switch}")
+        [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
+
+        __switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
+        __rc_splice_string ".config/switch" "ports_${_switch}" "${_member}"
+}
+
+# get the interface name for a switch
+__switch_get_ident(){
+        local _switch="$1"
+        local _id
+
+        _id=$(ifconfig -a | grep -B 1 "vm-${_switch}" | head -n 1 | awk -F: '{print $1}')
+        echo "${_id}"
+}
+
+# create a new virtual machine
+__vm_create(){
+        local _name
+        local _template _opt _size _vmdir _zfsvm _disk
+
+        while getopts t:s: _opt ; do
+                case $_opt in
+                        t)
+                                _template=${OPTARG}
+                                ;;
+                        s)
+                                _size=${OPTARG}
+                                ;;
+                        *)
+                                __usage
+                                ;;
+                esac
+        done
+
+        shift $((OPTIND - 1))
+        _name=$1
+
+        [ -z "$_size" ] && _size="20G"
+        [ -z "$_template" ] && _template="default"
+
+        [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
+                __err "unable to find template ${vm_dir}/.templates/${_template}.conf"
+
+        # we need to get disk0 name from the template
+        _disk=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_name)
+        [ -z "${_disk}" ] && __err "template is missing disk0_name specification"
+
+        _vmdir="${vm_dir}/${_name}"
+        _zfsvm=$(df -T "${vm_dir}" | tail -n 1 | awk '{print $2}')
+        [ -e "${_vmdir}" ] && __err "directory ${_vmdir} already exists"
+
+        if [ "zfs" = "${_zfsvm}" ]; then
+                _zfsvm=$(echo "${_vmdir}" | cut -c 2-)
+                zfs create ${_zfsvm} >/dev/null 2>&1
+        fi
+
+        [ ! -d "${_vmdir}" ] && mkdir "${_vmdir}"
+        [ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"
+
+        cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
+        [ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
+
+        truncate -s "${_size}" "${_vmdir}/${_disk}"
+}
+
+# install os to a virtual machine
+__vm_install(){
+        local _name="$1"
+        local _iso="$2"
+        local _num=0 _conf _memory _ls _guest _disk
+
+        _conf="${vm_dir}/${_name}/${_name}.conf"
+
+        [ -z "${_name}" ] && __usage
+        [ -z "${_iso}" ] && __usage
+        [ ! -f "${vm_dir}/.iso/${_iso}" ] && __err "unable to find iso ${vm_dir}/.iso/${_iso}"
+        [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
+
+        # loop until we find an available nmdm
+        # using -e seemed to create devices so now scanning ls
+        while [ 1 ]; do
+                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
+                [ -z "${_ls}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        _com="nmdm${_num}A"
+        _memory=$(sysrc -inqf "${_conf}" memory)
+        _guest=$(sysrc -inqf "${_conf}" guest)
+        _disk=$(sysrc -inqf "${_conf}" disk0_name)
+
+        [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ] && \
+                __err "incomplete virtual machine configuration"
+
+        if [ -e "/dev/vmm/${_name}" ]; then
+                bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
+                [ $? -ne 0 ] && __err "vmm exists and could not be destroyed"
+        fi
+
+        case "${_guest}" in
+                freebsd)
+                        bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+                        ;;
+                ubuntu)
+                        echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+                        grub-bhyve -c "/dev/${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+                        ;;
+                centos)
+                        echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+                        echo "linux /isolinux/vmlinuz" > "${vm_dir}/${_name}/boot.cmd"
+                        echo "initrd /isolinux/initrd.img" >> "${vm_dir}/${_name}/boot.cmd"
+                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+                        ;;
+                *)
+                        __err "unsupported guest type: ${_guest}"
+                        ;;
+        esac
+
+        [ $? -ne 0 ] && __err "failed to load virtual machine kernel"
+
+        # run background process to actually start bhyve
+        # this will run as long as vm is running, including restarting bhyve after guest reboot
+        $0 _run "${_name}" "${_com}" "${_iso}" >/dev/null 2>&1 &
+}
+
+__vm_startall(){
+        local _vm _done _conf
+
+        [ -z "${vm_list}" ] && exit
+
+        : ${vm_delay:=5}
+
+        for _vm in ${vm_list}; do
+                [ -n "${_done}" ] && sleep ${vm_delay}
+
+                # check conf file otherwise we may exit with error
+                # just because one entry in vm_list is invalid
+                _conf="${vm_dir}/${_vm}/${_vm}.conf"
+
+                if [ -f "${_conf}" ]; then
+                        echo "Starting ${_vm}..."
+                        __vm_start "${_vm}"
+                        _done=1
+                fi
+        done
+}
+
+__vm_stopall(){
+        local _pid _pids=$(ps ax | grep "[(]bhyve)" | awk '{print $1}')
+
+        echo "Shutting down all bhyve virtual machines"
+        killall bhyve
+        wait_for_pids ${_pids}
+}
+
+__vm_start(){
+        local _name="$1"
+        local _num=0 _conf _ls
+
+        _conf="${vm_dir}/${_name}/${_name}.conf"
+
+        [ -z "${_name}" ] && __usage
+        [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
+
+        # loop until we find an available nmdm
+        # using -e seemed to create devices so now scanning ls
+        # we could move this to _run but now relying on this being in ps output for "vm console" command
+        while [ 1 ]; do
+                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
+                [ -z "${_ls}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        _com="nmdm${_num}A"
+
+        # run background process to actually start bhyve
+        # this will run as long as vm is running, including restarting bhyve after guest reboot
+        $0 _run "${_name}" "${_com}" >/dev/null 2>&1 &
+}
+
+__vm_run(){
+        local _name="$1"
+        local _com="$2"
+        local _iso="$3"
+        local _cpu _memory _bootdisk
+        local _num=0
+        local _conf _curr _opt _cmd="" _slot=2 _func=0
+        local _guest _kernel _tap _taplist _sid _exit
+
+        _conf="${vm_dir}/${_name}/${_name}.conf"
+        _cpu=$(sysrc -inqf "${_conf}" cpu)
+        _memory=$(sysrc -inqf "${_conf}" memory)
+        _guest=$(sysrc -inqf "${_conf}" guest)
+        _bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
+
+        if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+                logger -t "${LOG_TAG}" "${_name}: unable to start - missing required configuration"
+                exit 1
+        fi
+
+        _bootdisk="${vm_dir}/${_name}/${_bootdisk}"
+
+        # get disks
+        while [ 1 ]; do
+                _curr=$(sysrc -inqf "${_conf}" "disk${_num}_name")
+                _opt=$(sysrc -inqf "${_conf}" "disk${_num}_type")
+
+                if [ -n "${_curr}" -a -n "${_opt}" ]; then
+                                [ -n "${_cmd}" ] && _cmd="${_cmd} "
+                                _cmd="${_cmd}-s${_slot}:${_func},${_opt},${vm_dir}/${_name}/${_curr}"
+                                _func=$(($_func + 1))
+
+                                if [ ${_func} -ge 8 ]; then
+                                        _func=0
+                                        _slot=$(($_slot + 1))
+                                fi
+                fi
+
+                [ -z "${_curr}" -o -z "${_opt}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        if [ -z "${_bootdisk}" -o -z "${_cmd}" ]; then
+                logger -t "${LOG_TAG}" "${_name}: unable to start - invalid disk configuration"
+                exit 1
+        fi
+
+        # move networking to new slot
+        _slot=$(($_slot + 1))
+        _func=0
+        _num=0
+
+        # get networking list
+        while [ 1 ]; do
+                _curr=$(sysrc -inqf "${_conf}" "network${_num}_type")
+                _opt=$(sysrc -inqf "${_conf}" "network${_num}_switch")
+
+                if [ -n "${_curr}" -a -n "${_opt}" ]; then
+                        _tap=$(ifconfig tap create)
+
+                        if [ -n "${_tap}" ]; then
+                                ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_opt}"
+                                _sid=$(__switch_get_ident "${_opt}")
+
+                                [ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
+
+                                [ -n "${_cmd}" ] && _cmd="${_cmd} "
+                                _cmd="${_cmd}-s${_slot}:${_func},${_curr},${_tap}"
+                                _func=$(($_func + 1))
+
+                                if [ ${_func} -ge 8 ]; then
+                                        _func=0
+                                        _slot=$(($_slot + 1))
+                                fi
+
+                                [ -n "${_taplist}" ] && _taplist="${_taplist} "
+                                _taplist="${_taplist}${_tap}"
+                        fi
+                fi
+
+                [ -z "${_curr}" -o -z "${_opt}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        [ -n ${_iso} ] && _cmd="${_cmd} -s 31,ahci-cd,${vm_dir}/.iso/${_iso}"
+
+        logger -t "${LOG_TAG}" "${_name}: booting"
+
+        while [ 1 ]; do
+
+                # run the loader if not an install
+                if [ -z "${_iso}" ]; then
+
+                        # destroy existing vmm
+                        # freebsd seems happy to run a bhyveload/bhyve loop
+                        # grub-bhyve doesn't seem to like it
+                        if [ -e "/dev/vmm/${_name}" ]; then
+                                bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
+                        fi
+
+                        case "${_guest}" in
+                                freebsd)
+                                        bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" ${_name}
+                                        ;;
+                                centos)
+                                        _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
+
+                                        if [ -z "${_kernel}" ]; then
+                                                logger -t "${LOG_TAG}" "${_name}: centos machines require \"kernel\" value in configuration"
+                                                _exit=23
+                                                break
+                                        fi
+
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        echo "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root" > "${vm_dir}/${_name}/boot.cmd"
+                                        echo "initrd /initramfs-${_kernel}.img" >> "${vm_dir}/${_name}/boot.cmd"
+                                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                                        grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+                                        ;;
+                                ubuntu)
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
+                                        ;;
+                                *)
+                                        logger -t "${LOG_TAG}" "${_name}: unsupported guest type \"${_guest}\""
+                                        _exit=24
+                                        break
+                                        ;;
+                        esac
+
+                        if [ $? -ne 0 ]; then
+                                logger -t "${LOG_TAG}" "${_name}: loader returned error $?"
+                                _exit=$?
+                                break
+                        fi
+                fi
+
+                bhyve -c ${_cpu} -m ${_memory} -AHP \
+                        -s 0,hostbridge \
+                        -s 1,lpc \
+                        ${_cmd} \
+                        -l com1,/dev/${_com} \
+                        ${_name}
+
+                _exit=$?
+                [ $_exit -ne 0 ] && break
+
+                logger -t "${LOG_TAG}" "${_name}: restarting"
+                _iso=""
+        done
+
+        # destroy taps
+        for _curr in ${_taplist}; do
+                ifconfig "${_curr}" destroy
+        done
+
+        logger -t "${LOG_TAG}" "${_name}: stopped"
+        bhyvectl --destroy --vm=${_name}
+        exit ${_exit}
+}
+
+# stop vm
+__vm_stop(){
+        local _name="$1"
+        local _pid
+
+        [ -z "${_name}" ] && __usage
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+
+        _pid=$(ps ax | grep ": ${_name} [(]bhyve)" | awk '{print $1}')
+        [ -z "${_pid}" ] && __err "unable to locate process id for this virtual machine"
+
+        kill "${_pid}"
+}
+
+# console
+__vm_console(){
+        local _name="$1"
+        local _console
+
+        [ -z "${_name}" ] && __usage
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+
+        _console=$(ps ax | grep "[_]run ${_name} " | awk '{print $9}' | rev | cut -c 2- | rev)
+        [ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"
+
+        cu -l "/dev/${_console}B"
+}
+
+# list iso images or get a new one
+__vm_iso(){
+        local _url="$1"
+
+        if [ -n "${_url}" ]; then
+                fetch -o "${vm_dir}/.iso" "${_url}"
+        else
+                echo "FILENAME"
+                ls -1 "${vm_dir}/.iso"
+        fi
+}
+
+# add a value to an rc file, appending to an existing string value
+__rc_append_string(){
+        local _file="${vm_dir}/$1"
+        local _var="$2"
+        local _value="$3"
+        local _curr
+
+        _curr=$(sysrc -inqf "${_file}" "${_var}")
+        [ -n "${_curr}" ] && _curr="${_curr} "
+        _curr="${_curr}${_value}"
+
+        sysrc -inqf "${_file}" "${_var}=${_curr}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __warn "unable to store switch configuration"
+}
+
+# remove a value from a string list
+__rc_splice_string(){
+        local _file="${vm_dir}/$1"
+        local _var="$2"
+        local _value="$3"
+        local _curr _key _new
+
+        _curr=$(sysrc -inqf "${_file}" "${_var}")
+
+        for _key in ${_curr}; do
+                if [ "z${_key}" != "z${_value}" ]; then
+                        [ -n "${_new}" ] && _new="${_new} "
+                        _new="${_new}${_key}"
+                fi
+        done
+
+        sysrc -inqf "${_file}" "${_var}=${_new}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "unable to store switch configuration"
+}
+
+# show usage
+__usage(){
+cat << EOT
+vm: Bhyve virtual machine managament v${VERSION}
+Usage: vm ...
+        init
+        switch list
+        switch create <name>
+        switch vlan <name> <vlan|0>
+        switch add <name> <interface>
+        switch remove <name> <interface>
+        switch destroy <name>
+        create [-t template] [-s size] <name>
+        install <name> <iso>
+        start <name>
+        stop <name>
+        console <name>
+        startall
+        stopall
+        iso [url]
+EOT
+        exit 1
+}
+
+# error
+__err(){
+        echo "${0}: ERROR: $1"
+        exit 1
+}
+
+# warn
+__warn(){
+        echo "${0}: WARNING: $1"
+}
+
+. /etc/rc.subr
+load_rc_config "vm"
+
+if ! checkyesno vm_enable; then
+        __err "\$vm_enable is not enabled in /etc/rc.conf!"
+fi
+
+[ ! -d "${vm_dir}" ] && __err "\$vm_dir has not been configured or is not a valid directory"
+[ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
+[ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
+[ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
+
+__parse_cmd "$@"

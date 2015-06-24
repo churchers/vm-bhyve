@@ -12,6 +12,8 @@ Bhyve manager with the following functionality
 
 ##Initial setup instructions
 
+Install the vm script as `/usr/local/sbin/vm`
+
 Create a directory for the virtual machines
 
     # mkdir /path/to/my/vms

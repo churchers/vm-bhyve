@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=0.1.20
+VERSION=0.1.21
 LOG_TAG=vm-bhyve
 
 # cmd: vm ...
@@ -419,7 +419,7 @@ __vm_install(){
                 ubuntu)
                         echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
                         echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
-                        grub-bhyve -c "/dev/${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
                         ;;
                 centos)
                         echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"

@@ -29,4 +29,7 @@ install:
         $(INSTALL) $(MAN).gz $(MANDIR)/
         rm -f $(MAN).gz
 
+.MAIN: clean
+clean: ;
+
 .include <bsd.prog.mk>

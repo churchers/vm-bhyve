@@ -35,12 +35,12 @@ DESCRIPTION
   reboot and shutdown events from within the guest are handled as expected.
 BASIC SETUP
   Once vm-bhyve is installed, create the directory which will store your virtual machine data.
-  This directory is referred to as $VM_PATH in this man page.
+  This directory is referred to as $VM_DIR in this man page.
 
   Add the following to /etc/rc.conf to enable vm-bhyve and set default configuration:
 
     vm_enable="YES"
-    vm_path="/your/vm/path"
+    vm_dir="/your/vm/dir"
     vm_list=""
     vm_delay="5"
 
@@ -51,10 +51,20 @@ BASIC SETUP
 
   Now run the vm init command to complete the basic setup and initialise any needed modules
 
-  Copy the sample templates into the $VM_PATH/.templates folder. You can modify the sample
+  Copy the sample templates into the $VM_DIR/.templates folder. You can modify the sample
   templates as required or create your own.
 
   At this point you are ready to start creating virtual switches and guests.
+ZFS
+  A quick note about usage on ZFS.
+
+  If your $vm_dir is also a ZFS dataset, vm-bhyve will automatically create a new dataset
+  when creating a virtual machine. For example, consider the following configuration:
+
+    $vm_dir="/pool/vm"
+
+  If "pool/vm" is a ZFS dataset, a new dataset called "pool/vm/guest-name" will be created
+  when a guest is created.
 SUBCOMMANDS
 
   init
@@ -68,7 +78,7 @@ SUBCOMMANDS
 
   switch list
 
-    List virtual switches. This reads all configured virtual switches from the $VM_PATH/.config/switch
+    List virtual switches. This reads all configured virtual switches from the $VM_DIR/.config/switch
     file and displays them. If the virtual switches are loaded, it also displays the bridge interface
     that has been assigned to each one.
 
@@ -112,7 +122,7 @@ SUBCOMMANDS
   create [-t template] [-s size] name
 
     Create a new virtual machine. By default, the template defualt.conf is used and a 20GB virtual
-    disk image is created. This command will create the virtual machine directory $VM_PATH/$VM_NAME,
+    disk image is created. This command will create the virtual machine directory $VM_DIR/$VM_NAME,
     and create the configuration file and disk image within.
 
     -t template    Use the specified template (without .conf suffix)
@@ -122,7 +132,7 @@ SUBCOMMANDS
 
     Start the installation procedure for the named virtual machine, using the specified ISO file.
     The ISO argument should be the filename of the ISO file, which should already exist in the
-    $VM_PATH/.iso directory. ISO files can be downloaded into this dircetory using the iso command.
+    $VM_DIR/.iso directory. ISO files can be downloaded into this dircetory using the iso command.
 
     Once started, the guest loader will be started on the foreground. This allows you to choose the
     Install boot option for guests that require it. Once the loader has completed, you will be returned
@@ -171,7 +181,7 @@ SUBCOMMANDS
 
   iso [url]
 
-    Without a URL specified, this lists the available ISO images in the $VM_PATH/.iso directory.
+    Without a URL specified, this lists the available ISO images in the $VM_DIR/.iso directory.
 
     If a URL is specified, it will attempt to fetch the specified file into the iso directory using
     fetch.

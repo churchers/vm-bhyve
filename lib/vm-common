@@ -24,40 +24,60 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.2.1
-LOG_TAG=vm-bhyve
+# make sure we have the right environment
+__setup(){
+        __load_module "vmm"
+        __load_module "nmdm"
+        __load_module "if_bridge"
+        __load_module "if_tap"
 
-. /etc/rc.subr
-load_rc_config "vm"
+        sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
+}
 
-# check environment
-[ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
+# load a kernel module
+__load_module(){
+        local _mod="$1"
+        kldstat -n ${_mod} >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+                kldload ${_mod} >/dev/null 2>&1
+                if [ $? -ne 0 ]; then
+                        __err "unable to load ${_mod}.ko!"
+                        exit 1
+                fi
+        fi
+}
 
+# show usage
+__usage(){
+cat << EOT
+vm: Bhyve virtual machine managament v${VERSION}
+Usage: vm ...
+        init
+        switch list
+        switch create <name>
+        switch vlan <name> <vlan|0>
+        switch add <name> <interface>
+        switch remove <name> <interface>
+        switch destroy <name>
+        create [-t template] [-s size] <name>
+        install <name> <iso>
+        start <name>
+        stop <name>
+        console <name>
+        startall
+        stopall
+        iso [url]
+EOT
+        exit 1
+}
 
-if ! checkyesno vm_enable; then
-        __err "\$vm_enable is not enabled in /etc/rc.conf!"
-fi
+# error
+__err(){
+        echo "${0}: ERROR: $1"
+        exit 1
+}
 
-# create directories as needed
-[ ! -d "${vm_dir}" ] && __err "\$vm_dir has not been configured or is not a valid directory"
-[ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
-[ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
-[ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
-
-# get libs
-if [ -e "/usr/local/lib/vm-bhyve" ]; then
-        LIB="/usr/local/lib/vm-bhyve"
-elif [ -e "./lib" ]; then
-        LIB="./lib"
-else
-        __err "unable to locate vm-bhyve libriaries"
-fi
-
-# load libs
-. "${LIB}/vm-common"
-. "${LIB}/vm-cmd"
-. "${LIB}/vm-sysrc"
-. "${LIB}/vm-switch"
-. "${LIB}/vm-core"
-
-__parse_cmd "$@"
+# warn
+__warn(){
+        echo "${0}: WARNING: $1"
+}

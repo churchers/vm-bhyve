@@ -1,0 +1,101 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# cmd: vm ...
+__parse_cmd(){
+        local _cmd="$1"
+        shift
+
+        case "${_cmd}" in
+                init)
+                        __setup
+                        __switch_init
+                        ;;
+                switch)
+                        __parse_switch_cmd "$@"
+                        ;;
+                create)
+                        __vm_create "$@"
+                        ;;
+                install)
+                        __vm_install "$@"
+                        ;;
+                start)
+                        __vm_start "$@"
+                        ;;
+                stop)
+                        __vm_stop "$@"
+                        ;;
+                startall)
+                        __vm_startall
+                        ;;
+                stopall)
+                        __vm_stopall
+                        ;;
+                console)
+                        __vm_console "$@"
+                        ;;
+                _run)
+                        __vm_run "$@"
+                        ;;
+                iso)
+                        __vm_iso "$@"
+                        ;;
+                *)
+                         __usage
+                        ;;
+        esac
+}
+
+# cmd: vm switch ...
+__parse_switch_cmd(){
+        local _cmd="$1"
+        shift
+
+        case "${_cmd}" in
+                create)
+                        __switch_create "$@"
+                        ;;
+                list)
+                        __switch_list
+                        ;;
+                destroy)
+                        __switch_remove "$@"
+                        ;;
+                add)
+                        __switch_add_member "$@"
+                        ;;
+                remove)
+                        __switch_remove_member "$@"
+                        ;;
+                vlan)
+                        __switch_vlan "$@"
+                        ;;
+                *)
+                        __usage
+                        ;;
+        esac
+}

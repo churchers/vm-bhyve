@@ -24,40 +24,37 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.2.1
-LOG_TAG=vm-bhyve
+# add a value to an rc file, appending to an existing string value
+__rc_append_string(){
+        local _file="${vm_dir}/$1"
+        local _var="$2"
+        local _value="$3"
+        local _curr
 
-. /etc/rc.subr
-load_rc_config "vm"
+        _curr=$(sysrc -inqf "${_file}" "${_var}")
+        [ -n "${_curr}" ] && _curr="${_curr} "
+        _curr="${_curr}${_value}"
 
-# check environment
-[ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
+        sysrc -inqf "${_file}" "${_var}=${_curr}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __warn "unable to store switch configuration"
+}
 
+# remove a value from a string list
+__rc_splice_string(){
+        local _file="${vm_dir}/$1"
+        local _var="$2"
+        local _value="$3"
+        local _curr _key _new
 
-if ! checkyesno vm_enable; then
-        __err "\$vm_enable is not enabled in /etc/rc.conf!"
-fi
+        _curr=$(sysrc -inqf "${_file}" "${_var}")
 
-# create directories as needed
-[ ! -d "${vm_dir}" ] && __err "\$vm_dir has not been configured or is not a valid directory"
-[ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
-[ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
-[ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
+        for _key in ${_curr}; do
+                if [ "z${_key}" != "z${_value}" ]; then
+                        [ -n "${_new}" ] && _new="${_new} "
+                        _new="${_new}${_key}"
+                fi
+        done
 
-# get libs
-if [ -e "/usr/local/lib/vm-bhyve" ]; then
-        LIB="/usr/local/lib/vm-bhyve"
-elif [ -e "./lib" ]; then
-        LIB="./lib"
-else
-        __err "unable to locate vm-bhyve libriaries"
-fi
-
-# load libs
-. "${LIB}/vm-common"
-. "${LIB}/vm-cmd"
-. "${LIB}/vm-sysrc"
-. "${LIB}/vm-switch"
-. "${LIB}/vm-core"
-
-__parse_cmd "$@"
+        sysrc -inqf "${_file}" "${_var}=${_new}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "unable to store switch configuration"
+}

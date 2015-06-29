@@ -1,0 +1,398 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# create a new virtual machine
+__vm_create(){
+        local _name
+        local _template _opt _size _vmdir _zfsvm _disk
+
+        while getopts t:s: _opt ; do
+                case $_opt in
+                        t)
+                                _template=${OPTARG}
+                                ;;
+                        s)
+                                _size=${OPTARG}
+                                ;;
+                        *)
+                                __usage
+                                ;;
+                esac
+        done
+
+        shift $((OPTIND - 1))
+        _name=$1
+
+        [ -z "$_size" ] && _size="20G"
+        [ -z "$_template" ] && _template="default"
+
+        [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
+                __err "unable to find template ${vm_dir}/.templates/${_template}.conf"
+
+        # we need to get disk0 name from the template
+        _disk=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_name)
+        [ -z "${_disk}" ] && __err "template is missing disk0_name specification"
+
+        _vmdir="${vm_dir}/${_name}"
+        _zfsvm=$(df -T "${vm_dir}" | tail -n 1 | awk '{print $2}')
+        [ -e "${_vmdir}" ] && __err "directory ${_vmdir} already exists"
+
+        if [ "zfs" = "${_zfsvm}" ]; then
+                _zfsvm=$(echo "${_vmdir}" | cut -c 2-)
+                zfs create ${_zfsvm} >/dev/null 2>&1
+        fi
+
+        [ ! -d "${_vmdir}" ] && mkdir "${_vmdir}"
+        [ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"
+
+        cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
+        [ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
+
+        truncate -s "${_size}" "${_vmdir}/${_disk}"
+}
+
+# install os to a virtual machine
+__vm_install(){
+        local _name="$1"
+        local _iso="$2"
+        local _num=0 _conf _memory _ls _guest _disk
+
+        _conf="${vm_dir}/${_name}/${_name}.conf"
+
+        [ -z "${_name}" ] && __usage
+        [ -z "${_iso}" ] && __usage
+        [ ! -f "${vm_dir}/.iso/${_iso}" ] && __err "unable to find iso ${vm_dir}/.iso/${_iso}"
+        [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
+
+        # loop until we find an available nmdm
+        # using -e seemed to create devices so now scanning ls
+        while [ 1 ]; do
+                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
+                [ -z "${_ls}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        _com="nmdm${_num}A"
+        _memory=$(sysrc -inqf "${_conf}" memory)
+        _guest=$(sysrc -inqf "${_conf}" guest)
+        _disk=$(sysrc -inqf "${_conf}" disk0_name)
+
+        [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ] && \
+                __err "incomplete virtual machine configuration"
+
+        if [ -e "/dev/vmm/${_name}" ]; then
+                bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
+                [ $? -ne 0 ] && __err "vmm exists and could not be destroyed"
+        fi
+
+        case "${_guest}" in
+                freebsd)
+                        bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+                        ;;
+                ubuntu)
+                        echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+                        ;;
+                centos)
+                        echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+                        echo "linux /isolinux/vmlinuz" > "${vm_dir}/${_name}/boot.cmd"
+                        echo "initrd /isolinux/initrd.img" >> "${vm_dir}/${_name}/boot.cmd"
+                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+                        ;;
+                *)
+                        __err "unsupported guest type: ${_guest}"
+                        ;;
+        esac
+
+        [ $? -ne 0 ] && __err "failed to load virtual machine kernel"
+
+        # run background process to actually start bhyve
+        # this will run as long as vm is running, including restarting bhyve after guest reboot
+        $0 _run "${_name}" "${_com}" "${_iso}" >/dev/null 2>&1 &
+}
+
+__vm_startall(){
+        local _vm _done _conf
+
+        [ -z "${vm_list}" ] && exit
+
+        : ${vm_delay:=5}
+
+        for _vm in ${vm_list}; do
+                [ -n "${_done}" ] && sleep ${vm_delay}
+
+                # check conf file otherwise we may exit with error
+                # just because one entry in vm_list is invalid
+                _conf="${vm_dir}/${_vm}/${_vm}.conf"
+
+                if [ -f "${_conf}" ]; then
+                        echo "Starting ${_vm}..."
+                        __vm_start "${_vm}"
+                        _done=1
+                fi
+        done
+}
+
+__vm_stopall(){
+        local _pid _pids=$(ps ax | grep "[(]bhyve)" | awk '{print $1}')
+
+        echo "Shutting down all bhyve virtual machines"
+        killall bhyve
+        wait_for_pids ${_pids}
+}
+
+__vm_start(){
+        local _name="$1"
+        local _num=0 _conf _ls
+
+        _conf="${vm_dir}/${_name}/${_name}.conf"
+
+        [ -z "${_name}" ] && __usage
+        [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
+
+        # loop until we find an available nmdm
+        # using -e seemed to create devices so now scanning ls
+        # we could move this to _run but now relying on this being in ps output for "vm console" command
+        while [ 1 ]; do
+                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
+                [ -z "${_ls}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        _com="nmdm${_num}A"
+
+        # run background process to actually start bhyve
+        # this will run as long as vm is running, including restarting bhyve after guest reboot
+        $0 _run "${_name}" "${_com}" >/dev/null 2>&1 &
+}
+
+__vm_run(){
+        local _name="$1"
+        local _com="$2"
+        local _iso="$3"
+        local _cpu _memory _bootdisk
+        local _num=0
+        local _conf _curr _opt _cmd="" _slot=2 _func=0
+        local _guest _kernel _tap _taplist _sid _exit
+
+        _conf="${vm_dir}/${_name}/${_name}.conf"
+        _cpu=$(sysrc -inqf "${_conf}" cpu)
+        _memory=$(sysrc -inqf "${_conf}" memory)
+        _guest=$(sysrc -inqf "${_conf}" guest)
+        _bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
+
+        if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+                logger -t "${LOG_TAG}" "${_name}: unable to start - missing required configuration"
+                exit 1
+        fi
+
+        _bootdisk="${vm_dir}/${_name}/${_bootdisk}"
+
+        # get disks
+        while [ 1 ]; do
+                _curr=$(sysrc -inqf "${_conf}" "disk${_num}_name")
+                _opt=$(sysrc -inqf "${_conf}" "disk${_num}_type")
+
+                if [ -n "${_curr}" -a -n "${_opt}" ]; then
+                                [ -n "${_cmd}" ] && _cmd="${_cmd} "
+                                _cmd="${_cmd}-s${_slot}:${_func},${_opt},${vm_dir}/${_name}/${_curr}"
+                                _func=$(($_func + 1))
+
+                                if [ ${_func} -ge 8 ]; then
+                                        _func=0
+                                        _slot=$(($_slot + 1))
+                                fi
+                fi
+
+                [ -z "${_curr}" -o -z "${_opt}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        if [ -z "${_bootdisk}" -o -z "${_cmd}" ]; then
+                logger -t "${LOG_TAG}" "${_name}: unable to start - invalid disk configuration"
+                exit 1
+        fi
+
+        # move networking to new slot
+        _slot=$(($_slot + 1))
+        _func=0
+        _num=0
+
+        # get networking list
+        while [ 1 ]; do
+                _curr=$(sysrc -inqf "${_conf}" "network${_num}_type")
+                _opt=$(sysrc -inqf "${_conf}" "network${_num}_switch")
+
+                if [ -n "${_curr}" -a -n "${_opt}" ]; then
+                        _tap=$(ifconfig tap create)
+
+                        if [ -n "${_tap}" ]; then
+                                ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_opt}"
+                                _sid=$(__switch_get_ident "${_opt}")
+
+                                [ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
+
+                                [ -n "${_cmd}" ] && _cmd="${_cmd} "
+                                _cmd="${_cmd}-s${_slot}:${_func},${_curr},${_tap}"
+                                _func=$(($_func + 1))
+
+                                if [ ${_func} -ge 8 ]; then
+                                        _func=0
+                                        _slot=$(($_slot + 1))
+                                fi
+
+                                [ -n "${_taplist}" ] && _taplist="${_taplist} "
+                                _taplist="${_taplist}${_tap}"
+                        fi
+                fi
+
+                [ -z "${_curr}" -o -z "${_opt}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        [ -n ${_iso} ] && _cmd="${_cmd} -s 31,ahci-cd,${vm_dir}/.iso/${_iso}"
+
+        logger -t "${LOG_TAG}" "${_name}: booting"
+
+        while [ 1 ]; do
+
+                # run the loader if not an install
+                if [ -z "${_iso}" ]; then
+
+                        # destroy existing vmm
+                        # freebsd seems happy to run a bhyveload/bhyve loop
+                        # grub-bhyve doesn't seem to like it
+                        if [ -e "/dev/vmm/${_name}" ]; then
+                                bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
+                        fi
+
+                        case "${_guest}" in
+                                freebsd)
+                                        bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" ${_name}
+                                        ;;
+                                centos)
+                                        _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
+
+                                        if [ -z "${_kernel}" ]; then
+                                                logger -t "${LOG_TAG}" "${_name}: centos machines require \"kernel\" value in configuration"
+                                                _exit=23
+                                                break
+                                        fi
+
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        echo "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root" > "${vm_dir}/${_name}/boot.cmd"
+                                        echo "initrd /initramfs-${_kernel}.img" >> "${vm_dir}/${_name}/boot.cmd"
+                                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                                        grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+                                        ;;
+                                ubuntu)
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
+                                        ;;
+                                *)
+                                        logger -t "${LOG_TAG}" "${_name}: unsupported guest type \"${_guest}\""
+                                        _exit=24
+                                        break
+                                        ;;
+                        esac
+
+                        if [ $? -ne 0 ]; then
+                                logger -t "${LOG_TAG}" "${_name}: loader returned error $?"
+                                _exit=$?
+                                break
+                        fi
+                fi
+
+                bhyve -c ${_cpu} -m ${_memory} -AHP \
+                        -s 0,hostbridge \
+                        -s 1,lpc \
+                        ${_cmd} \
+                        -l com1,/dev/${_com} \
+                        ${_name}
+
+                # break bhyve loop if not restart
+                _exit=$?
+                [ $_exit -ne 0 ] && break
+
+                logger -t "${LOG_TAG}" "${_name}: restarting"
+
+                # remove install iso so loader runs
+                # after install bhyve will still get install cd until a full shutdown+restart
+                _iso=""
+        done
+
+        # destroy taps
+        for _curr in ${_taplist}; do
+                ifconfig "${_curr}" destroy
+        done
+
+        logger -t "${LOG_TAG}" "${_name}: stopped"
+        bhyvectl --destroy --vm=${_name}
+        exit ${_exit}
+}
+
+# stop vm
+__vm_stop(){
+        local _name="$1"
+        local _pid
+
+        [ -z "${_name}" ] && __usage
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+
+        _pid=$(ps ax | grep ": ${_name} [(]bhyve)" | awk '{print $1}')
+        [ -z "${_pid}" ] && __err "unable to locate process id for this virtual machine"
+
+        kill "${_pid}"
+}
+
+# console
+__vm_console(){
+        local _name="$1"
+        local _console
+
+        [ -z "${_name}" ] && __usage
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+
+        _console=$(ps ax | grep "[_]run ${_name} " | awk '{print $9}' | rev | cut -c 2- | rev)
+        [ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"
+
+        cu -l "/dev/${_console}B"
+}
+
+# list iso images or get a new one
+__vm_iso(){
+        local _url="$1"
+
+        if [ -n "${_url}" ]; then
+                fetch -o "${vm_dir}/.iso" "${_url}"
+        else
+                echo "FILENAME"
+                ls -1 "${vm_dir}/.iso"
+        fi
+}

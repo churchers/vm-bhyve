@@ -1,0 +1,252 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# create switches from rc list on init
+__switch_init(){
+        local _switchlist _switch _id
+
+        _switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+
+        if [ -n "${_switchlist}" ]; then
+                for _switch in ${_switchlist}; do
+                        _id=$(__switch_get_ident "${_switch}")
+
+                        # not already loaded?
+                        if [ -z "${_id}" ]; then
+                                _id=$(ifconfig bridge create)
+                                [ $? -ne 0 ] && __err "failed to create bridge interface"
+                                ifconfig "${_id}" description "vm-${_switch}-" up
+
+                                __switch_add_allmembers "${_switch}" "${_id}"
+                        fi
+                done
+        fi
+}
+
+# list switches, currently just from stored configuration
+__switch_list(){
+        local _switchlist _portlist _switch _port _vlan
+        local _id _format="%-19s %-19s %10s %-20s\n"
+
+        _switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+
+        printf "${_format}" "NAME" "IDENT" "VLAN" "PORTS"
+
+        for _switch in ${_switchlist}; do
+                _id=$(__switch_get_ident "${_switch}")
+                [ -z "${_id}" ] && _id="-"
+
+                _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+                _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+                [ -z "${_portlist}" ] && _portlist="-"
+                [ -z "${_vlan}" ] && _vlan="-"
+
+                printf "${_format}" "${_switch}" "${_id}" "${_vlan}" "${_portlist}"
+        done
+}
+
+# create a new virtual switch
+__switch_create(){
+        local _switch="$1"
+        local _id
+
+        echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+        [ $? -ne 0 ] && __err "invalid switch name"
+
+        __rc_append_string ".config/switch" "switch_list" "${_switch}"
+
+        _id=$(ifconfig bridge create)
+        [ $? -ne 0 ] && __err "failed to create bridge interface"
+        ifconfig "${_id}" description "vm-${_switch}-" up
+}
+
+# remove a virtual switch
+__switch_remove(){
+        local _switch="$1"
+        local _id
+
+
+        _id=$(__switch_get_ident "${_switch}")
+        __switch_remove_allmembers "${_switch}" "${_id}"
+        __rc_splice_string ".config/switch" "switch_list" "${_switch}"
+        sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}"
+
+        if [ -n "${_id}" ]; then
+                ifconfig "${_id}" destroy
+                [ $? -ne 0 ] && __warn "removed configuration but failed to remove bridge"
+        else
+                __warn "removed configuration but failed to remove bridge"
+        fi
+}
+
+# set vlan number for a switch
+__switch_vlan(){
+        local _switch="$1"
+        local _vlan="$2"
+
+        [ -z "${_switch}" -o -z "${_vlan}" ] && __usage
+
+        echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
+        [ $? -ne 0 ] && __err "invalid vlan number"
+        [ ${_vlan} -ge 4095 ] && __err "invalid vlan number"
+
+        __switch_remove_allmembers "${_switch}"
+
+        if [ "${_vlan}" = "0" ]; then
+                sysrc -inxqf "${vm_dir}/.config/switch" "vlan_${_switch}" >/dev/null 2>&1
+        else
+                sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}"="${_vlan}" >/dev/null 2>&1
+        fi
+
+        __switch_add_allmembers "${_switch}"
+}
+
+# add all configured members to a switch
+__switch_add_allmembers(){
+        local _switch="$1"
+        local _id="$2"
+        local _portlist _port
+
+        if [ -z "${_id}" ]; then
+                _id=$(__switch_get_ident "${_switch}")
+                [ -z "${_id}" ] && __err "failed to get switch id while adding members"
+        fi
+
+        _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+
+        if [ -n "${_portlist}" ]; then
+                for _port in ${_portlist}; do
+                        __switch_configure_port "${_switch}" "${_id}" "${_port}"
+                done
+        fi
+}
+
+# remove all configured members from a switch
+__switch_remove_allmembers(){
+        local _switch="$1"
+        local _id="$2"
+        local _portlist _port
+
+        if [ -z "${_id}" ]; then
+                _id=$(__switch_get_ident "${_switch}")
+                [ -z "${_id}" ] && __err "failed to get switch id while removing members"
+        fi
+
+        _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+
+        if [ -n "${_portlist}" ]; then
+                for _port in ${_portlist}; do
+                        __switch_unconfigure_port "${_switch}" "${_id}" "${_port}"
+                done
+        fi
+}
+
+# adds a port to a virtual switch
+__switch_configure_port(){
+        local _switch="$1"
+        local _id="$2"
+        local _member="$3"
+        local _vlan _vid
+
+        _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+
+        if [ -n "${_vlan}" ]; then
+                _vid=$(__switch_get_ident "vlan-${_member}-${_vlan}")
+
+                if [ -z "${_vid}" ]; then
+                        _vid=$(ifconfig vlan create)
+                        [ $? -ne 0 ] && __err "failed to create vlan interface"
+                        ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}-"
+                fi
+
+                ifconfig ${_id} addm ${_vid}
+        else
+                ifconfig ${_id} addm ${_member}
+        fi
+
+        [ $? -ne 0 ] && __err "failed to add member to the virtual switch"
+}
+
+# configure a member interface to a "switch"
+__switch_add_member(){
+        local _switch="$1"
+        local _member="$2"
+        local _id
+
+        _id=$(__switch_get_ident "${_switch}")
+        [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
+
+        __switch_configure_port "${_switch}" "${_id}" "${_member}"
+        __rc_append_string ".config/switch" "ports_${_switch}" "${_member}"
+}
+
+# physically remove a port from a virtual switch / bridge
+__switch_unconfigure_port(){
+        local _switch="$1"
+        local _id="$2"
+        local _member="$3"
+        local _id _vlan _vid _usage
+
+        _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+
+        if [ -n "${_vlan}" ]; then
+                _vid=$(__switch_get_ident "vlan-${_member}-${_vlan}")
+                [ -z "${_vid}" ] && __err "unable to find relevent vlan interface for ${_member}"
+
+                ifconfig ${_id} deletem ${_vid} >/dev/null 2>&1
+        else
+                ifconfig ${_id} deletem ${_member} >/dev/null 2>&1
+        fi
+
+        [ $? -ne 0 ] && __err "failed to remove member from the virtual switch"
+
+        if [ -n "${_vlan}" -a -n "${_vid}" ]; then
+                _usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan}-")
+                [ -z "${_usage}" ] && ifconfig "${_vid}" destroy
+        fi
+}
+
+# remove a member interface from a switch configuration
+__switch_remove_member(){
+        local _switch="$1"
+        local _member="$2"
+        local _id
+
+        _id=$(__switch_get_ident "${_switch}")
+        [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
+
+        __switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
+        __rc_splice_string ".config/switch" "ports_${_switch}" "${_member}"
+}
+
+# get the interface name for a switch
+__switch_get_ident(){
+        local _switch="$1"
+        local _id
+
+        _id=$(ifconfig -a | grep -B 1 "vm-${_switch}-" | head -n 1 | awk -F: '{print $1}')
+        echo "${_id}"
+}

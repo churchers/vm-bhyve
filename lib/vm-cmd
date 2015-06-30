@@ -49,6 +49,12 @@ __parse_cmd(){
                 stop)
                         __vm_stop "$@"
                         ;;
+		reset)
+			__vm_reset "$@"
+			;;
+		poweroff)
+			__vm_poweroff "$@"
+			;;
                 startall)
                         __vm_startall
                         ;;

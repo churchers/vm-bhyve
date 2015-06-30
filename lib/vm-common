@@ -66,6 +66,8 @@ Usage: vm ...
         console <name>
         startall
         stopall
+	reset <name>
+	poweroff <name>
         iso [url]
 EOT
         exit 1
@@ -80,4 +82,21 @@ __err(){
 # warn
 __warn(){
         echo "${0}: WARNING: $1"
+}
+
+# confirm yes or no
+__confirm(){
+	local _msg="$1"
+	local _resp
+
+	while read -p "${_msg} (y/n)? " _resp; do
+		case "${_resp}" in
+			y*)
+				return 0
+				;;
+			n*)
+				return 1
+				;;
+		esac
+	done
 }

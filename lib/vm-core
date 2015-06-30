@@ -371,6 +371,30 @@ __vm_stop(){
         kill "${_pid}"
 }
 
+# force reset
+__vm_reset(){
+        local _name="$1"
+
+        [ -z "${_name}" ] && __usage
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+
+	__confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
+
+	bhyvectl --force-reset --vm=${_name}
+}
+
+# force poweroff
+__vm_poweroff(){
+        local _name="$1"
+
+        [ -z "${_name}" ] && __usage
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+
+        __confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
+
+        bhyvectl --force-poweroff --vm=${_name}
+}
+
 # console
 __vm_console(){
         local _name="$1"

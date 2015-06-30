@@ -39,12 +39,12 @@ stop_cmd="vm_stop"
 load_rc_config $name
 
 vm_start(){
-        ${command} init
-        ${command} startall >/dev/null &
+	${command} init
+	${command} startall >/dev/null &
 }
 
 vm_stop(){
-        ${command} stopall
+	${command} stopall
 }
 
 run_rc_command "$1"

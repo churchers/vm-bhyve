@@ -18,13 +18,16 @@ SYNOPSIS
   vm startall
   vm stopall
 
+  vm reset name
+  vm poweroff name
+
   vm iso [url]
 DESCRIPTION
   vm-bhyve is a utility to simplify managing bhyve virtual machines.
 
   To ease network configuration, one or more virtual switches can be created
   and assigned physical interfaces and a name. In virtual machine configuration
-  only the switch name is required, vm-bhyve automatically creates all necessary
+  only the switch name is required, vm-bhyve automatically creates all necessary 
   network interfaces and bridges.
 
   All configuration for virtual machines is stored in an easy to edit configuration file
@@ -172,12 +175,22 @@ SUBCOMMANDS
     guests start automatically on each host.
 
     The delay between starting guests can be set using the $vm_delay rc.conf variable, which defaults to 5
-    seconds. Too small a delay can cause problems as each guest doesn't have enough time to claim a null
+    seconds. Too small a delay can cause problems as each guest doesn't have enough time to claim a null 
     modem console device before the next guest starts.
 
   stopall
 
     This stops *all* bhyve guests currently running on the system.
+
+  reset name
+
+    Forcefully reset the named virtual machine. This can cause corruption to the guest's file system as
+    on real hardware and should only be used if necessary.
+
+  poweroff name
+
+    Forcefully poweroff the named virtual machine. As with reset above, this does not inform the guest
+    to shutdown gracefully and should only be used if the guest can not be shut down normally.
 
   iso [url]
 

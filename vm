@@ -24,7 +24,7 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.2.1
+VERSION=0.2.2
 LOG_TAG=vm-bhyve
 
 . /etc/rc.subr
@@ -35,7 +35,7 @@ load_rc_config "vm"
 
 # we should be enabled in rc.conf
 if ! checkyesno vm_enable; then
-        __err "\$vm_enable is not enabled in /etc/rc.conf!"
+	__err "\$vm_enable is not enabled in /etc/rc.conf!"
 fi
 
 # create directories as needed
@@ -46,11 +46,11 @@ fi
 
 # get libs
 if [ -e "/usr/local/lib/vm-bhyve" ]; then
-        LIB="/usr/local/lib/vm-bhyve"
+	LIB="/usr/local/lib/vm-bhyve"
 elif [ -e "./lib" ]; then
-        LIB="./lib"
+	LIB="./lib"
 else
-        __err "unable to locate vm-bhyve libriaries"
+	__err "unable to locate vm-bhyve libriaries"
 fi
 
 # load libs

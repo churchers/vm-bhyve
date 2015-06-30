@@ -33,7 +33,7 @@ load_rc_config "vm"
 # check environment
 [ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
 
-
+# we should be enabled in rc.conf
 if ! checkyesno vm_enable; then
         __err "\$vm_enable is not enabled in /etc/rc.conf!"
 fi

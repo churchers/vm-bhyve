@@ -10,6 +10,10 @@ Bhyve manager with the following functionality
 * Automatic handling of reboot and shutdown events
 * Dynamic console (nmdm device) creation
 
+##Download
+
+Download a bundle containing the latest version from [http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz](http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz)
+
 ##Initial setup instructions
 
 Install the vm script as `/usr/local/sbin/vm`

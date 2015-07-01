@@ -166,6 +166,12 @@ command to complete the installation.
 # vm install my-guest FreeBSD-10.1-RELEASE-amd64-disc1.iso
 # vm console my-guest
 .Ed
+.Pp
+Please note that Linux guests currently require the
+.Sy sysutils/grub2-bhyve
+package to be installed. This is use in place of
+.Xr bhyveload 8
+to load the guest kernel into memory.
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS
 .Bl -tag -width indent
@@ -348,6 +354,71 @@ If a
 is specified, instead of listing ISO files, it attempts to download the given file using
 .Xr fetch 1 .
 .El
+.\" ============ CONFIGURATION FORMAT ===========
+.Sh CONFIGURATION FORMAT
+Each virtual machine has a configuration file that specifies the hardware configuration. This
+uses a similar format to the
+.Sy rc
+files, making them easy to edit by hand. The settings for each guest are stored in
+.Pa $vm_dir/$vm_name/$vm_name.conf .
+An overview of the available configuration options is listed below.
+.Bl -tag -width 15n
+.It guest
+Specify the type of guest to be installed in this virtual machine. Current valid options
+for this are freebsd, centos & ubuntu.
+.It cpu
+A numeric value specifying the number of virtual CPU cores to assign to the guest.
+.It memory
+The amount of memory to assign to the guest. This can be specified in megabytes or
+gigabytes using the
+.Sy M
+and
+.Sy G
+suffixes.
+.It network0_type
+The emulation to use for the first network adapter. This option can be unspecified
+if no guest networking is required. The recommended value for this is
+.Sy virtio-net .
+Additional network interfaces can be configured by adding additional
+.Sy networkX_type
+and
+.Sy networkX_switch
+values, replacing
+.Sy X
+with the next available integer.
+.It network0_switch
+The virtual switch to connect interface
+.Sy 0
+to. This should correspond to a virtual switch created using the
+.Pa vm switch create
+subcommand. If the virtual switch is not found, an interface will still be assigned,
+but not connected to any bridge.
+.It disk0_type
+The emulation type for the first virtual disk. At least one virtual disk is required.
+Valid options for this are currently
+.Sy virtio-blk
+and
+.Sy ahci-hd .
+Additional disks can be added by adding additional
+.Sy diskX_type
+and
+.Sy diskX_switch
+values, replacing
+.Sy X
+with the next available integer.
+.It disk0_name
+The filename for the first virtual disk. The first disk is created automatically when
+provisioning a new virtual machine. If additional disks are added, the image will need
+to be manually created, usually done using the
+.Xr truncate 1
+command.
+.It linux_kernel
+CentOS guests require the kernel to be loaded inside the boot loader. This option is
+required for these guests and specifies the kernel version number to load. Hopefully
+this requirement will be relaxed as
+.Xr bhyve 8
+development continues.
+.El
 .\" ============ SEE ALSO =============
 .Sh SEE ALSO
 .Xr bhyve 8 ,
@@ -362,6 +433,6 @@ is specified, instead of listing ISO files, it attempts to download the given fi
 .Sh BUGS
 Please report all bugs/issues/feature requests to the github project at
 https://github.com/churchers/vm-bhyve
-.\" ============ AUTHORS =============
-.Sh AUTHORS
+.\" ============ AUTHOR =============
+.Sh AUTHOR
 .An Matt Churchyard Aq Mt churchers@gmail.com

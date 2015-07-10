@@ -32,6 +32,8 @@
 .Op Fl s Ar size
 .Ar name
 .Nm
+.Cm list
+.Nm
 .Cm install
 .Ar name iso
 .Nm
@@ -263,7 +265,13 @@ suffix is not required.
 The size of disk image to create in GB. Unless specified, the guest image will
 be a sparse file 20GB in size.
 .El
-.It install Ar name Ar iso
+.It Cm list
+.br
+List all the virtual machines in the
+.Pa $vm_dir/.templates
+directory. This will show the basic configuration for each virtual machine, and whether
+they are currently running.
+.It Cm install Ar name Ar iso
 Start a guest installation for the named virtual machine, using the specified ISO file.
 The
 .Ar iso
@@ -285,7 +293,7 @@ After installation, the guest can be rebooted and will restart using its own dis
 At this point the installation ISO file is still attached, allowing you to use the CD/DVD image
 for any post installation tasks. The ISO file will remain attached after each reboot until the
 guest is fully stopped.
-.It start Ar name
+.It Cm start Ar name
 Start the named virtual machine. The guest will boot and run completely in the background. Use
 the
 .Ar console
@@ -296,13 +304,13 @@ For each network adapter specified in the guest configuration, a
 interface will be created. If possible, the tap interface will be attached the relevent
 .Xr bridge 4
 interface, based on the virtual switch specified in the guest configuration.
-.It stop Ar name
+.It Cm stop Ar name
 Stop a named virtual machine. All
 .Xr tap 4
 and
 .Xr nmdm 4
 devices will be automatically cleaned up once the guest has exited.
-.It console Ar name
+.It Cm console Ar name
 Connect to the console of the named virtual machine. Without network access, this is the primary
 way of connecting to the guest once it is running.
 .Pp
@@ -311,15 +319,15 @@ This looks for the
 device associated with the virtual machine, and connects to it with
 .Xr cu 1 .
 Use ~+Ctrl-D to exit the console and return to the host.
-.It reset Ar name
+.It Cm reset Ar name
 Forcefully reset the named virtual machine. This can cause corruption to the guest file system just
 as with real hardware and should only be used if necessary.
-.It poweroff Ar name
+.It Cm poweroff Ar name
 Forcefully power off the named virtual machine. As with
 .Ar reset
 above, this does not inform the guest to shutdown gracefully and should only be used if the guest
 can not be shut down using normal methods.
-.It startall
+.It Cm startall
 Start all virtual machines configured for auto-start. This is the command used by the rc.d scripts
 to start all machines on boot.
 .Pp
@@ -337,13 +345,13 @@ variable, which defaults to 5 seconds. Too small a delay can cause problems as e
 have enough time to claim a null modem device before the next guest starts. Increasing this value
 can be useful if you have disk-intensive guests and want to give each guest a chance to fully
 boot before the next starts.
-.It stopall
+.It Cm stopall
 Stop all running virtual machines. This sends a stop command to all
 .Xr bhyve 8
 instances, regardless of whether they were starting using
 .Nm
 or not.
-.It iso Op Ar url
+.It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso
 directory. This is often useful during guest installation, allowing you to copy and paste the ISO

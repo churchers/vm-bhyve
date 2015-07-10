@@ -37,6 +37,9 @@ __parse_cmd(){
                 switch)
                         __parse_switch_cmd "$@"
                         ;;
+		list)
+			__vm_list
+			;;
                 create)
                         __vm_create "$@"
                         ;;

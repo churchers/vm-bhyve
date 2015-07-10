@@ -24,6 +24,34 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# list virtual machines
+__vm_list(){
+	local _name _guest _cpu _memory _run
+	local _format="%-15s %-10s %-10s %-10s %-20s\n"
+
+	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "STATE"
+
+	ls -1 "${vm_dir}" | \
+	while read _name; do
+
+		if [ -e "${vm_dir}/${_name}/${_name}.conf" ]; then
+
+			_run=$(ps ax | grep " ${_name} [(]bhyve" |awk '{print $1}')
+			_guest=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" guest)
+			_cpu=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" cpu)
+			_memory=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" memory)
+
+			if [ -n "${_run}" ]; then
+				_run="Running (${_run})"
+			else
+				_run="Stopped"
+			fi
+
+			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_run}"
+		fi
+	done
+}
+
 # create a new virtual machine
 __vm_create(){
         local _name
@@ -79,6 +107,7 @@ __vm_install(){
         local _name="$1"
         local _iso="$2"
         local _num=0 _conf _memory _ls _guest _disk
+	local _gver
 
         _conf="${vm_dir}/${_name}/${_name}.conf"
 
@@ -112,6 +141,16 @@ __vm_install(){
                 freebsd)
                         bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
                         ;;
+		openbsd)
+			_gver=$(sysrc -inqf "${_conf}" guest_version)
+			[ -z "${_gver}" ] && __err "guest_version must be specified in configuration for openbsd guests"
+
+                        echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+                        echo "kopenbsd -h com0 /{$_gver}/amd64/bsd.rd" > "${vm_dir}/${_name}/boot.cmd"
+                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+			;;
                 ubuntu)
                         echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
                         echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
@@ -295,6 +334,12 @@ __vm_run(){
                         case "${_guest}" in
                                 freebsd)
                                         bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" ${_name}
+                                        ;;
+				openbsd)
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        echo "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd" > "${vm_dir}/${_name}/boot.cmd"
+                                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                                        grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
                                         ;;
                                 centos)
                                         _kernel=$(sysrc -inqf "${_conf}" linux_kernel)

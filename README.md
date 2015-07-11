@@ -14,9 +14,14 @@ Bhyve manager with the following functionality
 
 Download a bundle containing the latest version from [http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz](http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz)
 
+Please note the manual page contains the most up to date information on supported commands and usage.
+Once installed, use 'man vm' to view.
+
 ##Initial setup instructions
 
-Install the vm script as `/usr/local/sbin/vm`
+Install the vm script using the Makefile
+
+    # make install
 
 Create a directory for the virtual machines
 

@@ -26,16 +26,15 @@
 
 # list virtual machines
 __vm_list(){
-	local _name _guest _cpu _memory _run
-	local _format="%-15s %-10s %-10s %-10s %-20s\n"
+	local _name _guest _cpu _memory _run _vm _auto
+	local _format="%-15s %-10s %-10s %-10s %-10s %-20s\n"
 
-	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "STATE"
+	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
 
 	ls -1 "${vm_dir}" | \
 	while read _name; do
-
 		if [ -e "${vm_dir}/${_name}/${_name}.conf" ]; then
-
+			_auto="No"
 			_run=$(ps ax | grep " ${_name} [(]bhyve" |awk '{print $1}')
 			_guest=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" guest)
 			_cpu=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" cpu)
@@ -47,7 +46,11 @@ __vm_list(){
 				_run="Stopped"
 			fi
 
-			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_run}"
+			for _vm in ${vm_list}; do
+				[ "${_vm}" = "${_name}" ] && _auto="Yes"
+			done
+
+			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
 		fi
 	done
 }

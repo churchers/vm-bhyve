@@ -40,10 +40,22 @@ __vm_list(){
 			_cpu=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" cpu)
 			_memory=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" memory)
 
+			# see if bhyve running
 			if [ -n "${_run}" ]; then
 				_run="Running (${_run})"
 			else
 				_run="Stopped"
+			fi
+
+			# if no bhyve, look for bhyveload/grub-bhyve
+			if [ "${_run}" = "Stopped" ]; then
+				_run=$(ps ax |grep -E "[b]hyveload|[g]rub-bhyve" |grep -E "[ ]${_name}$" |awk '{print $1}')
+
+				if [ -n "${_run}" ]; then
+					_run="Bootloader"
+				else
+					_run="Stopped"
+				fi
 			fi
 
 			for _vm in ${vm_list}; do

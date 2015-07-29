@@ -25,7 +25,7 @@ Install the vm script using the Makefile
 
 Create a directory for the virtual machines
 
-    # mkdir /path/to/my/vms
+    # make vmdir PATH=/path/to/my/vms
     
 Update `/etc/rc.conf`
 
@@ -40,8 +40,6 @@ This command needs to be run once after each host reboot (this is normally handl
 
     # vm init
     
-Copy the sample templates to the folder `/path/to/my/vms/.templates/`
-
 This completes the basic setup
 
 ##Virtual Switch Management

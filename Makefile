@@ -2,8 +2,6 @@
 # vm-bhyve Makefile
 #
 
-.include <bsd.own.mk>
-
 PREFIX?=/usr/local
 MAN=
 BINOWN=root
@@ -29,7 +27,16 @@ install:
 	$(INSTALL) $(MAN).gz $(MANDIR)/
 	rm -f $(MAN).gz
 
+vmdir:
+	@if [ -z "${PATH}" ]; then \
+		echo "Usage: make vmdir PATH=/path"; \
+	else \
+		${MKDIR} -p "${PATH}"; \
+		${MKDIR} "${PATH}/.templates"; \
+		${MKDIR} "${PATH}/.iso"; \
+		${MKDIR} "${PATH}/.config"; \
+		cp sample-templates/* "${PATH}/.templates/"; \
+	fi;
+
 .MAIN: clean
 clean: ;
-
-.include <bsd.prog.mk>

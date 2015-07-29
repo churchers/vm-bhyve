@@ -43,6 +43,7 @@ fi
 [ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
 [ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
+[ ! -d "${vm_dir}/.img" ] && mkdir "${vm_dir}/.img"
 
 # get libs
 if [ -e "/usr/local/lib/vm-bhyve" ]; then

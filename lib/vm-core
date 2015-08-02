@@ -168,6 +168,13 @@ __vm_install(){
                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                         grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 			;;
+		netbsd)
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" > "${vm_dir}/${_name}/device.map"
+                        echo "(hd1) ${vm_dir}/${_name}/${_disk}" >> "${vm_dir}/${_name}/device.map"
+                        echo "knetbsd -h -r cd0a (cd0)/netbsd" > "${vm_dir}/${_name}/boot.cmd"			
+                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+			;;
                 ubuntu)
                         echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
                         echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
@@ -358,6 +365,12 @@ __vm_run(){
                                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                                         grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
                                         ;;
+				netbsd)
+                                        echo "(hd1) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        echo "knetbsd -h -r ld0a (hd1,msdos1)/netbsd" > "${vm_dir}/${_name}/boot.cmd"
+                                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                                        grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+					;;
                                 centos)
                                         _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
 

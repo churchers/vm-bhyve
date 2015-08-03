@@ -467,6 +467,17 @@ __vm_console(){
         cu -l "/dev/${_console}B"
 }
 
+# configure a machine (edit the configuration file)
+__vm_configure(){
+	local _name="$1"
+
+	if [ -e "${vm_dir}/${_name}/${_name}.conf" ]; then
+		$EDITOR "${vm_dir}/${_name}/${_name}.conf"
+	else
+		_err "cannot locate configuration file for virtual machine: ${_name}"
+	fi
+}
+
 # list iso images or get a new one
 __vm_iso(){
         local _url="$1"

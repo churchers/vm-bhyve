@@ -73,6 +73,9 @@ __parse_cmd(){
                 iso)
                         __vm_iso "$@"
                         ;;
+		configure)
+			__vm_configure "$@"
+			;;
                 *)
                          __usage
                         ;;

@@ -69,6 +69,7 @@ Usage: vm ...
         stopall
 	reset <name>
 	poweroff <name>
+	configure <name>
         iso [url]
 EOT
         exit 1

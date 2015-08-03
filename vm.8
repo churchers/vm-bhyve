@@ -55,6 +55,9 @@
 .Cm startall
 .Nm
 .Cm stopall
+.Nm
+.Cm configure
+.Ar name
 .Pp
 .Nm
 .Cm iso
@@ -351,6 +354,12 @@ Stop all running virtual machines. This sends a stop command to all
 instances, regardless of whether they were starting using
 .Nm
 or not.
+.It Cm configure Ar name
+The
+.Cm configure
+command simply opens the virtual machine configuration file in your default editor,
+allowing you to easily make changes. Please note, changes do not take effect until
+the virtual machine is fully shutdown and restarted.
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso
@@ -373,7 +382,7 @@ An overview of the available configuration options is listed below.
 .Bl -tag -width 15n
 .It guest
 Specify the type of guest to be installed in this virtual machine. Current valid options
-for this are freebsd, centos & ubuntu.
+for this are freebsd, centos, ubuntu, netbsd & openbsd.
 .It cpu
 A numeric value specifying the number of virtual CPU cores to assign to the guest.
 .It memory

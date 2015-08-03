@@ -354,6 +354,10 @@ __vm_run(){
                                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                                         grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
 					;;
+                                ubuntu)
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
+                                        ;;
                                 centos)
                                         _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
 
@@ -368,11 +372,7 @@ __vm_run(){
                                         echo "initrd /initramfs-${_kernel}.img" >> "${vm_dir}/${_name}/boot.cmd"
                                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                                         grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
-                                        ;;
-                                ubuntu)
-                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-                                        grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
-                                        ;;
+					;;
                                 *)
                                         logger -t "${LOG_TAG}" "${_name}: unsupported guest type \"${_guest}\""
                                         _exit=24

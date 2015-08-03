@@ -59,6 +59,7 @@ Usage: vm ...
         switch add <name> <interface>
         switch remove <name> <interface>
         switch destroy <name>
+	list
         create [-t template] [-s size] <name>
         install <name> <iso>
         start <name>

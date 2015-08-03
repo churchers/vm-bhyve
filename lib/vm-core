@@ -474,7 +474,7 @@ __vm_configure(){
 	if [ -e "${vm_dir}/${_name}/${_name}.conf" ]; then
 		$EDITOR "${vm_dir}/${_name}/${_name}.conf"
 	else
-		_err "cannot locate configuration file for virtual machine: ${_name}"
+		__err "cannot locate configuration file for virtual machine: ${_name}"
 	fi
 }
 

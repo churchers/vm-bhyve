@@ -49,7 +49,7 @@ __switch_init(){
 # list switches, currently just from stored configuration
 __switch_list(){
         local _switchlist _portlist _switch _port _vlan
-        local _id _format="%-19s %-19s %10s %-20s\n"
+        local _id _format="%-19s %-19s %-7s %-20s\n"
 
         _switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 

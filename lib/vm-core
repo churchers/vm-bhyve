@@ -133,15 +133,7 @@ __vm_install(){
         [ ! -f "${vm_dir}/.iso/${_iso}" ] && __err "unable to find iso ${vm_dir}/.iso/${_iso}"
         [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
 
-        # loop until we find an available nmdm
-        # using -e seemed to create devices so now scanning ls
-        while [ 1 ]; do
-                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
-                [ -z "${_ls}" ] && break
-                _num=$(($_num + 1))
-        done
-
-        _com="nmdm${_num}A"
+	_com=$(__vm_create_console)
         _memory=$(sysrc -inqf "${_conf}" memory)
         _guest=$(sysrc -inqf "${_conf}" guest)
         _disk=$(sysrc -inqf "${_conf}" disk0_name)
@@ -239,16 +231,7 @@ __vm_start(){
         [ -z "${_name}" ] && __usage
         [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
 
-        # loop until we find an available nmdm
-        # using -e seemed to create devices so now scanning ls
-        # we could move this to _run but now relying on this being in ps output for "vm console" command
-        while [ 1 ]; do
-                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
-                [ -z "${_ls}" ] && break
-                _num=$(($_num + 1))
-        done
-
-        _com="nmdm${_num}A"
+	_com=$(__vm_create_console)
 
         # run background process to actually start bhyve
         # this will run as long as vm is running, including restarting bhyve after guest reboot
@@ -494,4 +477,21 @@ __vm_iso(){
                 echo "FILENAME"
                 ls -1 "${vm_dir}/.iso"
         fi
+}
+
+# create a new console for a vm
+# for now we are using nmdm
+__vm_create_console(){
+	local _ls
+	local _num=0
+
+        # loop until we find an available nmdm
+        # using -e seemed to create devices so now scanning ls
+        while [ 1 ]; do
+                _ls=$(ls -1 /dev | grep "nmdm${_num}A")
+                [ -z "${_ls}" ] && break
+                _num=$(($_num + 1))
+        done
+
+        echo "nmdm${_num}A"
 }

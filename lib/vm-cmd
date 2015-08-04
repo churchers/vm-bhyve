@@ -43,6 +43,9 @@ __parse_cmd(){
                 create)
                         __vm_create "$@"
                         ;;
+		destroy)
+			__vm_destroy "$@"
+			;;
                 install)
                         __vm_install "$@"
                         ;;

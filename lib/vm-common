@@ -40,10 +40,7 @@ __load_module(){
         kldstat -n ${_mod} >/dev/null 2>&1
         if [ $? -ne 0 ]; then
                 kldload ${_mod} >/dev/null 2>&1
-                if [ $? -ne 0 ]; then
-                        __err "unable to load ${_mod}.ko!"
-                        exit 1
-                fi
+                [ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"
         fi
 }
 

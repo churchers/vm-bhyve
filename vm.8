@@ -32,6 +32,9 @@
 .Op Fl s Ar size
 .Ar name
 .Nm
+.Cm destroy
+.Ar name
+.Nm
 .Cm list
 .Nm
 .Cm install
@@ -268,6 +271,9 @@ suffix is not required.
 The size of disk image to create in GB. Unless specified, the guest image will
 be a sparse file 20GB in size.
 .El
+.It Cm destroy Ar name
+Removes the specified virtual machine from the system, deleting all associated
+disk images & configuration.
 .It Cm list
 .br
 List all the virtual machines in the

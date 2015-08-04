@@ -167,6 +167,8 @@ __vm_install(){
                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                         grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 			;;
+		debian)
+			;&
                 ubuntu)
                         echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
                         echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
@@ -180,6 +182,14 @@ __vm_install(){
                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                         grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
                         ;;
+                alpine)
+                        echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+                        echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+                        echo "linux /boot/grsec initrd=/boot/initramfs-grsec alpine_dev=cdrom:iso9660 modules=loop,squashfs,sd-mod,usb-storage,sr-mod" > "${vm_dir}/${_name}/boot.cmd"
+                        echo "initrd /boot/initramfs-grsec" >> "${vm_dir}/${_name}/boot.cmd"
+                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                        grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+			;;
                 *)
                         __err "unsupported guest type: ${_guest}"
                         ;;
@@ -354,6 +364,8 @@ __vm_run(){
                                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                                         grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
 					;;
+				debian)
+					;&
                                 ubuntu)
                                         echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
                                         grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
@@ -370,6 +382,13 @@ __vm_run(){
                                         echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
                                         echo "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root" > "${vm_dir}/${_name}/boot.cmd"
                                         echo "initrd /initramfs-${_kernel}.img" >> "${vm_dir}/${_name}/boot.cmd"
+                                        echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+                                        grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+					;;
+				alpine)
+                                        echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+                                        echo "linux /boot/vmlinuz-grsec root=/dev/vda3 modules=ext4" > "${vm_dir}/${_name}/boot.cmd"
+                                        echo "initrd /boot/initramfs-grsec" >> "${vm_dir}/${_name}/boot.cmd"
                                         echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
                                         grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
 					;;

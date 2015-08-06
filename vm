@@ -30,20 +30,6 @@ LOG_TAG=vm-bhyve
 . /etc/rc.subr
 load_rc_config "vm"
 
-# check environment
-[ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
-
-# we should be enabled in rc.conf
-if ! checkyesno vm_enable; then
-	__err "\$vm_enable is not enabled in /etc/rc.conf!"
-fi
-
-# create directories as needed
-[ ! -d "${vm_dir}" ] && __err "\$vm_dir has not been configured or is not a valid directory"
-[ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
-[ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
-[ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
-
 # get libs
 if [ -e "/usr/local/lib/vm-bhyve" ]; then
 	LIB="/usr/local/lib/vm-bhyve"
@@ -59,5 +45,19 @@ fi
 . "${LIB}/vm-sysrc"
 . "${LIB}/vm-switch"
 . "${LIB}/vm-core"
+
+# check environment
+[ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
+
+# we should be enabled in rc.conf
+if ! checkyesno vm_enable; then
+        __err "\$vm_enable is not enabled in /etc/rc.conf!"
+fi
+
+# create directories as needed
+[ ! -d "${vm_dir}" ] && __err "\$vm_dir has not been configured or is not a valid directory"
+[ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
+[ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
+[ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
 
 __parse_cmd "$@"

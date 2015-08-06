@@ -1,0 +1,152 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# set us up for zfs use
+__zfs_init(){
+	local _zfs
+
+	# check for zfs root
+	_zfs=$(echo "${vm_dir}" | cut -c -3)
+
+	# are we storing on ZFS?
+	if [ ${_zfs} = 'zfs' ]; then
+
+		# check zfs running
+		kldstat -n zfs >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
+
+	        # global zfs details
+        	VM_ZFS=1
+	        VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
+
+	        # update vm_dir
+	        vm_dir=$(zfs get -H mountpoint storage/test | awk '{print $3}')
+	fi
+}
+
+# make a new dataset
+__zfs_make_dataset(){
+        local _name="$1"
+
+        if [ ${VM_ZFS} -eq 1 ]; then
+                zfs create "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+                [ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+        fi
+}
+
+# create an image of a vm
+__zfs_image_create(){
+	local _name
+	local _opt _desc _uuid _date
+
+	while getopts d: _opt ; do
+		case $_opt in
+			d)
+				_desc=${OPTARG}
+				;;
+			*)
+				__usage
+				;;
+		esac
+	done
+
+        shift $((OPTIND - 1))
+        _name=$1
+	_uuid=$(uuidgen)
+	_date=$(date)
+
+	[ -z "${_desc}" ] && _desc="No description provided"
+	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} does not appear to be a valid virtual machine"
+
+	# create the .img dataset if we don't have it
+	if [ ! -e "${vm_dir}/images" ]; then
+		zfs create "${VM_ZFS_DATASET}/images" >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "failed to create image store ${VM_ZFS_DATASET}/images"
+	fi
+
+	# try to snapshot
+	zfs snapshot "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+	[ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_uuid}"
+
+	# copy source
+	zfs send "${VM_ZFS_DATASET}/${_name}@${_uuid}" | zfs recv "${VM_ZFS_DATASET}/images/${_uuid}"
+	[ $? -ne 0 ] && exit 1
+
+	# remove the snapshots
+	zfs destroy ${VM_ZFS_DATASET}/${_name}@${_uuid}
+	zfs destroy ${VM_ZFS_DATASET}/images/${_uuid}@${_uuid}
+
+	# create a description file
+	sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" "description=${_desc}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" "created=${_date}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" "name=${_name}" >/dev/null 2>&1
+
+	echo "Image of ${_name} created with UUID ${_uuid}"
+}
+
+# list available images
+__zfs_image_list(){
+	local _uuid
+	local _format="%-38s %-16s %-30s %s\n"
+
+	printf "${_format}" "UUID" "NAME" "CREATED" "DESCRIPTION"
+
+	[ ! -e "${vm_dir}/images" ] && exit
+
+	ls -1 "${vm_dir}/images" | \
+	while read _uuid; do
+		# look for image file
+		if [ -e "${vm_dir}/images/${_uuid}/image.conf" ]; then
+			_desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" description)
+			_created=$(sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" created)
+			_name=$(sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" name)
+
+			printf "${_format}" "${_uuid}" "${_name}" "${_created}" "${_desc}"
+		fi
+	done
+}
+
+# parse the image command set
+# these all rely on ZFS snapshots, so kept with zfs functions
+__zfs_parse_image_cmd(){
+        local _cmd="$1"
+        shift
+
+	# we only support these commands on zfs
+	[ "${VM_ZFS}" -ne 1 ] && __err "the image command set is only available with ZFS storage"
+
+        case "${_cmd}" in
+                create)
+                        __zfs_image_create "$@"
+                        ;;
+		list)
+			__zfs_image_list
+			;;
+                *)
+                        __usage
+                        ;;
+        esac
+}

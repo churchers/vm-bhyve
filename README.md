@@ -5,10 +5,11 @@ FreeBSD Bhyve VM Management
 Bhyve manager with the following functionality
 
 * Simple virtual switch management - no messing with manual tap devices or bridges
-* Automatic ZFS dataset creation (if VM path matches dataset name)
+* Automatic ZFS dataset creation
 * Startup and shutdown integration
 * Automatic handling of reboot and shutdown events
 * Dynamic console (nmdm device) creation
+* FreeBSD/NetBSD/OpenBSD/Linux guest support
 
 ##Download
 
@@ -24,6 +25,7 @@ Install the vm script using the Makefile
     # make install
 
 Create a directory for the virtual machines
+(See the note below about usage on ZFS)
 
     # make vmdir PATH=/path/to/my/vms
     
@@ -34,9 +36,21 @@ Update `/etc/rc.conf`
     vm_list="" # list to start automatically on boot
     vm_delay="5" # seconds delay between starting machines
     
-Initialise all kernel modules and finish creating the directory structure:
 
-This command needs to be run once after each host reboot (this is normally handled by the rc.d script included)
+
+ZFS NOTE: If you want to store guests on a ZFS dataset, and have a new child dataset created for each virtual machine,
+specify the dataset to use as follows in place of the vm directory:
+
+    vm_dir="zfs:pool/dataset"
+
+In this case you will need to create the dataset manually. Once you have completed basic setup by running
+the 'vm init' command below, copy the sample templates into the .templates subdirectory of your vm storage
+dataset.
+
+
+
+Initialise all kernel modules and finish creating the directory structure.
+This command needs to be run once after each host reboot (this is normally handled by the rc.d script included):
 
     # vm init
     

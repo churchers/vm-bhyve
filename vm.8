@@ -129,23 +129,20 @@ You can create and edit the templates as required. It is recommended to keep a t
 as this will be used when no template is manually specified.
 .\" ============ ZFS =============
 .Sh ZFS
-A quick note about usage on ZFS.
-.Pp
-If your
-.Pa $vm_dir
-is also a ZFS dataset,
-.Nm
-will attempt to automatically create a new dataset when creating a virtual machine.
-For example, consider the following configuration:
+If you are using a ZFS dataset to store your virtual machines, and want a new child dataset created
+for each one, specify the dataset to use in
+.Pa /etc/rc.conf
+as follows:
 .Bd -literal -offset indent
-$vm_dir="/pool/vm"
+$vm_dir="zfs:pool/dataset"
 .Ed
 .Pp
-If
-.Cm pool/vm
-is a ZFS dataset, a new dataset called
-.Cm pool/vm/guest-name
-will be added when a guest is created.
+In contrast to earlier versions, if
+.Pa $vm_dir
+is a normal path, a standard subdirectory will be created for each virtual machine, regardless
+of the file system type. However,
+.Nm
+is now able to handle situations where the dataset mountpoint does not match the dataset name.
 .\" ============ QUICKSTART =============
 .Sh QUICKSTART
 Create a virtual switch called

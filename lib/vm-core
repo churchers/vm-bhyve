@@ -72,7 +72,7 @@ __vm_list(){
 # create a new virtual machine
 __vm_create(){
         local _name
-        local _template _opt _size _vmdir _zfsvm _disk
+        local _template _opt _size _vmdir _disk
 
         while getopts t:s: _opt ; do
                 case $_opt in
@@ -101,14 +101,12 @@ __vm_create(){
         _disk=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_name)
         [ -z "${_disk}" ] && __err "template is missing disk0_name specification"
 
+	# get the directory to store our vm data in
         _vmdir="${vm_dir}/${_name}"
-        _zfsvm=$(df -T "${vm_dir}" | tail -n 1 | awk '{print $2}')
         [ -e "${_vmdir}" ] && __err "directory ${_vmdir} already exists"
 
-        if [ "zfs" = "${_zfsvm}" ]; then
-                _zfsvm=$(echo "${_vmdir}" | cut -c 2-)
-                zfs create ${_zfsvm} >/dev/null 2>&1
-        fi
+	# if we're on zfs, make a new filesystem
+	__zfs_make_dataset "${_name}"
 
         [ ! -d "${_vmdir}" ] && mkdir "${_vmdir}"
         [ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"

@@ -11,7 +11,8 @@ BINDIR=$(PREFIX)/sbin
 FILESDIR=$(PREFIX)/lib/vm-bhyve
 RCDIR=$(PREFIX)/etc/rc.d
 MANDIR=$(PREFIX)/man/man8
-MKDIR=mkdir
+MKDIR=/bin/mkdir
+CP=/bin/cp
 
 PROG=vm
 MAN=$(PROG).8
@@ -31,11 +32,10 @@ vmdir:
 	@if [ -z "${PATH}" ]; then \
 		echo "Usage: make vmdir PATH=/path"; \
 	else \
-		${MKDIR} -p "${PATH}"; \
-		${MKDIR} "${PATH}/.templates"; \
-		${MKDIR} "${PATH}/.iso"; \
-		${MKDIR} "${PATH}/.config"; \
-		cp sample-templates/* "${PATH}/.templates/"; \
+		${MKDIR} -p "${PATH}/.templates"; \
+		${MKDIR} -p "${PATH}/.iso"; \
+		${MKDIR} -p "${PATH}/.config"; \
+		${CP} sample-templates/* "${PATH}/.templates/"; \
 	fi;
 
 .MAIN: clean

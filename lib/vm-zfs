@@ -43,7 +43,8 @@ __zfs_init(){
 	        VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
 
 	        # update vm_dir
-	        vm_dir=$(zfs get -H mountpoint storage/test | awk '{print $3}')
+	        vm_dir=$(zfs get -H mountpoint ${VM_ZFS_DATASET} 2>/dev/null | awk '{print $3}')
+		[ -z "${vm_dir}" ] && __err "unable to locate mountpoint for ZFS dataset ${VM_ZFS_DATASET}"
 	fi
 }
 

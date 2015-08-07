@@ -28,7 +28,8 @@
 __zfs_init(){
 	local _zfs
 
-	# check for zfs root
+	# check for zfs storage location
+	# user should specify "zfs:pool/dataset" if they want ZFS support
 	_zfs=$(echo "${vm_dir}" | cut -c -3)
 
 	# are we storing on ZFS?

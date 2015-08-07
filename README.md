@@ -42,7 +42,9 @@ then use the "make vmdir" command above to set up the subdirectories and copy sa
 
     vm_dir="zfs:pool/dataset"
 
-Initialise all kernel modules and finish creating the directory structure.
+    make vmdir PATH=/path/to/pool/dataset/mountpoint
+
+Initialise all kernel modules and get the system ready to run bhyve.
 This command needs to be run once after each host reboot (this is normally handled by the rc.d script included):
 
     # vm init

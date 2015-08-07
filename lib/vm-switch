@@ -278,7 +278,7 @@ __switch_nat(){
 			[ $? -ne 0 ] && __err "failed to store nat configuration"
 			;;
 		*)
-			__err "last option should either be 'on' or 'off' the enable/disable nat functionality"
+			__err "last option should either be 'on' or 'off' to enable/disable nat functionality"
 			;;
 	esac
 
@@ -312,7 +312,7 @@ __nat_init(){
 
 	# see if we are already included in pf.conf
 	_grep=$(grep "${_pf_rules}" /etc/pf.conf)
-	[ -z "${_grep}" ] && echo "include \"${_pf_rules}\";" >> /etc/pf.conf
+	[ -z "${_grep}" ] && echo "include \"${_pf_rules}\"" >> /etc/pf.conf
 
 	_switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 

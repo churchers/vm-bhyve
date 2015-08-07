@@ -36,18 +36,11 @@ Update `/etc/rc.conf`
     vm_list="" # list to start automatically on boot
     vm_delay="5" # seconds delay between starting machines
     
-
-
 ZFS NOTE: If you want to store guests on a ZFS dataset, and have a new child dataset created for each virtual machine,
-specify the dataset to use as follows in place of the vm directory:
+specify the dataset to use as below in place of the vm directory. You will need to create the dataset manually first,
+then use the "make vmdir" command above to set up the subdirectories and copy sample templates:
 
     vm_dir="zfs:pool/dataset"
-
-In this case you will need to create the dataset manually. Once you have completed basic setup by running
-the 'vm init' command below, copy the sample templates into the .templates subdirectory of your vm storage
-dataset.
-
-
 
 Initialise all kernel modules and finish creating the directory structure.
 This command needs to be run once after each host reboot (this is normally handled by the rc.d script included):

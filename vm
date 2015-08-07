@@ -36,7 +36,8 @@ if [ -e "/usr/local/lib/vm-bhyve" ]; then
 elif [ -e "./lib" ]; then
 	LIB="./lib"
 else
-	__err "unable to locate vm-bhyve libriaries"
+	echo "unable to locate vm-bhyve libriaries"
+	exit 1
 fi
 
 # load libs

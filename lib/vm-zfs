@@ -39,7 +39,7 @@ __zfs_init(){
 		[ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
 
 	        # global zfs details
-        	VM_ZFS=1
+        	VM_ZFS="1"
 	        VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
 
 	        # update vm_dir
@@ -52,9 +52,19 @@ __zfs_init(){
 __zfs_make_dataset(){
         local _name="$1"
 
-        if [ ${VM_ZFS} -eq 1 ]; then
+        if [ "${VM_ZFS}" = "1" ]; then
                 zfs create "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
                 [ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+        fi
+}
+
+# destroy a dataset
+__zfs_destroy_dataset(){
+        local _name="$1"
+
+        if [ "${VM_ZFS}" = "1" ]; then
+                zfs destroy "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+                [ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
         fi
 }
 
@@ -82,7 +92,7 @@ __zfs_image_create(){
 	[ -z "${_desc}" ] && _desc="No description provided"
 	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} does not appear to be a valid virtual machine"
 
-	# create the .img dataset if we don't have it
+	# create the image dataset if we don't have it
 	if [ ! -e "${vm_dir}/images" ]; then
 		zfs create "${VM_ZFS_DATASET}/images" >/dev/null 2>&1
 		[ $? -ne 0 ] && __err "failed to create image store ${VM_ZFS_DATASET}/images"
@@ -93,41 +103,90 @@ __zfs_image_create(){
 	[ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_uuid}"
 
 	# copy source
-	zfs send "${VM_ZFS_DATASET}/${_name}@${_uuid}" | zfs recv "${VM_ZFS_DATASET}/images/${_uuid}"
+	echo "Creating a compressed image, this may take some time..."
+	zfs send "${VM_ZFS_DATASET}/${_name}@${_uuid}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
 	[ $? -ne 0 ] && exit 1
 
-	# remove the snapshots
+	# done with the source snapshot
 	zfs destroy ${VM_ZFS_DATASET}/${_name}@${_uuid}
-	zfs destroy ${VM_ZFS_DATASET}/images/${_uuid}@${_uuid}
 
 	# create a description file
-	sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" "description=${_desc}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" "created=${_date}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" "name=${_name}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "description=${_desc}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "created=${_date}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "name=${_name}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "filename=${_uuid}.zfs.xz" >/dev/null 2>&1
 
 	echo "Image of ${_name} created with UUID ${_uuid}"
 }
 
+# create a new vm from an image
+__zfs_image_provision(){
+	local _uuid="$1"
+	local _name="$2"
+	local _file
+	local _oldname
+
+	[ -z "${_uuid}" -o -z "${_name}" ] && __usage
+	[ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
+	[ -e "${vm_dir}/${_name}" ] && __err "directory ${vm_dir}/${_name} already exists"
+
+	# get the data filename
+	_file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
+	_oldname=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
+	[ -z "${_file}" -o -z "${_oldname}" ] && __err "unable to locate required details from the specified image manifest"
+	[ ! -e "${vm_dir}/images/${_file}" ] && __err "image data file does not exist: ${vm_dir}/images/${_file}"
+
+	# try to recieve
+	echo "Unpacking compressed image, this may take some time..."
+	cat "${vm_dir}/images/${_file}" | xz -d | zfs recv "${VM_ZFS_DATASET}/${_name}"
+	[ $? -ne 0 ] && __err "errors occured while trying to unpackage the image file"
+
+	# remove the original snapshot
+	zfs destroy "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+
+	# rename the guest configuration file
+	mv "${vm_dir}/${_name}/${_oldname}.conf" "${vm_dir}/${_name}/${_name}.conf" >/dev/null 2>&1
+	[ $? -ne 0 ] && __err "unpackaged image but unable to update guest configuration file"
+}
+
 # list available images
 __zfs_image_list(){
-	local _uuid
+	local _file _uuid _ext
 	local _format="%-38s %-16s %-30s %s\n"
 
 	printf "${_format}" "UUID" "NAME" "CREATED" "DESCRIPTION"
 
 	[ ! -e "${vm_dir}/images" ] && exit
 
-	ls -1 "${vm_dir}/images" | \
-	while read _uuid; do
-		# look for image file
-		if [ -e "${vm_dir}/images/${_uuid}/image.conf" ]; then
-			_desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" description)
-			_created=$(sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" created)
-			_name=$(sysrc -inqf "${vm_dir}/images/${_uuid}/image.conf" name)
+	ls -1 ${vm_dir}/images/ | \
+	while read _file; do
+		_ext=$(echo "${_file}" | cut -d. -f2)
+
+		if [ "${_ext}" = "manifest" ]; then
+			_uuid=$(echo "${_file}" | cut -c -36)
+			_desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" description)
+			_created=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" created)
+			_name=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
 
 			printf "${_format}" "${_uuid}" "${_name}" "${_created}" "${_desc}"
 		fi
 	done
+}
+
+# destroy an image
+__zfs_image_destroy(){
+	local _uuid="$1"
+	local _file
+
+	[ -z "${_uuid}" ] && __usage
+	[ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
+
+	# get the image filename
+	_file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
+	[ -z "${_file}" ] && __err "unable to locate filename for the specified image"
+
+	rm "${vm_dir}/images/${_uuid}.manifest"
+	rm "${vm_dir}/images/${_file}"
 }
 
 # parse the image command set
@@ -137,14 +196,20 @@ __zfs_parse_image_cmd(){
         shift
 
 	# we only support these commands on zfs
-	[ "${VM_ZFS}" -ne 1 ] && __err "the image command set is only available with ZFS storage"
+	[ ! "${VM_ZFS}" = "1" ] && __err "the image command set is only available with ZFS storage"
 
         case "${_cmd}" in
+		list)
+			__zfs_image_list
+			;;
                 create)
                         __zfs_image_create "$@"
                         ;;
-		list)
-			__zfs_image_list
+		provision)
+			__zfs_image_provision "$@"
+			;;
+		destroy)
+			__zfs_image_destroy "$@"
 			;;
                 *)
                         __usage

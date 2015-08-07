@@ -476,7 +476,8 @@ __vm_destroy(){
 	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} doesn't appear to be a valid virtual machine"
 
 	__confirm "Are you sure you want to completely remove this virtual machine" || exit 0
-	rm -R "${vm_dir}/${_name}"
+	__zfs_destroy_dataset "${_name}"
+	[ -e "${vm_dir}/${_name}" ] && rm -R "${vm_dir}/${_name}"
 }
 
 # console

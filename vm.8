@@ -65,6 +65,20 @@
 .Nm
 .Cm iso
 .Op Ar url
+.Pp
+.Nm
+.Cm image list 
+.Nm
+.Cm image create
+.Op Fl d Ar description
+.Ar name
+.Nm
+.Cm provision
+.Ar uuid
+.Ar new-name
+.Nm
+.Cm destroy
+.Ar uuid
 .\" ============ DESCRIPTION =============
 .Sh DESCRIPTION
 The
@@ -373,6 +387,33 @@ If a
 .Sy url
 is specified, instead of listing ISO files, it attempts to download the given file using
 .Xr fetch 1 .
+.It Cm image list
+List available images. Any virtual machine can be packaged into an image, which can then be
+used to create additional machines. All images have a globally unique ID (UUID) which is 
+used to identify them. The list command shows the UUID, the original machine name, the
+date it was created and a short description of the image.
+.Pp
+Please note that these commands rely on using ZFS featured to package/unpackage the images,
+and as such are only available when using a ZFS dataset as the storage location.
+.It Xo
+.Cm image create
+.Op Fl d Ar description
+.Ar name
+.Xc
+Create a new image from the named virtual machine. This will create a compressed copy of
+the original guest dataset, which is stored in the
+.Pa $vm_dir/images
+directory. It also creates a 
+.Pa UUID.manifest
+file which contains details about the image.
+.Pp
+Once complete, it will display the UUID which has been assigned to this image.
+.It Cm image provision Ar uuid Ar new-name
+Create a new virtual machine, named
+.Pa new-name ,
+from the specified image UUID.
+.It Cm image destroy Ar uuid
+Destroy the specified image.
 .El
 .\" ============ CONFIGURATION FORMAT ===========
 .Sh CONFIGURATION FORMAT

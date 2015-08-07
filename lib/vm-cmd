@@ -112,6 +112,9 @@ __parse_switch_cmd(){
                 vlan)
                         __switch_vlan "$@"
                         ;;
+		nat)
+			__switch_nat "$@"
+			;;
                 *)
                         __usage
                         ;;

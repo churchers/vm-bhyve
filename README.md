@@ -10,6 +10,7 @@ Bhyve manager with the following functionality
 * Automatic handling of reboot and shutdown events
 * Dynamic console (nmdm device) creation
 * FreeBSD/NetBSD/OpenBSD/Linux guest support
+* Simple NAT support based on dnsmasq & pf
 
 ##Download
 
@@ -66,7 +67,23 @@ We can also set a vlan number so all traffic heading out of em0 will be tagged:
 List the configured switches and their associated bridge device
 
     # vm switch list
-    
+
+##NAT
+
+To enable nat on a virtual switch, run the following command
+
+    # vm switch nat switch-name on
+
+This required the dnsmasq paackage to be installed. Both dnsmasq & pf should be enabled
+in /etc/rc.conf. Note that vm-bhyve will overwrite any existing dnsmasq configuration when
+nat is enabled. If you have an existing pf ruleset in /etc/pf.conf, this will be kept and a
+single include statement will be added to load the vm-bhyve nat rules.
+
+When enabled on a switch, a 172.16.x.0/24 network is assigned to the switch automatically, which
+may cause problems if you have other interfaces on the host using the same range. The x number
+is chosen based on the bridge interface number of the virtual switch; A virtual switch which
+is using bridge1 on the host, will use 172.16.1.0/24 for nat.
+
 ##Virtual Machines
 
 Create a new 20G virtual machine using the `default.conf` standard template, and a second 40G ubuntu machine using the `ubuntu.conf` template:

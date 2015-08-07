@@ -44,6 +44,19 @@ __load_module(){
         fi
 }
 
+# restart a local service
+__restart_service(){
+	local _serv="$1"
+
+	service ${_serv} status >/dev/null 2>&1
+
+	if [ $? -ne 0 ]; then
+		service ${_serv} start >/dev/null 2>&1
+	else
+		service ${_serv} restart >/dev/null 2>&1
+	fi
+}
+
 # show usage
 __usage(){
 cat << EOT

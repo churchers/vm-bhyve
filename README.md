@@ -40,9 +40,9 @@ ZFS NOTE: If you want to store guests on a ZFS dataset, and have a new child dat
 specify the dataset to use as below in place of the vm directory. You will need to create the dataset manually first,
 then use the "make vmdir" command above to set up the subdirectories and copy sample templates:
 
-    vm_dir="zfs:pool/dataset"
+    in /etc/rc.conf -> vm_dir="zfs:pool/dataset"
 
-    make vmdir PATH=/path/to/pool/dataset/mountpoint
+    # make vmdir PATH=/path/to/pool/dataset/mountpoint
 
 Initialise all kernel modules and get the system ready to run bhyve.
 This command needs to be run once after each host reboot (this is normally handled by the rc.d script included):

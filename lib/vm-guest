@@ -59,25 +59,28 @@ __guest_netbsd(){
 # requires guest kernel version in config file
 # open of the awkward guests that have version in kernel load path
 __guest_openbsd(){
-	local _gver
+	local _gver=$(sysrc -inqf "${_conf}" guest_version)
 
-	if [ "$1" = "install" ]; then
-		_gver=$(sysrc -inqf "${_conf}" guest_version)
-		[ -z "${_gver}" ] && __err "guest_version must be specified in configuration for openbsd guests"
-
-		echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
-		echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
-		echo "kopenbsd -h com0 /{$_gver}/amd64/bsd.rd" > "${vm_dir}/${_name}/boot.cmd"
-		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
-		grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+        if [ -z "${_gver}" ]; then
+		logger -t "${LOG_TAG}" "${_name}: openbsd machines require \"guest_version\" value in configuration"
+		_exit=15
 	else
-		echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-		echo "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd" > "${vm_dir}/${_name}/boot.cmd"
-		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
-		grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
-	fi
+		if [ "$1" = "install" ]; then
 
-	_exit=$?
+			echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+			echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+			echo "kopenbsd -h com0 /${_gver}/amd64/bsd.rd" > "${vm_dir}/${_name}/boot.cmd"
+			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+			grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+		else
+			echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+			echo "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd" > "${vm_dir}/${_name}/boot.cmd"
+			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+			grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+		fi
+
+		_exit=$?
+	fi
 }
 
 # LINUXes

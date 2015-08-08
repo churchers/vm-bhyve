@@ -53,7 +53,7 @@ __parse_cmd(){
 			__vm_install "$@"
 			;;
 		start)
-			__vm_start "$@"
+			__vm_start "$1"
 			;;
 		stop)
 			__vm_stop "$@"

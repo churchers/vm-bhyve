@@ -24,6 +24,19 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# As these functions are called from within the scope of __vm_run,
+# the following variables are already set
+#
+# _name: guest name
+# _com: com port - nmdmXA
+# _iso: iso file (if an install)
+# _conf: full path to guest config file
+# _cpu: cpu count
+# _memory: RAM
+# _guest: guest type
+# _bootdisk: full path to primary disk
+#
+
 # BSDs
 
 # FreeBSD

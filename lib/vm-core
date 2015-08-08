@@ -161,7 +161,7 @@ __vm_stopall(){
 __vm_start(){
 	local _name="$1"
 	local _iso="$2"
-	local _conf _ls
+	local _conf
 	local _memory _guest _disk
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"

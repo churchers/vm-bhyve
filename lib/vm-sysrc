@@ -26,35 +26,35 @@
 
 # add a value to an rc file, appending to an existing string value
 __rc_append_string(){
-        local _file="${vm_dir}/$1"
-        local _var="$2"
-        local _value="$3"
-        local _curr
+	local _file="${vm_dir}/$1"
+	local _var="$2"
+	local _value="$3"
+	local _curr
 
-        _curr=$(sysrc -inqf "${_file}" "${_var}")
-        [ -n "${_curr}" ] && _curr="${_curr} "
-        _curr="${_curr}${_value}"
+	_curr=$(sysrc -inqf "${_file}" "${_var}")
+	[ -n "${_curr}" ] && _curr="${_curr} "
+	_curr="${_curr}${_value}"
 
-        sysrc -inqf "${_file}" "${_var}=${_curr}" >/dev/null 2>&1
-        [ $? -ne 0 ] && __warn "unable to update configuration file for ${_var}"
+	sysrc -inqf "${_file}" "${_var}=${_curr}" >/dev/null 2>&1
+	[ $? -ne 0 ] && __warn "unable to update configuration file for ${_var}"
 }
 
 # remove a value from a string list
 __rc_splice_string(){
-        local _file="${vm_dir}/$1"
-        local _var="$2"
-        local _value="$3"
-        local _curr _key _new
+	local _file="${vm_dir}/$1"
+	local _var="$2"
+	local _value="$3"
+	local _curr _key _new
 
-        _curr=$(sysrc -inqf "${_file}" "${_var}")
+	_curr=$(sysrc -inqf "${_file}" "${_var}")
 
-        for _key in ${_curr}; do
-                if [ "z${_key}" != "z${_value}" ]; then
-                        [ -n "${_new}" ] && _new="${_new} "
-                        _new="${_new}${_key}"
-                fi
-        done
+	for _key in ${_curr}; do
+		if [ "z${_key}" != "z${_value}" ]; then
+			[ -n "${_new}" ] && _new="${_new} "
+			_new="${_new}${_key}"
+		fi
+	done
 
-        sysrc -inqf "${_file}" "${_var}=${_new}" >/dev/null 2>&1
-        [ $? -ne 0 ] && __err "unable to update configuration file for ${_var}"
+	sysrc -inqf "${_file}" "${_var}=${_new}" >/dev/null 2>&1
+	[ $? -ne 0 ] && __err "unable to update configuration file for ${_var}"
 }

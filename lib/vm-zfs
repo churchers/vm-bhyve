@@ -39,34 +39,34 @@ __zfs_init(){
 		kldstat -n zfs >/dev/null 2>&1
 		[ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
 
-	        # global zfs details
-        	VM_ZFS="1"
-	        VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
+	 # global zfs details
+		VM_ZFS="1"
+	 VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
 
-	        # update vm_dir
-	        vm_dir=$(zfs get -H mountpoint ${VM_ZFS_DATASET} 2>/dev/null | awk '{print $3}')
+	 # update vm_dir
+	 vm_dir=$(zfs get -H mountpoint ${VM_ZFS_DATASET} 2>/dev/null | awk '{print $3}')
 		[ -z "${vm_dir}" ] && __err "unable to locate mountpoint for ZFS dataset ${VM_ZFS_DATASET}"
 	fi
 }
 
 # make a new dataset
 __zfs_make_dataset(){
-        local _name="$1"
+	local _name="$1"
 
-        if [ "${VM_ZFS}" = "1" ]; then
-                zfs create "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-                [ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
-        fi
+	if [ "${VM_ZFS}" = "1" ]; then
+		zfs create "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+	fi
 }
 
 # destroy a dataset
 __zfs_destroy_dataset(){
-        local _name="$1"
+	local _name="$1"
 
-        if [ "${VM_ZFS}" = "1" ]; then
-                zfs destroy "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-                [ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
-        fi
+	if [ "${VM_ZFS}" = "1" ]; then
+		zfs destroy "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+	fi
 }
 
 # create an image of a vm
@@ -85,8 +85,8 @@ __zfs_image_create(){
 		esac
 	done
 
-        shift $((OPTIND - 1))
-        _name=$1
+	shift $((OPTIND - 1))
+	_name=$1
 	_uuid=$(uuidgen)
 	_date=$(date)
 
@@ -193,27 +193,27 @@ __zfs_image_destroy(){
 # parse the image command set
 # these all rely on ZFS snapshots, so kept with zfs functions
 __zfs_parse_image_cmd(){
-        local _cmd="$1"
-        shift
+	local _cmd="$1"
+	shift
 
 	# we only support these commands on zfs
 	[ ! "${VM_ZFS}" = "1" ] && __err "the image command set is only available with ZFS storage"
 
-        case "${_cmd}" in
+	case "${_cmd}" in
 		list)
 			__zfs_image_list
 			;;
-                create)
-                        __zfs_image_create "$@"
-                        ;;
+		create)
+			__zfs_image_create "$@"
+			;;
 		provision)
 			__zfs_image_provision "$@"
 			;;
 		destroy)
 			__zfs_image_destroy "$@"
 			;;
-                *)
-                        __usage
-                        ;;
-        esac
+		*)
+			__usage
+			;;
+	esac
 }

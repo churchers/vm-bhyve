@@ -46,6 +46,7 @@ fi
 . "${LIB}/vm-sysrc"
 . "${LIB}/vm-switch"
 . "${LIB}/vm-core"
+. "${LIB}/vm-guest"
 . "${LIB}/vm-zfs"
 
 # check environment
@@ -53,7 +54,7 @@ fi
 
 # we should be enabled in rc.conf
 if ! checkyesno vm_enable; then
-        __err "\$vm_enable is not enabled in /etc/rc.conf!"
+	__err "\$vm_enable is not enabled in /etc/rc.conf!"
 fi
 
 # init for zfs

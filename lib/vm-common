@@ -26,22 +26,22 @@
 
 # make sure we have the right environment
 __setup(){
-        __load_module "vmm"
-        __load_module "nmdm"
-        __load_module "if_bridge"
-        __load_module "if_tap"
+	__load_module "vmm"
+	__load_module "nmdm"
+	__load_module "if_bridge"
+	__load_module "if_tap"
 
-        sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
+	sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
 }
 
 # load a kernel module
 __load_module(){
-        local _mod="$1"
-        kldstat -n ${_mod} >/dev/null 2>&1
-        if [ $? -ne 0 ]; then
-                kldload ${_mod} >/dev/null 2>&1
-                [ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"
-        fi
+	local _mod="$1"
+	kldstat -n ${_mod} >/dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		kldload ${_mod} >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"
+	fi
 }
 
 # restart a local service
@@ -62,42 +62,42 @@ __usage(){
 cat << EOT
 vm: Bhyve virtual machine managament v${VERSION}
 Usage: vm ...
-        init
-        switch list
-        switch create <name>
-        switch vlan <name> <vlan|0>
-        switch add <name> <interface>
-        switch remove <name> <interface>
-        switch destroy <name>
+	init
+	switch list
+	switch create <name>
+	switch vlan <name> <vlan|0>
+	switch add <name> <interface>
+	switch remove <name> <interface>
+	switch destroy <name>
 	list
-        create [-t template] [-s size] <name>
-        install <name> <iso>
-        start <name>
-        stop <name>
-        console <name>
-        startall
-        stopall
+	create [-t template] [-s size] <name>
+	install <name> <iso>
+	start <name>
+	stop <name>
+	console <name>
+	startall
+	stopall
 	reset <name>
 	poweroff <name>
 	configure <name>
-        iso [url]
+	iso [url]
 	image list
 	image create [-d description] <name>
 	image destroy <uuid>
 	image provision <uuid> <newname>
 EOT
-        exit 1
+	exit 1
 }
 
 # error
 __err(){
-        echo "${0}: ERROR: $1"
-        exit 1
+	echo "${0}: ERROR: $1"
+	exit 1
 }
 
 # warn
 __warn(){
-        echo "${0}: WARNING: $1"
+	echo "${0}: WARNING: $1"
 }
 
 # confirm yes or no

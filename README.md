@@ -74,7 +74,10 @@ To enable nat on a virtual switch, run the following command
 
     # vm switch nat switch-name on
 
-This required the dnsmasq paackage to be installed. Both dnsmasq & pf should be enabled
+The switch should have no ports assigned, and will automatically use your default
+gateway to forward packets from the guest network.
+
+This requires the dnsmasq paackage to be installed. Both dnsmasq & pf should be enabled
 in /etc/rc.conf. Note that vm-bhyve will overwrite any existing dnsmasq configuration when
 nat is enabled. If you have an existing pf ruleset in /etc/pf.conf, this will be kept and a
 single include statement will be added to load the vm-bhyve nat rules.
@@ -97,7 +100,7 @@ Download an ISO file for installation:
 
 Start the install:
 
-This will run the bootloader then start bhyve in the background. Connect to the console to complete the install
+This will run the bootloader and start bhyve in the background. Connect to the console to complete the install
 Once complete, if you reboot the machine at the end of the install process, the machine will reboot as expected and boot up normally. Reboots will work as expected and the machine can be shutdown from the guest in the normal way.
 
     # vm install vm1 FreeBSD-10.1-RELEASE-amd64-disc1.iso

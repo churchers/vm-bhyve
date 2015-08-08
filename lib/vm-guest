@@ -1,0 +1,154 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# BSDs
+
+# FreeBSD
+__guest_freebsd(){
+	if [ "$1" = "install" ]; then
+		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+	else
+		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" ${_name}
+	fi
+
+	_exit=$?
+}
+
+# NetBSD
+__guest_netbsd(){
+	if [ "$1" = "install" ]; then
+		echo "(cd0) ${vm_dir}/.iso/${_iso}" > "${vm_dir}/${_name}/device.map"
+		echo "(hd1) ${vm_dir}/${_name}/${_disk}" >> "${vm_dir}/${_name}/device.map"
+		echo "knetbsd -h -r cd0a (cd0)/netbsd" > "${vm_dir}/${_name}/boot.cmd"			
+		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+	else
+		echo "(hd1) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+		echo "knetbsd -h -r ld0a (hd1,msdos1)/netbsd" > "${vm_dir}/${_name}/boot.cmd"
+		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+	fi
+
+	_exit=$?
+}
+
+# OpenBSD
+# requires guest kernel version in config file
+# open of the awkward guests that have version in kernel load path
+__guest_openbsd(){
+	local _gver
+
+	if [ "$1" = "install" ]; then
+		_gver=$(sysrc -inqf "${_conf}" guest_version)
+		[ -z "${_gver}" ] && __err "guest_version must be specified in configuration for openbsd guests"
+
+		echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+		echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+		echo "kopenbsd -h com0 /{$_gver}/amd64/bsd.rd" > "${vm_dir}/${_name}/boot.cmd"
+		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+	else
+		echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+		echo "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd" > "${vm_dir}/${_name}/boot.cmd"
+		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+	fi
+
+	_exit=$?
+}
+
+# LINUXes
+
+# Alpine
+__guest_alpine(){
+	if [ "$1" = "install" ]; then
+		echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+		echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+		echo "linux /boot/grsec initrd=/boot/initramfs-grsec alpine_dev=cdrom:iso9660 modules=loop,squashfs,sd-mod,usb-storage,sr-mod" > "${vm_dir}/${_name}/boot.cmd"
+		echo "initrd /boot/initramfs-grsec" >> "${vm_dir}/${_name}/boot.cmd"
+		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+	else
+		echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+		echo "linux /boot/vmlinuz-grsec root=/dev/vda3 modules=ext4" > "${vm_dir}/${_name}/boot.cmd"
+		echo "initrd /boot/initramfs-grsec" >> "${vm_dir}/${_name}/boot.cmd"
+		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+	fi
+
+	_exit=$?
+}
+
+# CentOS
+# not too viable at the moment
+# user needs to run loader manaully to find exact kernel version
+# then add that to linux_kernel option in guest config
+# that kernel may change after a guest update
+__guest_centos(){
+	local _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
+
+	if [ -z "${_kernel}" ]; then
+		logger -t "${LOG_TAG}" "${_name}: centos machines require \"linux_kernel\" value in configuration"
+		_exit=15
+	else
+		if [ "$1" = "install" ]; then
+			echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+			echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+			echo "linux /isolinux/vmlinuz" > "${vm_dir}/${_name}/boot.cmd"
+			echo "initrd /isolinux/initrd.img" >> "${vm_dir}/${_name}/boot.cmd"
+			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+			grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+		else
+			echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+			echo "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root" > "${vm_dir}/${_name}/boot.cmd"
+			echo "initrd /initramfs-${_kernel}.img" >> "${vm_dir}/${_name}/boot.cmd"
+			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+			grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+		fi
+
+		_exit=$?
+	fi
+}
+
+# Debian
+# same commands as ubuntu
+__guest_debian(){
+	__guest_ubuntu "$1"
+}
+
+# Ubuntu
+__guest_ubuntu(){
+	if [ "$1" = "install" ]; then
+		echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
+		echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+		grub-bhyve -c "/dev/${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+	else
+		echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
+		grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
+	fi
+
+	_exit=$?
+}

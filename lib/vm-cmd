@@ -26,97 +26,97 @@
 
 # cmd: vm ...
 __parse_cmd(){
-        local _cmd="$1"
-        shift
+	local _cmd="$1"
+	shift
 
-        case "${_cmd}" in
-                init)
-                        __setup
-                        __switch_init
-                        ;;
-                switch)
-                        __parse_switch_cmd "$@"
-                        ;;
+	case "${_cmd}" in
+		init)
+			__setup
+			__switch_init
+			;;
+		switch)
+			__parse_switch_cmd "$@"
+			;;
 		image)
 			__zfs_parse_image_cmd "$@"
 			;;
 		list)
 			__vm_list
 			;;
-                create)
-                        __vm_create "$@"
-                        ;;
+		create)
+			__vm_create "$@"
+			;;
 		destroy)
 			__vm_destroy "$@"
 			;;
-                install)
-                        __vm_install "$@"
-                        ;;
-                start)
-                        __vm_start "$@"
-                        ;;
-                stop)
-                        __vm_stop "$@"
-                        ;;
+		install)
+			__vm_install "$@"
+			;;
+		start)
+			__vm_start "$@"
+			;;
+		stop)
+			__vm_stop "$@"
+			;;
 		reset)
 			__vm_reset "$@"
 			;;
 		poweroff)
 			__vm_poweroff "$@"
 			;;
-                startall)
-                        __vm_startall
-                        ;;
-                stopall)
-                        __vm_stopall
-                        ;;
-                console)
-                        __vm_console "$@"
-                        ;;
-                _run)
-                        __vm_run "$@"
-                        ;;
-                iso)
-                        __vm_iso "$@"
-                        ;;
+		startall)
+			__vm_startall
+			;;
+		stopall)
+			__vm_stopall
+			;;
+		console)
+			__vm_console "$@"
+			;;
+		_run)
+			__vm_run "$@"
+			;;
+		iso)
+			__vm_iso "$@"
+			;;
 		configure)
 			__vm_configure "$@"
 			;;
-                *)
-                         __usage
-                        ;;
-        esac
+		*)
+			 __usage
+			;;
+	esac
 }
 
 # cmd: vm switch ...
 __parse_switch_cmd(){
-        local _cmd="$1"
-        shift
+	local _cmd="$1"
+	shift
 
-        case "${_cmd}" in
-                create)
-                        __switch_create "$@"
-                        ;;
-                list)
-                        __switch_list
-                        ;;
-                destroy)
-                        __switch_remove "$@"
-                        ;;
-                add)
-                        __switch_add_member "$@"
-                        ;;
-                remove)
-                        __switch_remove_member "$@"
-                        ;;
-                vlan)
-                        __switch_vlan "$@"
-                        ;;
+	case "${_cmd}" in
+		create)
+			__switch_create "$@"
+			;;
+		list)
+			__switch_list
+			;;
+		destroy)
+			__switch_remove "$@"
+			;;
+		add)
+			__switch_add_member "$@"
+			;;
+		remove)
+			__switch_remove_member "$@"
+			;;
+		vlan)
+			__switch_vlan "$@"
+			;;
 		nat)
 			__switch_nat "$@"
 			;;
-                *)
-                        __usage
-                        ;;
-        esac
+		*)
+			__usage
+			;;
+	esac
 }

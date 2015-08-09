@@ -36,15 +36,23 @@
 # _guest: guest type
 # _bootdisk: full path to primary disk
 #
+# we have every bhyveload/grub-bhyve call entered twice, once to log and
+# once to actually run. bit of a pain but makes for useful logs.
+#
+# I've written append wrong as it just needs to be something other than 'write',
+# and is much more readable when all the __log* calls line up
+#
 
 # BSDs
 
 # FreeBSD
 __guest_freebsd(){
 	if [ "$1" = "install" ]; then
+		__log "guest" "${_name}" "bhyveload -c /dev/${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
 		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
 	else
-		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" ${_name}
+		__log "guest" "${_name}" "bhyveload -c /dev/${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
+		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" "${_name}"
 	fi
 
 	_exit=$?
@@ -53,16 +61,18 @@ __guest_freebsd(){
 # NetBSD
 __guest_netbsd(){
 	if [ "$1" = "install" ]; then
-		echo "(cd0) ${vm_dir}/.iso/${_iso}" > "${vm_dir}/${_name}/device.map"
-		echo "(hd1) ${vm_dir}/${_name}/${_disk}" >> "${vm_dir}/${_name}/device.map"
-		echo "knetbsd -h -r cd0a (cd0)/netbsd" > "${vm_dir}/${_name}/boot.cmd"			
-		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		__log_and_write "write" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+		__log_and_write "appnd" "${_name}" "device.map" "(hd1) ${vm_dir}/${_name}/${_disk}"
+		__log_and_write "write" "${_name}" "boot.cmd" "knetbsd -h -r cd0a (cd0)/netbsd"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+		__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
 		grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	else
-		echo "(hd1) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-		echo "knetbsd -h -r ld0a (hd1,msdos1)/netbsd" > "${vm_dir}/${_name}/boot.cmd"
-		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
-		grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+		__log_and_write "write" "${_name}" "device.map" "(hd1) ${_bootdisk}"
+		__log_and_write "write" "${_name}" "boot.cmd" "knetbsd -h -r ld0a (hd1,msdos1)/netbsd"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+		__log "guest" "${_name}" "grub-bhyve -r hd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	fi
 
 	_exit=$?
@@ -75,21 +85,22 @@ __guest_openbsd(){
 	local _gver=$(sysrc -inqf "${_conf}" guest_version)
 
         if [ -z "${_gver}" ]; then
-		logger -t "${LOG_TAG}" "${_name}: openbsd machines require \"guest_version\" value in configuration"
+		__log "guest" "${_name}" "openbsd machines require \"guest_version\" value in configuration"
 		_exit=15
 	else
 		if [ "$1" = "install" ]; then
-
-			echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
-			echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
-			echo "kopenbsd -h com0 /${_gver}/amd64/bsd.rd" > "${vm_dir}/${_name}/boot.cmd"
-			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+			__log_and_write "write" "${_name}" "device.map" "(hd0) ${vm_dir}/${_name}/${_disk}"
+			__log_and_write "appnd" "${_name}" "(cd0) ${vm_dir}/.iso/${_iso}"
+			__log_and_write "write" "${_name}" "boot.cmd" "kopenbsd -h com0 /${_gver}/amd64/bsd.rd"
+			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+			__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
 			grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 		else
-			echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-			echo "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd" > "${vm_dir}/${_name}/boot.cmd"
-			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
-			grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+			__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+			__log_and_write "write" "${_name}" "boot.cmd" "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd"
+			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+			__log "guest" "${_name}" "grub-bhyve -r hd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+			grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 		fi
 
 		_exit=$?
@@ -101,18 +112,20 @@ __guest_openbsd(){
 # Alpine
 __guest_alpine(){
 	if [ "$1" = "install" ]; then
-		echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
-		echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
-		echo "linux /boot/grsec initrd=/boot/initramfs-grsec alpine_dev=cdrom:iso9660 modules=loop,squashfs,sd-mod,usb-storage,sr-mod" > "${vm_dir}/${_name}/boot.cmd"
-		echo "initrd /boot/initramfs-grsec" >> "${vm_dir}/${_name}/boot.cmd"
-		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${vm_dir}/${_name}/${_disk}"
+		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+		__log_and_write "write" "${_name}" "boot.cmd" "linux /boot/grsec initrd=/boot/initramfs-grsec alpine_dev=cdrom:iso9660 modules=loop,squashfs,sd-mod,usb-storage,sr-mod"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /boot/initramfs-grsec"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+		__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
 		grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	else
-		echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-		echo "linux /boot/vmlinuz-grsec root=/dev/vda3 modules=ext4" > "${vm_dir}/${_name}/boot.cmd"
-		echo "initrd /boot/initramfs-grsec" >> "${vm_dir}/${_name}/boot.cmd"
-		echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
-		grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__log_and_write "write" "${_name}" "boot.cmd" "linux /boot/vmlinuz-grsec root=/dev/vda3 modules=ext4"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /boot/initramfs-grsec"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+		__log "guest" "${_name}" "grub-bhyve -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+		grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	fi
 
 	_exit=$?
@@ -127,22 +140,24 @@ __guest_centos(){
 	local _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
 
 	if [ -z "${_kernel}" ]; then
-		logger -t "${LOG_TAG}" "${_name}: centos machines require \"linux_kernel\" value in configuration"
+		__log "guest" "${_name}" "centos machines require \"linux_kernel\" value in configuration"
 		_exit=15
 	else
 		if [ "$1" = "install" ]; then
-			echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
-			echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
-			echo "linux /isolinux/vmlinuz" > "${vm_dir}/${_name}/boot.cmd"
-			echo "initrd /isolinux/initrd.img" >> "${vm_dir}/${_name}/boot.cmd"
-			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
+			__log_and_write "write" "${_name}" "device.map" "(hd0) ${vm_dir}/${_name}/${_disk}"
+			__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+			__log_and_write "write" "${_name}" "boot.cmd" "linux /isolinux/vmlinuz"
+			__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /isolinux/initrd.img"
+			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+			__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
 			grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 		else
-			echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-			echo "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root" > "${vm_dir}/${_name}/boot.cmd"
-			echo "initrd /initramfs-${_kernel}.img" >> "${vm_dir}/${_name}/boot.cmd"
-			echo "boot" >> "${vm_dir}/${_name}/boot.cmd"
-			grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name} < "${vm_dir}/${_name}/boot.cmd"
+			__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+			__log_and_write "write" "${_name}" "boot.cmd" "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root"
+			__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /initramfs-${_kernel}.img"
+			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+			__log "guest" "${_name}" "grub-bhyve -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+			grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 		fi
 
 		_exit=$?
@@ -158,12 +173,14 @@ __guest_debian(){
 # Ubuntu
 __guest_ubuntu(){
 	if [ "$1" = "install" ]; then
-		echo "(hd0) ${vm_dir}/${_name}/${_disk}" > "${vm_dir}/${_name}/device.map"
-		echo "(cd0) ${vm_dir}/.iso/${_iso}" >> "${vm_dir}/${_name}/device.map"
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${vm_dir}/${_name}/${_disk}"
+		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+		__log "guest" "${_name}" "grub-bhyve -c /dev/${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
 		grub-bhyve -c "/dev/${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	else
-		echo "(hd0) ${_bootdisk}" > "${vm_dir}/${_name}/device.map"
-		grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" ${_name}
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__log "guest" "${_name}" "grub-bhyve -c /dev/${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+		grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	fi
 
 	_exit=$?

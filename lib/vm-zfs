@@ -39,12 +39,12 @@ __zfs_init(){
 		kldstat -n zfs >/dev/null 2>&1
 		[ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
 
-	 # global zfs details
+		 # global zfs details
 		VM_ZFS="1"
-	 VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
+		VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
 
-	 # update vm_dir
-	 vm_dir=$(zfs get -H mountpoint ${VM_ZFS_DATASET} 2>/dev/null | awk '{print $3}')
+		# update vm_dir
+		vm_dir=$(zfs get -H mountpoint ${VM_ZFS_DATASET} 2>/dev/null | awk '{print $3}')
 		[ -z "${vm_dir}" ] && __err "unable to locate mountpoint for ZFS dataset ${VM_ZFS_DATASET}"
 	fi
 }

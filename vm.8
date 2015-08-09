@@ -17,6 +17,9 @@
 .Cm switch vlan
 .Ar name vlan-id
 .Nm
+.Cm switch nat
+.Ar name on|off
+.Nm
 .Cm switch add
 .Ar name interface
 .Nm
@@ -239,6 +242,36 @@ from the bridge, reconfigured, then re-added.
 To remove the VLAN configuration from a virtual switch, specify a
 .Ar vlan-id
 of 0.
+.It Cm switch nat Ar name Ar on|off
+Enable or disable NAT functionality on the specified switch. Both
+.Xr pf
+and
+.Xr dnsmasq
+are required for this function to be available.
+.Pp
+The switch should have no host ports assigned, as these will end up on the private side
+of the NAT network.
+.Nm
+automatically detects the hosts default gateway, which is used as the forwarding interface
+for NAT connections.
+.Pp
+Once enabled, a 172.16.X.0/24 network is assigned to the switch (bridge) interface.
+.Ar X
+is chosen based on the ID of the bridge interface. For example, if the switch is using
+bridge10, the network will be 172.16.10.0/24.
+.Xr dnsmasq
+is used to provide DHCP to the guests, and
+.Xr pf
+rules are inserted to provide the NAT translation.
+.Pp
+Please note that
+.Nm
+will overwrite the dnsmasq configuration file
+.Pa /usr/local/etc/dnsmasq.conf
+as it creates a specific configuration to provide DHCP on each switch interface.
+.Pa /etc/pf.conf
+is created if it doesn't exist, and a single include statement is added. This
+include statement can be moved within the file if required.
 .It Cm switch add Ar name Ar interface
 Add the specified interface to the named virtual switch.
 .Pp

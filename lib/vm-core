@@ -200,9 +200,15 @@ __vm_run(){
 	_guest=$(sysrc -inqf "${_conf}" guest)
 	_bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
 
+	__log "guest" "${_name}" "initialising"
+	__log "guest" "${_name}" " [guest: ${_guest}]"
+	__log "guest" "${_name}" " [cpu: ${_cpu}]"
+	__log "guest" "${_name}" " [memory: ${_memory}]"
+	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
+
 	# check basic settings
 	if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
-		logger -t "${LOG_TAG}" "${_name}: unable to start - missing required configuration"
+		__log "guest" "${_name}" "unable to start - missing required configuration"
 		exit 15
 	fi
 
@@ -211,7 +217,7 @@ __vm_run(){
 	_guest_support=$(echo "${_guest_support}" | grep "shell function")
 
 	if [ -z "${_guest_support}" ]; then
-		logger -t "${LOG_TAG}" "${_name}: unsupported guest type: ${_guest}"
+		__log "guest" "${_name}" "unsupported guest type: ${_guest}"
 		exit 15
 	fi
 
@@ -239,7 +245,7 @@ __vm_run(){
 	done
 
 	if [ -z "${_bootdisk}" -o -z "${_cmd}" ]; then
-		logger -t "${LOG_TAG}" "${_name}: unable to start - invalid disk configuration"
+		__log "guest" "${_name}" "unable to start - invalid disk configuration"
 		exit 15
 	fi
 
@@ -257,6 +263,7 @@ __vm_run(){
 			_tap=$(ifconfig tap create)
 
 			if [ -n "${_tap}" ]; then
+				__log "guest" "${_name}" "created network device ${_tap}"
 				ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_opt}"
 				_sid=$(__switch_get_ident "${_opt}")
 
@@ -280,7 +287,7 @@ __vm_run(){
 		_num=$(($_num + 1))
 	done
 
-	logger -t "${LOG_TAG}" "${_name}: booting"
+	__log "guest" "${_name}" "booting"
 
 	while [ 1 ]; do
 
@@ -290,7 +297,7 @@ __vm_run(){
 		if [ -e "/dev/vmm/${_name}" ]; then
 			bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
 			if [ $? -ne 0 ]; then
-				logger -t "${LOG_TAG}" "${_name}: failed to destroy existing vmm device"
+				__log "guest" "${_name}" "failed to destroy existing vmm device"
 				_exit=15
 				break
 			fi
@@ -306,9 +313,14 @@ __vm_run(){
 
 		# check no errors
 		if [ ${_exit} -ne 0 ]; then
-			logger -t "${LOG_TAG}" "${_name}: loader returned error ${_exit}"
+			__log "guest" "${_name}" "loader returned error ${_exit}"
 			break
 		fi
+
+		__log "guest" "${_name}" " [bhyve devices: ${_cmd}]"
+		__log "guest" "${_name}" " [bhyve console: ${_com}]"
+		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
+		__log "guest" "${_name}" "starting bhyve"
 
 		bhyve -c ${_cpu} -m ${_memory} -AHP \
 			-s 0,hostbridge \
@@ -320,9 +332,10 @@ __vm_run(){
 
 		# break bhyve loop if not restart
 		_exit=$?
-		[ $_exit -ne 0 ] && break
 
-		logger -t "${LOG_TAG}" "${_name}: restarting"
+		__log "guest" "${_name}" "bhyve exited with status ${_exit}"
+		[ $_exit -ne 0 ] && break
+		__log "guest" "${_name}" "restarting"
 
 		# remove install iso so loader runs
 		# after install bhyve will still get install cd until a full shutdown+restart
@@ -331,10 +344,11 @@ __vm_run(){
 
 	# destroy taps
 	for _curr in ${_taplist}; do
+		__log "guest" "${_name}" "destroying network device ${_curr}"
 		ifconfig "${_curr}" destroy
 	done
 
-	logger -t "${LOG_TAG}" "${_name}: stopped"
+	__log "guest" "${_name}" "stopped"
 	bhyvectl --destroy --vm=${_name}
 	exit ${_exit}
 }

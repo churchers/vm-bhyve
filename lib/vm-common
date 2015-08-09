@@ -100,6 +100,48 @@ __warn(){
 	echo "${0}: WARNING: $1"
 }
 
+# log to file
+__log(){
+	local _type="$1"
+	local _lf="vm-bhyve.log"
+	local _guest _message _file _date
+
+	case "${_type}" in
+		guest)
+			_guest="$2"
+			_message="$3"
+			_file="${vm_dir}/${_guest}/${_lf}"
+			;;
+		system)
+			_message="$2"
+			_file="${vm_dir}/${_lf}"
+			;;
+	esac
+
+	_date=$(date +"%b %d %T")
+	echo "${_date}: ${_message}" >> "${_file}"
+}
+
+# write content to a file, and log what we
+# did to the guest log file
+__log_and_write(){
+	local _type="$1"
+	local _guest="$2"
+	local _file="$3"
+	local _message="$4"
+
+	_file="${vm_dir}/${_guest}/${_file}"
+
+	if [ "${_type}" = "write" ]; then
+		__log "guest" "${_guest}" "create file ${_file}"
+		echo "${_message}" > "${_file}"
+	else
+		echo "${_message}" >> "${_file}"
+	fi
+
+	__log "guest" "${_guest}" " -> ${_message}"
+}
+
 # confirm yes or no
 __confirm(){
 	local _msg="$1"

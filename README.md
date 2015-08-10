@@ -154,7 +154,7 @@ The basic configuration of each machine and state can be viewed using the list c
     NAME            GUEST      CPU    MEMORY    AUTOSTART    STATE
     alpine          alpine     1      512M      Yes [1]      Stopped
     centos          centos     1      512M      No           Stopped
-    deb             debian     1      512M      Yes [2]      Stopped
+    deb             debian     1      512M      Yes [2]      Running (23903)
 
 All running machines can be stopped using the stopall command
 

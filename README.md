@@ -10,7 +10,7 @@ Some of the main features include:
 * ZFS support
 * FreeBSD/NetBSD/OpenBSD/Linux guest support
 * Automatic assignment of console devices to access guest console
-* Integreation with rc.d startup/shutdown
+* Integration with rc.d startup/shutdown
 * Guest reboot handling
 
 ## Install
@@ -22,9 +22,17 @@ To install, just run the following command inside the vm-bhyve source directory
 
     # make install
 
+If you want to run guests other than FreeBSD, you will need the grub2-bhyve package;
+
+    # pkg install grub2-bhyve
+
+Additionally, NAT support is only available if you have dnsmasq installed.
+
+    # pkg install dnsmasq
+
 ## Initial configuration
 
-First of all you will need a directory to store all your virtual machines and vm-bhyve configuration.
+First of all, you will need a directory to store all your virtual machines and vm-bhyve configuration.
 If you are not using ZFS, just create a normal directory:
 
     # mkdir /somefolder/vm
@@ -45,27 +53,37 @@ Or with ZFS:
 
 This directory will be referred to as $vm_dir in the rest of this readme.
 
-Now run the following command to create the directories used to store vm-bhvye configuration.
-This needs to be run once after each host reboot, which is normally handled by the rc.d script
+Now run the following command to create the directories used to store vm-bhvye configuration and
+load any necessary kernel modules. This needs to be run once after each host reboot, which is
+normally handled by the rc.d script
 
     # vm init
 
 ## Virtual machine templates
 
 When creating a virtual machine, you use a template which defines how much memory to give the guest,
-how many cpu cores and networking/disk configuration. The templates are all stored inside $vm_dir/.templates.
+how many cpu cores, and networking/disk configuration. The templates are all stored inside $vm_dir/.templates.
 To install the sample templates, run the following command:
 
     # cp /usr/local/share/examples/vm-bhyve/* /my/vm/path/.templates/
 
 If you look inside the template files with a text editor, you will see they are very simple. You
 can create as many templates as you like. For example for could have web-server.conf, containing the setting
-for your web servers, or freebsd-large.conf for large FreeBSD guests, and so on.
+for your web servers, or freebsd-large.conf for large FreeBSD guests, and so on. This is the contents of
+the default template:
+
+    guest="freebsd"
+    cpu=1
+    memory=256M
+    disk0_type="virtio-blk"
+    disk0_name="disk0.img"
+    network0_type="virtio-net"
+    network0_switch="public"
 
 You will notice that each template is set to create one network interface. You can easily add more network
-interfaces by duplicating the two network configuration options. In general you will not want to change the
-type from 'virtio-net', but you will notice the first interface is set to connect to a switch called 'public'.
-See the next section for details on how to configure virtual switches.
+interfaces by duplicating the two network configuration options and incrementing the number. In general you
+will not want to change the type from 'virtio-net', but you will notice the first interface is set to connect 
+to a switch called 'public'. See the next section for details on how to configure virtual switches.
 
 ## Virtual Switches
 
@@ -77,7 +95,7 @@ settings:
     # vm switch create public
 
 If you just want to bridge guests to your physical network, add the appropriate real interface to the switch.
-Obviously you will need to replace em0 here with the correct interface name:
+Obviously you will need to replace em0 here with the correct interface name on your system:
 
     # vm switch add public em0
 
@@ -121,7 +139,7 @@ so use the console command to connect to it and finish installation.
     # vm console testvm
 
 Once installation has finished, you can reboot the guest from inside the console and it will boot up into
-the new OS as expected (assuming installation was successful). Further reboots will work as expected and
+the new OS (assuming installation was successful). Further reboots will work as expected and
 the guest can be shutdown in the normal way. As the console uses the cu command, type ~+Ctrl-D to exit
 back to your host.
 
@@ -133,6 +151,10 @@ The following commands start and stop virtual machines:
 The basic configuration of each machine and state can be viewed using the list command:
 
     # vm list
+    NAME            GUEST      CPU    MEMORY    AUTOSTART    STATE
+    alpine          alpine     1      512M      Yes [1]      Stopped
+    centos          centos     1      512M      No           Stopped
+    deb             debian     1      512M      Yes [2]      Stopped
 
 All running machines can be stopped using the stopall command
 
@@ -154,3 +176,7 @@ you to easily make changes to the configuration. Please note that changes only t
 a full shutdown and restart of the guest
 
     # vm configure testvm
+
+See the man page for a full description of all available commands.
+
+    # man vm

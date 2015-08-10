@@ -128,6 +128,7 @@ __vm_install(){
 	__vm_start "$1" "$2"
 }
 
+# start all virtual machines listed in rc.conf:$vm_list
 __vm_startall(){
 	local _vm _done _conf
 
@@ -138,8 +139,9 @@ __vm_startall(){
 	for _vm in ${vm_list}; do
 		[ -n "${_done}" ] && sleep ${vm_delay}
 
-		# check conf file otherwise we may exit with error
-		# just because one entry in vm_list is invalid
+		# check conf file just to make sure not an obvious typo in rc.conf
+		# if the vm is not configured correctly __vm_start will exit
+		# causing any further vms to not be started
 		_conf="${vm_dir}/${_vm}/${_vm}.conf"
 
 		if [ -f "${_conf}" ]; then
@@ -150,6 +152,8 @@ __vm_startall(){
 	done
 }
 
+# stop all bhyve instances
+# note this will also stop instances not started by vm-bhyve
 __vm_stopall(){
 	local _pid _pids=$(ps ax | grep "[(]bhyve)" | awk '{print $1}')
 
@@ -158,6 +162,7 @@ __vm_stopall(){
 	wait_for_pids ${_pids}
 }
 
+# start a virtual machine
 __vm_start(){
 	local _name="$1"
 	local _iso="$2"
@@ -185,6 +190,8 @@ __vm_start(){
 	$0 _run "${_name}" "${_com}" "${_iso}" >/dev/null 2>&1 &
 }
 
+# run a virtual machine
+# this is the background process that does all the work
 __vm_run(){
 	local _name="$1"
 	local _com="$2"

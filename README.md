@@ -1,129 +1,155 @@
-# vm-bhyve
+## vm-bhyve
 
-FreeBSD Bhyve VM Management
+Management system for FreeBSD bhyve virtual machines
+Some of the main features include:
 
-Bhyve manager with the following functionality
-
-* Simple virtual switch management - no messing with manual tap devices or bridges
-* Automatic ZFS dataset creation
-* Startup and shutdown integration
-* Automatic handling of reboot and shutdown events
-* Dynamic console (nmdm device) creation
+* Simple commands to create/start/stop bhyve instances
+* Simple configuration file format
+* Virtual switches supporting vlans & nat (no manual tap or bridge devices needed)
+* ZFS support
 * FreeBSD/NetBSD/OpenBSD/Linux guest support
-* Simple NAT support based on dnsmasq & pf
+* Automatic assignment of console devices to access guest console
+* Integreation with rc.d startup/shutdown
+* Guest reboot handling
 
-##Download
+## Install
 
-Download a bundle containing the latest version from [http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz](http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz)
+Download the latest release from Github, or download from the following URL
+[http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz](http://churchers.hostingspace.co.uk/vm-bhyve-latest.tgz)
 
-Please note the manual page contains the most up to date information on supported commands and usage.
-Once installed, use 'man vm' to view.
-
-##Initial setup instructions
-
-Install the vm script using the Makefile
+To install, just run the following command inside the vm-bhyve source directory
 
     # make install
 
-Create a directory for the virtual machines
-(See the note below about usage on ZFS)
+## Initial configuration
 
-    # make vmdir PATH=/path/to/my/vms
-    
-Update `/etc/rc.conf`
+First of all you will need a directory to store all your virtual machines and vm-bhyve configuration.
+If you are not using ZFS, just create a normal directory:
+
+    # mkdir /somefolder/vm
+
+If you are using ZFS, create a dataset to hold vm-bhyve data
+
+    # zfs create pool/vm
+
+Now update /etc/rc.conf to enable vm-bhyve, and tell it where your directory is
 
     vm_enable="YES"
-    vm_dir="/path/to/my/vms"
-    vm_list="" # list to start automatically on boot
-    vm_delay="5" # seconds delay between starting machines
-    
-ZFS NOTE: If you want to store guests on a ZFS dataset, and have a new child dataset created for each virtual machine,
-specify the dataset to use as below in place of the vm directory. You will need to create the dataset manually first,
-then use the "make vmdir" command above to set up the subdirectories and copy sample templates:
+    vm_dir="/somefolder/vm"
 
-    in /etc/rc.conf -> vm_dir="zfs:pool/dataset"
+Or with ZFS:
 
-    # make vmdir PATH=/path/to/pool/dataset/mountpoint
+    vm_enable="YES"
+    vm_dir="zfs:pool/vm"
 
-Initialise all kernel modules and get the system ready to run bhyve.
-This command needs to be run once after each host reboot (this is normally handled by the rc.d script included):
+This directory will be referred to as $vm_dir in the rest of this readme.
+
+Now run the following command to create the directories used to store vm-bhvye configuration.
+This needs to be run once after each host reboot, which is normally handled by the rc.d script
 
     # vm init
-    
-This completes the basic setup
 
-##Virtual Switch Management
+## Virtual machine templates
 
-Create a new virtual switch called 'public' and assign em0 to it:
-You can use any name you like (lan/internet/etc), although the included templates are set to create one interface on a switch called 'public'. (Obviously you can change the templates if you like)
+When creating a virtual machine, you use a template which defines how much memory to give the guest,
+how many cpu cores and networking/disk configuration. The templates are all stored inside $vm_dir/.templates.
+To install the sample templates, run the following command:
+
+    # cp /usr/local/share/examples/vm-bhyve/* /my/vm/path/.templates/
+
+If you look inside the template files with a text editor, you will see they are very simple. You
+can create as many templates as you like. For example for could have web-server.conf, containing the setting
+for your web servers, or freebsd-large.conf for large FreeBSD guests, and so on.
+
+You will notice that each template is set to create one network interface. You can easily add more network
+interfaces by duplicating the two network configuration options. In general you will not want to change the
+type from 'virtio-net', but you will notice the first interface is set to connect to a switch called 'public'.
+See the next section for details on how to configure virtual switches.
+
+## Virtual Switches
+
+When a guest is started, each network interface is automatically connected to the virtual switch specified
+in the configuration file. By default all the sample templates connect to a switch called 'public', although
+you can use any name. The following section shows how to create a switch called 'public', and configure various
+settings:
 
     # vm switch create public
+
+If you just want to bridge guests to your physical network, add the appropriate real interface to the switch.
+Obviously you will need to replace em0 here with the correct interface name:
+
     # vm switch add public em0
-    
-We can also set a vlan number so all traffic heading out of em0 will be tagged:
+
+If you want to use NAT, do not add a physical interface to the switch, as the switch will be on the private
+side of the NAT network. Just enable NAT on the switch:
+
+    # vm switch nat public on
+
+This will automatically create a private network on the switch, enable DHCP for it, and forward guest traffic
+via your default gateway. Please note that NAT functionality  requires the dnsmasq package to be installed, 
+and both dnsmasq & pf must be enabled in /etc/rc.conf. See the man page for more details.
+
+If you want guest traffic to be on a specific VLAN when leaving the host, specify a vlan number. To turn
+off vlans, just set the vlan number to 0:
 
     # vm switch vlan public 10
-    
-List the configured switches and their associated bridge device
+    # vm switch vlan public 0
+
+You can view current switch configuration using the list command:
 
     # vm switch list
 
-##NAT
+## Creating virtual machines
 
-To enable nat on a virtual switch, run the following command
+Use one of the following command to create a new virtual machine:
 
-    # vm switch nat switch-name on
+    # vm create testvm
+    # vm create -t templatename -s 50G testvm
 
-The switch should have no ports assigned, and will automatically use your default
-gateway to forward packets from the guest network.
+The first example uses the default.conf template, and will create a 20GB disk image. The second
+example specifies the templatename.conf template, and tells vm-bhyve to create a 50GB disk.
 
-This requires the dnsmasq paackage to be installed. Both dnsmasq & pf should be enabled
-in /etc/rc.conf. Note that vm-bhyve will overwrite any existing dnsmasq configuration when
-nat is enabled. If you have an existing pf ruleset in /etc/pf.conf, this will be kept and a
-single include statement will be added to load the vm-bhyve nat rules.
-
-When enabled on a switch, a 172.16.x.0/24 network is assigned to the switch automatically, which
-may cause problems if you have other interfaces on the host using the same range. The x number
-is chosen based on the bridge interface number of the virtual switch; A virtual switch which
-is using bridge1 on the host, will use 172.16.1.0/24 for nat.
-
-##Virtual Machines
-
-Create a new 20G virtual machine using the `default.conf` standard template, and a second 40G ubuntu machine using the `ubuntu.conf` template:
-
-    # vm create -s 20G vm1
-    # vm create -t ubuntu -s 40G vm2
-    
-Download an ISO file for installation:
+You will need an ISO to install the guest with, so download one using the iso command:
 
     # vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.1/FreeBSD-10.1-RELEASE-amd64-disc1.iso
 
-Start the install:
+To start a guest install, run the following command. vm-bhyve will run the machine in the background,
+so use the console command to connect to it and finish installation.
 
-This will run the bootloader and start bhyve in the background. Connect to the console to complete the install
-Once complete, if you reboot the machine at the end of the install process, the machine will reboot as expected and boot up normally. Reboots will work as expected and the machine can be shutdown from the guest in the normal way.
+    # vm install testvm FreeBSD-10.1-RELEASE-amd64-disc1.iso
+    # vm console testvm
 
-    # vm install vm1 FreeBSD-10.1-RELEASE-amd64-disc1.iso
-    # vm console vm1
-    
-To stop a single virtual machine, or all virtual machines from the host:
+Once installation has finished, you can reboot the guest from inside the console and it will boot up into
+the new OS as expected (assuming installation was successful). Further reboots will work as expected and
+the guest can be shutdown in the normal way. As the console uses the cu command, type ~+Ctrl-D to exit
+back to your host.
 
-    # vm stop vm1
+The following commands start and stop virtual machines:
+
+    # vm start testvm
+    # vm stop testvm
+
+The basic configuration of each machine and state can be viewed using the list command:
+
+    # vm list
+
+All running machines can be stopped using the stopall command
+
     # vm stopall
-    
-Start all virtual machines listed in /etc/rc.conf from the host:
 
-To account for the possibility of shared storage being used which contains other machines we don't want running on this host, the list of machines to start is set via the `vm_list=""` variable in `/etc/rc.conf`
+On host boot, vm-bhyve will use the 'vm startall' command to start all machines. You can
+control which guests start automatically using the following variables in /etc/rc.conf:
 
-    # vm startall
+    vm_list="vm1 vm2"
+    vm_delay="5"
 
-All network interfaces and nmdm console devices are created dynamically as the guest is started. The entire time the guest is running, vm sits in the background waiting to handle the bhyve shutdown/reboot. Once a guest is shutdown or exits for any other non-reboot reason, all interfaces and nmdm devices are cleaned up.
+The first defines the list of machines to start on boot, and the order to start them. The second
+is the number of seconds to wait between starting each one. 5 seconds is the recommended setting,
+although a longer delay is useful if you have disk intensive guests and don't want them all booting
+at the same time.
 
-As an additional example, a private switch to allow two guests to communicate can be created as follows:
+There's also a command which opens a guest's confiuration file in your default text editor, allowing
+you to easily make changes to the configuration. Please note that changes only take effect after
+a full shutdown and restart of the guest
 
-    # vm switch create private
-    
-Then add the following to the `/path/to/my/vms/vmname/vmname.conf` file for each guest and then shutdown/restart the guests.
-
-    network1_type="virtio-net"
-    network1_switch="private"
+    # vm configure testvm

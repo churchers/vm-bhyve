@@ -56,5 +56,5 @@ __rc_splice_string(){
 	done
 
 	sysrc -inqf "${_file}" "${_var}=${_new}" >/dev/null 2>&1
-	[ $? -ne 0 ] && __err "unable to update configuration file for ${_var}"
+	[ $? -ne 0 ] && __warn "unable to update configuration file for ${_var}"
 }

@@ -55,6 +55,8 @@ __restart_service(){
 	else
 		service ${_serv} restart >/dev/null 2>&1
 	fi
+
+	[ $? -ne 0 ] && __warn "failed to start/restart service ${_serv}"
 }
 
 # show usage
@@ -66,6 +68,7 @@ Usage: vm ...
 	switch list
 	switch create <name>
 	switch vlan <name> <vlan|0>
+	switch nat <name> <on|off>
 	switch add <name> <interface>
 	switch remove <name> <interface>
 	switch destroy <name>

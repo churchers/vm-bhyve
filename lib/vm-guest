@@ -90,7 +90,7 @@ __guest_openbsd(){
 	else
 		if [ "$1" = "install" ]; then
 			__log_and_write "write" "${_name}" "device.map" "(hd0) ${vm_dir}/${_name}/${_disk}"
-			__log_and_write "appnd" "${_name}" "(cd0) ${vm_dir}/.iso/${_iso}"
+			__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
 			__log_and_write "write" "${_name}" "boot.cmd" "kopenbsd -h com0 /${_gver}/amd64/bsd.rd"
 			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
 			__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"

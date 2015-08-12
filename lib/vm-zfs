@@ -39,7 +39,7 @@ __zfs_init(){
 		kldstat -n zfs >/dev/null 2>&1
 		[ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
 
-		 # global zfs details
+		# global zfs details
 		VM_ZFS="1"
 		VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
 

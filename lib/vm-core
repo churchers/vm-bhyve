@@ -196,10 +196,8 @@ __vm_run(){
 	local _name="$1"
 	local _com="$2"
 	local _iso="$3" _iso_dev
-	local _cpu _memory _bootdisk
-	local _num=0 _guest_support
-	local _conf _curr _opt _cmd="" _slot=2 _func=0
-	local _guest _kernel _tap _taplist _sid _exit
+	local _cpu _memory _bootdisk _guest _guest_support
+	local _conf _devices="" _slot=0 _func=0 _taplist _exit
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
 	_cpu=$(sysrc -inqf "${_conf}" cpu)
@@ -214,7 +212,7 @@ __vm_run(){
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
 
 	# check basic settings
-	if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
 		__log "guest" "${_name}" "unable to start - missing required configuration"
 		exit 15
 	fi
@@ -231,68 +229,11 @@ __vm_run(){
 	# complete the boot disk path
 	_bootdisk="${vm_dir}/${_name}/${_bootdisk}"
 
-	# get disks
-	while [ 1 ]; do
-		_curr=$(sysrc -inqf "${_conf}" "disk${_num}_name")
-		_opt=$(sysrc -inqf "${_conf}" "disk${_num}_type")
-
-		if [ -n "${_curr}" -a -n "${_opt}" ]; then
-				[ -n "${_cmd}" ] && _cmd="${_cmd} "
-				_cmd="${_cmd}-s${_slot}:${_func},${_opt},${vm_dir}/${_name}/${_curr}"
-				_func=$(($_func + 1))
-
-				if [ ${_func} -ge 8 ]; then
-					_func=0
-					_slot=$(($_slot + 1))
-				fi
-		fi
-
-		[ -z "${_curr}" -o -z "${_opt}" ] && break
-		_num=$(($_num + 1))
-	done
-
-	if [ -z "${_bootdisk}" -o -z "${_cmd}" ]; then
-		__log "guest" "${_name}" "unable to start - invalid disk configuration"
-		exit 15
-	fi
-
-	# move networking to new slot
-	_slot=$(($_slot + 1))
-	_func=0
-	_num=0
-
-	# get networking list
-	while [ 1 ]; do
-		_curr=$(sysrc -inqf "${_conf}" "network${_num}_type")
-		_opt=$(sysrc -inqf "${_conf}" "network${_num}_switch")
-
-		if [ -n "${_curr}" -a -n "${_opt}" ]; then
-			_tap=$(ifconfig tap create)
-
-			if [ -n "${_tap}" ]; then
-				__log "guest" "${_name}" "created network device ${_tap}"
-				ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_opt}"
-				_sid=$(__switch_get_ident "${_opt}")
-
-				[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
-
-				[ -n "${_cmd}" ] && _cmd="${_cmd} "
-				_cmd="${_cmd}-s${_slot}:${_func},${_curr},${_tap}"
-				_func=$(($_func + 1))
-
-				if [ ${_func} -ge 8 ]; then
-					_func=0
-					_slot=$(($_slot + 1))
-				fi
-
-				[ -n "${_taplist}" ] && _taplist="${_taplist} "
-				_taplist="${_taplist}${_tap}"
-			fi
-		fi
-
-		[ -z "${_curr}" -o -z "${_opt}" ] && break
-		_num=$(($_num + 1))
-	done
+	# build bhyve device string
+	__vm_bhyve_device_basic
+	__vm_bhyve_device_disks
+	__vm_bhyve_device_networking
+	__vm_bhyve_device_passthru
 
 	__log "guest" "${_name}" "booting"
 
@@ -324,18 +265,16 @@ __vm_run(){
 			break
 		fi
 
-		__log "guest" "${_name}" " [bhyve devices: ${_cmd}]"
+		__log "guest" "${_name}" " [bhyve devices: ${_devices}]"
 		__log "guest" "${_name}" " [bhyve console: ${_com}]"
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
 		bhyve -c ${_cpu} -m ${_memory} -AHP \
-			-s 0,hostbridge \
-			-s 1,lpc \
-			${_cmd} \
-			${_iso_dev} \
-			-l com1,/dev/${_com} \
-			${_name}
+			 ${_devices} \
+			 ${_iso_dev} \
+			 -l com1,/dev/${_com} \
+			 ${_name}
 
 		# break bhyve loop if not restart
 		_exit=$?
@@ -344,20 +283,134 @@ __vm_run(){
 		[ $_exit -ne 0 ] && break
 		__log "guest" "${_name}" "restarting"
 
-		# remove install iso so loader runs
+		# remove install iso so guest reboots from disk
 		# after install bhyve will still get install cd until a full shutdown+restart
 		_iso=""
 	done
 
 	# destroy taps
-	for _curr in ${_taplist}; do
-		__log "guest" "${_name}" "destroying network device ${_curr}"
-		ifconfig "${_curr}" destroy
+	for _devices in ${_taplist}; do
+		__log "guest" "${_name}" "destroying network device ${_devices}"
+		ifconfig "${_devices}" destroy
 	done
 
 	__log "guest" "${_name}" "stopped"
 	bhyvectl --destroy --vm=${_name}
 	exit ${_exit}
+}
+
+# get bhyve device string for basic devices
+# hostbridge & lpc on their own slots
+__vm_bhyve_device_basic(){
+
+	_devices="${_devices} -s${_slot},hostbridge"
+	_slot=$(($_slot + 1))
+	_devices="${_devices} -s${_slot},lpc"
+
+	_slot=$(($_slot + 1))
+	_func=0
+}
+
+# get bhyve device string for disk devices
+__vm_bhyve_device_disks(){
+	local _disk _type
+	local _num=0
+
+	# get disks
+	while [ 1 ]; do
+		_disk=$(sysrc -inqf "${_conf}" "disk${_num}_name")
+		_type=$(sysrc -inqf "${_conf}" "disk${_num}_type")
+
+		if [ -n "${_disk}" -a -n "${_type}" ]; then
+			_devices="${_devices} -s${_slot}:${_func},${_type},${vm_dir}/${_name}/${_disk}"
+			_func=$(($_func + 1))
+
+			if [ ${_func} -ge 8 ]; then
+				_func=0
+				_slot=$(($_slot + 1))
+			fi
+		fi
+
+		[ -z "${_disk}" -o -z "${_type}" ] && break
+		_num=$(($_num + 1))
+	done
+
+	_slot=$(($_slot + 1))
+	_func=0
+}
+
+# get bhyve device string for networking
+# we add each tap to __taplist from __vm_run as it
+# needs to clean them up afterwards
+__vm_bhyve_device_networking(){
+	local _type _switch _tap _sid
+	local _num=0
+
+	while [ 1 ]; do
+		_type=$(sysrc -inqf "${_conf}" "network${_num}_type")
+		_switch=$(sysrc -inqf "${_conf}" "network${_num}_switch")
+
+		if [ -n "${_type}" -a -n "${_switch}" ]; then
+			_tap=$(ifconfig tap create)
+
+			if [ -n "${_tap}" ]; then
+				__log "guest" "${_name}" "created network device ${_tap}"
+				ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
+				_sid=$(__switch_get_ident "${_switch}")
+
+				[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
+
+				_devices="${_devices} -s${_slot}:${_func},${_type},${_tap}"
+				_func=$(($_func + 1))
+
+				if [ ${_func} -ge 8 ]; then
+					_func=0
+					_slot=$(($_slot + 1))
+				fi
+
+				[ -n "${_taplist}" ] && _taplist="${_taplist} "
+				_taplist="${_taplist}${_tap}"
+			fi
+		fi
+
+		[ -z "${_type}" -o -z "${_switch}" ] && break
+		_num=$(($_num + 1))
+	done
+
+	_slot=$(($_slot + 1))
+	_func=0
+}
+
+# get any pci passthrough devices
+__vm_bhyve_device_passthru(){
+	local _dev _orig_slot _orig_func
+	local _last_orig_slot
+	local _num=0
+
+	while [ 1 ]; do
+		_dev=$(sysrc -inqf "${_conf}" "passthru${_num}")
+
+		if [ -n "${_dev}" ]; then
+			_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
+			_orig_func=$(echo "${_dev}" | awk -F'/' '{print $3}')
+
+			# only move to new slot if the original device is on a different slot to the last one
+			# if user wants to passthru a device that has multiple functions which must stay together
+			# on original functions, they should be together in configuration file
+			if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
+				_slot=$(($_slot + 1))
+			fi
+
+			_devices="${_devices} -s${_slot}:${_orig_func},passthru,${_dev}"
+			_last_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
+		else
+			break
+		fi
+
+		_num=$(($_num + 1))
+	done
+
+        _slot=$(($_slot + 1))
 }
 
 # stop vm

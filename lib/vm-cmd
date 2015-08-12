@@ -83,7 +83,7 @@ __parse_cmd(){
 			__vm_configure "$@"
 			;;
 		*)
-			 __usage
+			__usage
 			;;
 	esac
 }

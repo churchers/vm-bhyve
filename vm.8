@@ -506,6 +506,21 @@ provisioning a new virtual machine. If additional disks are added, the image wil
 to be manually created, usually done using the
 .Xr truncate 1
 command.
+.It passthruX
+Specify a device to pass through to the guest. You will need to reserve the device first
+so that is it claimed by the ppt driver on boot.
+.Pp
+Once the device is successfully reserved, you can add it to the guest by adding
+.Sy passthruX="1/2/3"
+to the guest configuration file, where
+.Sy X
+is an integer starting at 0, and
+.Sy 1/2/3
+is the Base/Slot/Function of the device. If you are passing through multiple functions on
+the same device, make sure they are specified together in the configuration file in the
+same sequence as the original device.
+.Pp
+Please see https://wiki.freebsd.org/bhyve/pci_passthru for details on how this works.
 .It linux_kernel
 CentOS guests require the kernel to be loaded inside the boot loader. This option is
 required for these guests and specifies the kernel version number to load. Hopefully

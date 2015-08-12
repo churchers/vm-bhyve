@@ -29,7 +29,6 @@ install:
 	rm -f $(MAN).gz
 	gzip -k $(MAN)
 	$(INSTALL) $(MAN).gz $(MANDIR)/
-	rm -f $(MAN).gz
 
 vmdir:
 	@if [ -z "${PATH}" ]; then \

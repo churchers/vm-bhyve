@@ -324,13 +324,14 @@ __vm_bhyve_device_disks(){
 		_type=$(sysrc -inqf "${_conf}" "disk${_num}_type")
 
 		if [ -n "${_disk}" -a -n "${_type}" ]; then
-			_devices="${_devices} -s${_slot}:${_func},${_type},${vm_dir}/${_name}/${_disk}"
-			_func=$(($_func + 1))
-
+			# we need to move slot if we've hit function 8
 			if [ ${_func} -ge 8 ]; then
 				_func=0
 				_slot=$(($_slot + 1))
 			fi
+
+			_devices="${_devices} -s${_slot}:${_func},${_type},${vm_dir}/${_name}/${_disk}"
+			_func=$(($_func + 1))
 		else
 			break
 		fi
@@ -359,6 +360,12 @@ __vm_bhyve_device_networking(){
 			_tap=$(ifconfig tap create)
 
 			if [ -n "${_tap}" ]; then
+				# move slot if we've hit function 8
+				if [ ${_func} -ge 8 ]; then
+					_func=0
+					_slot=$(($_slot + 1))
+				fi
+
 				__log "guest" "${_name}" "created network device ${_tap}"
 				ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
 				_sid=$(__switch_get_ident "${_switch}")
@@ -367,11 +374,6 @@ __vm_bhyve_device_networking(){
 
 				_devices="${_devices} -s${_slot}:${_func},${_type},${_tap}"
 				_func=$(($_func + 1))
-
-				if [ ${_func} -ge 8 ]; then
-					_func=0
-					_slot=$(($_slot + 1))
-				fi
 
 				[ -n "${_taplist}" ] && _taplist="${_taplist} "
 				_taplist="${_taplist}${_tap}"

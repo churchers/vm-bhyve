@@ -31,6 +31,7 @@ __switch_init(){
 
 	_switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 
+	# create bridges for each switch if they don't already exist
 	if [ -n "${_switchlist}" ]; then
 		for _switch in ${_switchlist}; do
 			_id=$(__switch_get_ident "${_switch}")
@@ -42,6 +43,7 @@ __switch_init(){
 				[ $? -ne 0 ] && __err "failed to create bridge interface"
 				ifconfig "${_id}" description "vm-${_switch}-" up
 
+				# add all member interfaces
 				__switch_add_allmembers "${_switch}" "${_id}"
 			fi
 
@@ -49,6 +51,7 @@ __switch_init(){
 		done
 	fi
 
+	# only load dnsmasq/pf if we have a nat switch
 	[ "${_havenat}" = "1" ] && __switch_nat_init
 }
 
@@ -125,6 +128,8 @@ __switch_vlan(){
 	[ $? -ne 0 ] && __err "invalid vlan number"
 	[ ${_vlan} -ge 4095 ] && __err "invalid vlan number"
 
+	# we need to remove everything and re-add as raw interfaces will
+	# change to vlan or visa-versa
 	__switch_remove_allmembers "${_switch}"
 
 	if [ "${_vlan}" = "0" ]; then
@@ -133,6 +138,7 @@ __switch_vlan(){
 		sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}"="${_vlan}" >/dev/null 2>&1
 	fi
 
+	# put interfaces back in
 	__switch_add_allmembers "${_switch}"
 }
 
@@ -177,6 +183,8 @@ __switch_remove_allmembers(){
 }
 
 # adds a port to a virtual switch
+# if vlan is configured, we need to create the relevant vlan interface first,
+# then add that to the bridge
 __switch_configure_port(){
 	local _switch="$1"
 	local _id="$2"
@@ -235,6 +243,9 @@ __switch_unconfigure_port(){
 
 	[ $? -ne 0 ] && __err "failed to remove member from the virtual switch"
 
+	# it's possible a vlan interface may be assigned to multiple switches
+	# we want to remove the vlan interface if possible, but not if it's
+	# still assigned to another switch
 	if [ -n "${_vlan}" -a -n "${_vid}" ]; then
 		_usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan}-")
 		[ -z "${_usage}" ] && ifconfig "${_vid}" destroy
@@ -255,6 +266,7 @@ __switch_remove_member(){
 }
 
 # configure nat on a switch
+# this function just deals with the vm-bhyve configuration
 __switch_nat(){
 	local _switch="$1"
 	local _nat="$2"
@@ -287,6 +299,10 @@ __switch_nat(){
 }
 
 # set the system up for nat usage
+# do the actual nat work
+# we completely take over dnsmasq and assign it to the required interfaces
+# /etc/pf.conf gets an include statement added pointing to a file in
+# out .config directory. This file contains a nat rule for each nat switch
 __switch_nat_init(){
 	local _pf_rules="${vm_dir}/.config/pf-nat.conf"
 	local _havenat=0
@@ -306,17 +322,17 @@ __switch_nat_init(){
 	echo "local-service" >> /usr/local/etc/dnsmasq.conf
 	echo "dhcp-authoritative" >> /usr/local/etc/dnsmasq.conf
 
-	# reset pf config
+	# reset our pf config and create /etc/pf.conf if needed
 	echo "# vm-bhyve nat" > "${vm_dir}/.config/pf-nat.conf"
 	[ ! -e "/etc/pf.conf" ] && touch /etc/pf.conf
 
-	# see if we are already included in pf.conf
+	# only add our include statement to /etc/pf.conf if it's not already in there somwhere
 	_grep=$(grep "${_pf_rules}" /etc/pf.conf)
 	[ -z "${_grep}" ] && echo "include \"${_pf_rules}\"" >> /etc/pf.conf
 
 	_switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 
-	# add switches to configuration
+	# add each nat switch to dnsmasq.conf and .config/pf-nat.conf
 	for _switch in ${_switchlist}; do
 		_nat=$(sysrc -inqf "${vm_dir}/.config/switch" "nat_${_switch}")
 		_id=$(__switch_get_ident "${_switch}")
@@ -353,6 +369,7 @@ __switch_get_ident(){
 	local _switch="$1"
 	local _id
 
+	# search ifconfig for our switch id, and pull bridge interface name from preceeding line
 	_id=$(ifconfig -a | grep -B 1 "vm-${_switch}-" | head -n 1 | awk -F: '{print $1}')
 	echo "${_id}"
 }

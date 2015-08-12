@@ -155,7 +155,7 @@ __vm_startall(){
 # stop all bhyve instances
 # note this will also stop instances not started by vm-bhyve
 __vm_stopall(){
-	local _pid _pids=$(ps ax | grep "[(]bhyve)" | awk '{print $1}')
+	local _pids=$(ps ax | grep "[(]bhyve)" | awk '{print $1}')
 
 	echo "Shutting down all bhyve virtual machines"
 	killall bhyve
@@ -270,16 +270,20 @@ __vm_run(){
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
+		# acutlly run bhyve!
+		# we're already in the background so we just wait for it to exit
 		bhyve -c ${_cpu} -m ${_memory} -AHP \
 			 ${_devices} \
 			 ${_iso_dev} \
 			 -l com1,/dev/${_com} \
 			 ${_name}
 
-		# break bhyve loop if not restart
+		# get bhyve exit code
 		_exit=$?
-
 		__log "guest" "${_name}" "bhyve exited with status ${_exit}"
+
+		# if 0, guest rebooted so continue loop
+		# anything else we break and shutdown
 		[ $_exit -ne 0 ] && break
 		__log "guest" "${_name}" "restarting"
 

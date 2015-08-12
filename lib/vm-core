@@ -306,9 +306,7 @@ __vm_bhyve_device_basic(){
 	_devices="${_devices} -s${_slot},hostbridge"
 	_slot=$(($_slot + 1))
 	_devices="${_devices} -s${_slot},lpc"
-
 	_slot=$(($_slot + 1))
-	_func=0
 }
 
 # get bhyve device string for disk devices
@@ -329,14 +327,17 @@ __vm_bhyve_device_disks(){
 				_func=0
 				_slot=$(($_slot + 1))
 			fi
+		else
+			break
 		fi
 
-		[ -z "${_disk}" -o -z "${_type}" ] && break
 		_num=$(($_num + 1))
 	done
 
-	_slot=$(($_slot + 1))
-	_func=0
+	if [ ${_num} -ge 1 ]; then
+		_slot=$(($_slot + 1))
+		_func=0
+	fi
 }
 
 # get bhyve device string for networking
@@ -371,14 +372,17 @@ __vm_bhyve_device_networking(){
 				[ -n "${_taplist}" ] && _taplist="${_taplist} "
 				_taplist="${_taplist}${_tap}"
 			fi
+		else
+			break
 		fi
 
-		[ -z "${_type}" -o -z "${_switch}" ] && break
 		_num=$(($_num + 1))
 	done
 
-	_slot=$(($_slot + 1))
-	_func=0
+	if [ ${_num} -ge 1 ]; then
+		_slot=$(($_slot + 1))
+		_func=0
+	fi
 }
 
 # get any pci passthrough devices
@@ -410,7 +414,9 @@ __vm_bhyve_device_passthru(){
 		_num=$(($_num + 1))
 	done
 
-        _slot=$(($_slot + 1))
+	if [ ${_num} -ge 1 ]; then
+	        _slot=$(($_slot + 1))
+	fi
 }
 
 # stop vm

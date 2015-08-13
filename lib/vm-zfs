@@ -53,7 +53,7 @@ __zfs_init(){
 __zfs_make_dataset(){
 	local _name="$1"
 
-	if [ "${VM_ZFS}" = "1" ]; then
+	if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
 		zfs create "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
 		[ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
 	fi
@@ -63,10 +63,27 @@ __zfs_make_dataset(){
 __zfs_destroy_dataset(){
 	local _name="$1"
 
-	if [ "${VM_ZFS}" = "1" ]; then
-		zfs destroy "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+	if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
+		zfs destroy -rf "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
 		[ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
 	fi
+}
+
+# make a zvol for a guest disk image
+__zfs_make_zvol(){
+	local _name="$1"
+	local _size="$2"
+	local _sparse="$3"
+
+	[ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS storage is enabled"
+
+	if [ -n "${_sparse}" ]; then
+		zfs create -sV ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"
+	else
+		zfs create -V ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"
+	fi
+
+	[ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
 }
 
 # create an image of a vm

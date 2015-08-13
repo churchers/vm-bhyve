@@ -84,7 +84,7 @@ __guest_netbsd(){
 __guest_openbsd(){
 	local _gver=$(sysrc -inqf "${_conf}" guest_version)
 
-        if [ -z "${_gver}" ]; then
+	if [ -z "${_gver}" ]; then
 		__log "guest" "${_name}" "openbsd machines require \"guest_version\" value in configuration"
 		_exit=15
 	else

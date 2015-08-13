@@ -72,7 +72,7 @@ __vm_list(){
 # create a new virtual machine
 __vm_create(){
 	local _name
-	local _template _opt _size _vmdir _disk
+	local _template _opt _size _vmdir _disk _disk_dev
 
 	while getopts t:s: _opt ; do
 		case $_opt in
@@ -97,8 +97,9 @@ __vm_create(){
 	[ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
 		__err "unable to find template ${vm_dir}/.templates/${_template}.conf"
 
-	# we need to get disk0 name from the template
+	# we need to get disk0 name and device type from the template
 	_disk=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_name)
+	_disk_dev=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_dev)
 	[ -z "${_disk}" ] && __err "template is missing disk0_name specification"
 
 	# get the directory to store our vm data in
@@ -114,7 +115,19 @@ __vm_create(){
 	cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
 	[ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
 
-	truncate -s "${_size}" "${_vmdir}/${_disk}"
+	# create the disk
+	case "${_disk_dev}" in 
+		zvol)
+			__zfs_make_zvol "${_name}/${_disk}" "${_size}"
+			;;			
+		sparse-zvol)
+			__zfs_make_zvol "${_name}/${_disk}" "${_size}" "1"
+			;;
+		*)
+			truncate -s "${_size}" "${_vmdir}/${_disk}"
+			[ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+			;;
+	esac
 }
 
 # install os to a virtual machine
@@ -196,7 +209,7 @@ __vm_run(){
 	local _name="$1"
 	local _com="$2"
 	local _iso="$3" _iso_dev
-	local _cpu _memory _bootdisk _guest _guest_support
+	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support
 	local _conf _devices="" _slot=0 _func=0 _taplist _exit
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
@@ -204,12 +217,14 @@ __vm_run(){
 	_memory=$(sysrc -inqf "${_conf}" memory)
 	_guest=$(sysrc -inqf "${_conf}" guest)
 	_bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
+	_bootdisk_dev=$(sysrc -inqf "${_conf}" disk0_dev)
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
+	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 
 	# check basic settings
 	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
@@ -227,7 +242,7 @@ __vm_run(){
 	fi
 
 	# complete the boot disk path
-	_bootdisk="${vm_dir}/${_name}/${_bootdisk}"
+	_bootdisk=$(__vm_get_disk_path "${_name}" "${_bootdisk}" "${_bootdisk_dev}")
 
 	# build bhyve device string
 	__vm_bhyve_device_basic
@@ -315,13 +330,14 @@ __vm_bhyve_device_basic(){
 
 # get bhyve device string for disk devices
 __vm_bhyve_device_disks(){
-	local _disk _type
+	local _disk _type _dev _path
 	local _num=0
 
 	# get disks
 	while [ 1 ]; do
 		_disk=$(sysrc -inqf "${_conf}" "disk${_num}_name")
 		_type=$(sysrc -inqf "${_conf}" "disk${_num}_type")
+		_dev=$(sysrc -inqf "${_conf}" "disk${_num}_dev")
 
 		if [ -n "${_disk}" -a -n "${_type}" ]; then
 			# we need to move slot if we've hit function 8
@@ -330,7 +346,8 @@ __vm_bhyve_device_disks(){
 				_slot=$(($_slot + 1))
 			fi
 
-			_devices="${_devices} -s${_slot}:${_func},${_type},${vm_dir}/${_name}/${_disk}"
+			_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
+			_devices="${_devices} -s${_slot}:${_func},${_type},${_path}"
 			_func=$(($_func + 1))
 		else
 			break
@@ -423,6 +440,28 @@ __vm_bhyve_device_passthru(){
 	if [ ${_num} -ge 1 ]; then
 	        _slot=$(($_slot + 1))
 	fi
+}
+
+# get the path to a disk image depending on type
+__vm_get_disk_path(){
+	local _name="$1"
+	local _disk="$2"
+	local _disk_dev="$3"
+	local _path
+
+	case "${_disk_dev}" in
+		zvol)
+			;&
+		sparse-zvol)
+			# need to look at this, don't really want to reference VM_ZFS* variables here
+			_path="/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
+			;;
+		*)
+			_path="${vm_dir}/${_name}/${_disk}"
+			;;
+	esac
+
+	echo "${_path}"
 }
 
 # stop vm

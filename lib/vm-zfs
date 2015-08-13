@@ -75,7 +75,7 @@ __zfs_make_zvol(){
 	local _size="$2"
 	local _sparse="$3"
 
-	[ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS storage is enabled"
+	[ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
 
 	if [ -n "${_sparse}" ]; then
 		zfs create -sV ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"

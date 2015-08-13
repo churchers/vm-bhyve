@@ -58,7 +58,7 @@ __switch_init(){
 # list switches, currently just from stored configuration
 __switch_list(){
 	local _switchlist _portlist _switch _port _vlan _nat
-	local _id _format="%-19s %-19s %-7s %-20s %-20s\n"
+	local _id _format="%-19s %-12s %-7s %-7s %s\n"
 
 	_switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 
@@ -85,7 +85,7 @@ __switch_create(){
 	local _switch="$1"
 	local _id
 
-	echo "${_switch}" | egrep -qs '^[a-z0-9]{0,16}$'
+	echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9_]{0,14}[a-z0-9]$'
 	[ $? -ne 0 ] && __err "invalid switch name"
 
 	__rc_append_string ".config/switch" "switch_list" "${_switch}"

@@ -122,7 +122,7 @@ __zfs_image_create(){
 
 	# copy source
 	echo "Creating a compressed image, this may take some time..."
-	zfs send "${VM_ZFS_DATASET}/${_name}@${_uuid}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
+	zfs send -R "${VM_ZFS_DATASET}/${_name}@${_uuid}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
 	[ $? -ne 0 ] && exit 1
 
 	# done with the source snapshot

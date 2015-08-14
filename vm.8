@@ -76,11 +76,11 @@
 .Op Fl d Ar description
 .Ar name
 .Nm
-.Cm provision
+.Cm image provision
 .Ar uuid
 .Ar new-name
 .Nm
-.Cm destroy
+.Cm image destroy
 .Ar uuid
 .\" ============ DESCRIPTION =============
 .Sh DESCRIPTION
@@ -548,7 +548,9 @@ development continues.
 .Xr vlan 4 ,
 .Xr nmdm 4 ,
 .Xr cu 1 ,
-.Xr fetch 1
+.Xr fetch 1 ,
+.Xr truncate 1 ,
+.Xr zfs 8
 .\" ============ BUGS =============
 .Sh BUGS
 Please report all bugs/issues/feature requests to the github project at

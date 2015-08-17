@@ -421,13 +421,15 @@ __vm_bhyve_device_passthru(){
 			_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
 			_orig_func=$(echo "${_dev}" | awk -F'/' '{print $3}')
 
-			# only move to new slot if the original device is on a different slot to the last one
+			# only move to new slot if the original device is on a different slot to the last one.
 			# if user wants to passthru a device that has multiple functions which must stay together
-			# on original functions, they should be together in configuration file
+			# on one slot, they should be together in configuration file
 			if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
 				_slot=$(($_slot + 1))
 			fi
 
+			# we use the original function number for all devices.
+			# does this work if you only pass through function 1 or 2, and leave 0 empty?
 			_devices="${_devices} -s${_slot}:${_orig_func},passthru,${_dev}"
 			_last_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
 		else

@@ -210,7 +210,7 @@ __vm_run(){
 	local _com="$2"
 	local _iso="$3" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
-	local _conf _devices="" _slot=0 _func=0 _taplist _exit
+	local _conf _devices="" _slot=0 _prislot=3 _func=0 _prifunc=0 _taplist _exit
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
 	_cpu=$(sysrc -inqf "${_conf}" cpu)
@@ -234,9 +234,11 @@ __vm_run(){
 		exit 15
 	fi
 
-	if [ -n "${_uefi}" && ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
-		__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
-		exit 15
+	if [ -n "${_uefi}" ]; then
+		if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
+			__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
+			exit 15
+		fi
 	fi
 
 	# try to find guest support
@@ -253,11 +255,9 @@ __vm_run(){
 
 	# build bhyve device string
 	__vm_bhyve_device_basic
-
-	_slot=3 # disks use slots 3+
 	__vm_bhyve_device_disks
 
-	_slot=7 # we put cd in 6 to keep windows happy, start everything else at 7
+	_slot=7 # primary slots 3-6, start rest at 7
 	__vm_bhyve_device_networking
 	__vm_bhyve_device_passthru
 
@@ -280,7 +280,7 @@ __vm_run(){
 
 		# load guest
 		if [ -n "${_iso}" ]; then
-			_iso_dev="-s 6,ahci-cd,${vm_dir}/.iso/${_iso}"
+			_iso_dev="-s ${_prislot},ahci-cd,${vm_dir}/.iso/${_iso}"
 			eval "__guest_${_guest}" "install"
 		else
 			eval "__guest_${_guest}" "run"
@@ -361,14 +361,14 @@ __vm_bhyve_device_disks(){
 
 		if [ -n "${_disk}" -a -n "${_type}" ]; then
 			# we need to move slot if we've hit function 8
-			if [ ${_func} -ge 8 ]; then
-				_func=0
-				_slot=$(($_slot + 1))
+			if [ ${_prifunc} -ge 8 ]; then
+				_prifunc=0
+				_prislot=$(($_prislot + 1))
 			fi
 
 			_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
-			_devices="${_devices} -s${_slot}:${_func},${_type},${_path}"
-			_func=$(($_func + 1))
+			_devices="${_devices} -s${_prislot}:${_prifunc},${_type},${_path}"
+			_prifunc=$(($_func + 1))
 		else
 			break
 		fi
@@ -377,8 +377,8 @@ __vm_bhyve_device_disks(){
 	done
 
 	if [ ${_num} -ge 1 ]; then
-		_slot=$(($_slot + 1))
-		_func=0
+		_prislot=$(($_prislot + 1))
+		_prifunc=0
 	fi
 }
 

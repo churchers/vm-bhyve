@@ -185,3 +185,16 @@ __guest_ubuntu(){
 
 	_exit=$?
 }
+
+# Windows
+
+# No loader needed for any Win version
+__guest_windows(){
+	if [ "$1" = "run" ]; then
+		# pass in a blank cd for Windows guests
+		# Apparently only for desktop versions but hopefully won't cause servers a problem
+		_iso_dev="-s 6,ahci-cd,${vm_dir}/.config/null.iso"
+	fi
+
+	_exit=0
+}

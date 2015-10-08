@@ -209,7 +209,7 @@ __vm_run(){
 	local _name="$1"
 	local _com="$2"
 	local _iso="$3" _iso_dev
-	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support
+	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
 	local _conf _devices="" _slot=0 _func=0 _taplist _exit
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
@@ -218,9 +218,11 @@ __vm_run(){
 	_guest=$(sysrc -inqf "${_conf}" guest)
 	_bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
 	_bootdisk_dev=$(sysrc -inqf "${_conf}" disk0_dev)
+	_uefi=$(sysrc -inqf "${_conf}" uefi)
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
+	__log "guest" "${_name}" " [uefi: ${_uefi:-no}]"
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
@@ -229,6 +231,11 @@ __vm_run(){
 	# check basic settings
 	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
 		__log "guest" "${_name}" "unable to start - missing required configuration"
+		exit 15
+	fi
+
+	if [ -n "${_uefi}" && ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
+		__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
 		exit 15
 	fi
 
@@ -246,7 +253,11 @@ __vm_run(){
 
 	# build bhyve device string
 	__vm_bhyve_device_basic
+
+	_slot=3 # disks use slots 3+
 	__vm_bhyve_device_disks
+
+	_slot=7 # we put cd in 6 to keep windows happy, start everything else at 7
 	__vm_bhyve_device_networking
 	__vm_bhyve_device_passthru
 
@@ -257,7 +268,8 @@ __vm_run(){
 		# destroy existing vmm
 		# freebsd seems happy to run a bhyveload/bhyve loop
 		# grub-bhyve doesn't seem to like it
-		if [ -e "/dev/vmm/${_name}" ]; then
+		# Peter says don't destroy in Windows instructions, so don't if in UEFI mode
+		if [ -e "/dev/vmm/${_name}" -a -z "${_uefi}" ]; then
 			bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
 			if [ $? -ne 0 ]; then
 				__log "guest" "${_name}" "failed to destroy existing vmm device"
@@ -268,7 +280,7 @@ __vm_run(){
 
 		# load guest
 		if [ -n "${_iso}" ]; then
-			_iso_dev="-s 31,ahci-cd,${vm_dir}/.iso/${_iso}"
+			_iso_dev="-s 6,ahci-cd,${vm_dir}/.iso/${_iso}"
 			eval "__guest_${_guest}" "install"
 		else
 			eval "__guest_${_guest}" "run"
@@ -287,11 +299,20 @@ __vm_run(){
 
 		# acutlly run bhyve!
 		# we're already in the background so we just wait for it to exit
-		bhyve -c ${_cpu} -m ${_memory} -AHP \
-			 ${_devices} \
-			 ${_iso_dev} \
-			 -l com1,/dev/${_com} \
-			 ${_name}
+		if [ -z "${_uefi}" ]; then
+			bhyve -c ${_cpu} -m ${_memory} -AHP \
+				 ${_devices} \
+				 ${_iso_dev} \
+				 -l com1,/dev/${_com} \
+				 ${_name}
+		else
+			bhyve -c ${_cpu} -m ${_memory} -Hw \
+				 ${_devices} \
+				 ${_iso_dev} \
+				 -l com1,/dev/${_com} \
+				 -l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd \
+				 ${_name}
+		fi
 
 		# get bhyve exit code
 		_exit=$?
@@ -324,8 +345,7 @@ __vm_bhyve_device_basic(){
 
 	_devices="${_devices} -s${_slot},hostbridge"
 	_slot=$(($_slot + 1))
-	_devices="${_devices} -s${_slot},lpc"
-	_slot=$(($_slot + 1))
+	_devices="${_devices} -s31,lpc"
 }
 
 # get bhyve device string for disk devices

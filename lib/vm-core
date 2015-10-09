@@ -186,6 +186,7 @@ __vm_start(){
 
 	[ -z "${_name}" ] && __usage
 	[ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
+	[ -e "${vm_dir}/${_name}/run.lock" ] && __err "${_name} appears to already be running (locked)"
 
 	# check basic settings before going into background mode
 	_memory=$(sysrc -inqf "${_conf}" memory)
@@ -259,6 +260,7 @@ __vm_run(){
 	__vm_bhyve_device_networking
 	__vm_bhyve_device_passthru
 
+	__vm_lock "${_name}"
 	__log "guest" "${_name}" "booting"
 
 	while [ 1 ]; do
@@ -334,7 +336,23 @@ __vm_run(){
 
 	__log "guest" "${_name}" "stopped"
 	bhyvectl --destroy --vm=${_name}
+	__vm_unlock "${_name}"
 	exit ${_exit}
+}
+
+# lock a vm
+# stop another instance being started on this or another host
+__vm_lock(){
+	local _name="$1"
+
+	touch "${vm_dir}/${_name}/run.lock"
+}
+
+# unlock a vm
+__vm_unlock(){
+	local _name="$1"
+
+	unlink "${vm_dir}/${_name}/run.lock"
 }
 
 # get bhyve device string for basic devices

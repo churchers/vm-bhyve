@@ -344,8 +344,10 @@ __vm_run(){
 # stop another instance being started on this or another host
 __vm_lock(){
 	local _name="$1"
+	local _host
 
-	touch "${vm_dir}/${_name}/run.lock"
+	_host=$(hostname)
+	echo "${_host}" > "${vm_dir}/${_name}/run.lock"
 }
 
 # unlock a vm

@@ -206,3 +206,4 @@ Installation can take around 25 minutes. If you look in the vm-bhyve.log file in
 machines directory, you should see it reboot twice. After the second reboot (third run in total)
 the machine should boot into Windows. Access the Windows console using the `vm console winguest` command,
 then press `i` to get its IP address (It will use DHCP). You can then RDP to the guest.
+The default login details are Administrator and Test123.

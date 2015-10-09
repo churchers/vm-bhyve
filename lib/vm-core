@@ -210,7 +210,7 @@ __vm_run(){
 	local _com="$2"
 	local _iso="$3" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
-	local _conf _devices="" _slot=0 _prislot=3 _func=0 _prifunc=0 _taplist _exit
+	local _conf _devices="" _slot=7 _prislot=3 _func=0 _prifunc=0 _taplist _exit
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
 	_cpu=$(sysrc -inqf "${_conf}" cpu)
@@ -226,7 +226,7 @@ __vm_run(){
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
-	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
+	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev:-raw}]"
 
 	# check basic settings
 	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
@@ -256,8 +256,6 @@ __vm_run(){
 	# build bhyve device string
 	__vm_bhyve_device_basic
 	__vm_bhyve_device_disks
-
-	_slot=7 # primary slots 3-6, start rest at 7
 	__vm_bhyve_device_networking
 	__vm_bhyve_device_passthru
 
@@ -343,8 +341,7 @@ __vm_run(){
 # hostbridge & lpc on their own slots
 __vm_bhyve_device_basic(){
 
-	_devices="${_devices} -s${_slot},hostbridge"
-	_slot=$(($_slot + 1))
+	_devices="${_devices} -s0,hostbridge"
 	_devices="${_devices} -s31,lpc"
 }
 

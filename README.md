@@ -4,6 +4,7 @@ Management system for FreeBSD bhyve virtual machines
 
 Some of the main features include:
 
+* Now with beta Windows/UEFI support as of v0.7.2!
 * Simple commands to create/start/stop bhyve instances
 * Simple configuration file format
 * Virtual switches supporting vlans & nat (no manual tap or bridge devices needed)
@@ -180,3 +181,28 @@ a full shutdown and restart of the guest
 See the man page for a full description of all available commands.
 
     # man vm
+
+## Windows Support
+
+Windows has been very quickly tested as of version 0.7.1 (Using Server 2012R2).
+I see no reason why other versions supported by bhyve shouldn't work as the basic bhyve
+commands are all the same.
+
+As there is no VGA console, you must follow the instructions at 
+https://people.freebsd.org/~grehan/bhyve_uefi/windows_iso_repack.txt 
+to create an unattended installation ISO. This requires a few packages to be installed but
+is fairly straight forward if you follow the instructions carefully.
+
+You also need the UEFI firmware, which can be retrieved from
+http://people.freebsd.org/~grehan/bhyve_uefi/BHYVE_UEFI_20151002.fd
+and needs to be placed in `$vm_dir/.config/BHYVE_UEFI.fd`.
+
+One you have an ISO capable of installing without user interaction, vm-bhyve works as normal,
+just copy the ISO to `$vm_dir/.iso`, then run the following to install:
+
+    # vm install winguest mywiniso.iso
+
+Installation can take around 25 minutes. If you look in the vm-bhyve.log file in the virtual
+machines directory, you should see it reboot twice. After the second reboot (third run in total)
+the machine should boot into Windows. Access the Windows console using the `vm console winguest` command,
+then press `i` to get its IP address (It will use DHCP). You can then RDP to the guest.

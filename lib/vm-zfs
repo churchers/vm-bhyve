@@ -117,7 +117,7 @@ __zfs_image_create(){
 	fi
 
 	# try to snapshot
-	zfs snapshot "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+	zfs snapshot -r "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
 	[ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_uuid}"
 
 	# copy source

@@ -194,6 +194,46 @@ Please note that Linux guests currently require the
 package to be installed. This is use in place of
 .Xr bhyveload 8
 to load the guest kernel into memory.
+.\" ============== WINDOWS ===============
+.Sh WINDOWS SUPPORT
+Windows guests are supported on versions of FreeBSD that have UEFI
+support in
+.Xr bhyve 8 .
+As of October 2015, this is only FreeBSD-CURRENT, so you will first need
+to build and install the head FreeBSD branch manually.
+.Pp
+You will also need a copy of the UEFI firmware (see URL below), which needs to be placed in
+.Pa $vm_dir/.config/BHYVE_UEFI.fd .
+.Pp
+As there is no VGA console in
+.Xr bhyve 8 ,
+an unattended installation ISO is required which allows Windows to install and
+boot without any user interaction. Instructions for creating a suitable ISO can
+be found at the URL below.
+.Pp
+Once the installation ISO is ready, has been placed in the
+.Pa $vm_dir/.iso
+directory, and you have the UEFI firmware, installation can be performed as normal.
+.Bd -literal -offset indent
+# vm create -t windows -s 30G winguest
+# vm install winguest win_repack.iso
+.Ed
+.Pp
+Windows installation has been tested with 2012r2 and takes around 20-25 minutes.
+During install, the guest will reboot twice (three runs in total). You can see
+the guest reboot by watching the log file
+.Pa $vm_dir/guestname/vm-bhyve.log .
+The third run should boot fully into Windows. The
+.Pa virtio
+network adapter will request an IP address using DHCP. Connect to the guest console
+and press
+.Pa i
+to see the IP address that has been assigned. The default unattended installation files
+should make RDP available, using Administrator and Test123 as the default login details.
+.Pp
+The UEFI firmware (BHYVE_UEFI_20151002.fd), as well as instructions for creating an
+unattended installation ISO can currently be obtained from
+.Pa https://people.freebsd.org/~grehan/bhyve_uefi/
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS
 .Bl -tag -width indent

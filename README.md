@@ -184,7 +184,7 @@ See the man page for a full description of all available commands.
 
 ## Windows Support
 
-Windows has been very quickly tested as of version 0.7.1 (Using Server 2012R2).
+Windows has been very quickly tested as of version 0.7.2 (Using Server 2012R2).
 I see no reason why other versions supported by bhyve shouldn't work as the basic bhyve
 commands are all the same.
 

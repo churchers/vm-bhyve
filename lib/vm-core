@@ -179,14 +179,18 @@ __vm_stopall(){
 __vm_start(){
 	local _name="$1"
 	local _iso="$2"
-	local _conf
+	local _conf _host
 	local _memory _guest _disk
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
 
 	[ -z "${_name}" ] && __usage
 	[ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
-	[ -e "${vm_dir}/${_name}/run.lock" ] && __err "${_name} appears to already be running (locked)"
+
+	if [ -e "${vm_dir}/${_name}/run.lock" ]; then
+		_host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
+		__err "${_name} appears to already be running on ${_host} (locked)"
+	fi
 
 	# check basic settings before going into background mode
 	_memory=$(sysrc -inqf "${_conf}" memory)
@@ -361,8 +365,7 @@ __vm_unlock(){
 # hostbridge & lpc on their own slots
 __vm_bhyve_device_basic(){
 
-	_devices="${_devices} -s0,hostbridge"
-	_devices="${_devices} -s31,lpc"
+	_devices="-s0,hostbridge -s31,lpc"
 }
 
 # get bhyve device string for disk devices

@@ -365,7 +365,7 @@ __vm_unlock(){
 # hostbridge & lpc on their own slots
 __vm_bhyve_device_basic(){
 
-	_devices="-s0,hostbridge -s31,lpc"
+	_devices="-s 0,hostbridge -s 31,lpc"
 }
 
 # get bhyve device string for disk devices
@@ -387,8 +387,13 @@ __vm_bhyve_device_disks(){
 			fi
 
 			_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
-			_devices="${_devices} -s${_prislot}:${_prifunc},${_type},${_path}"
-			_prifunc=$(($_func + 1))
+			_devices="${_devices} -s ${_prislot}:${_prifunc},${_type},${_path}"
+
+			if [ -n "${_uefi}" ]; then
+				_prislot=$(($_prislot + 1))
+			else
+				_prifunc=$(($_prifunc + 1))
+			fi
 		else
 			break
 		fi
@@ -396,7 +401,7 @@ __vm_bhyve_device_disks(){
 		_num=$(($_num + 1))
 	done
 
-	if [ ${_num} -ge 1 ]; then
+	if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
 		_prislot=$(($_prislot + 1))
 		_prifunc=0
 	fi
@@ -429,7 +434,7 @@ __vm_bhyve_device_networking(){
 
 				[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
 
-				_devices="${_devices} -s${_slot}:${_func},${_type},${_tap}"
+				_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
 				_func=$(($_func + 1))
 
 				[ -n "${_taplist}" ] && _taplist="${_taplist} "
@@ -470,7 +475,7 @@ __vm_bhyve_device_passthru(){
 
 			# we use the original function number for all devices.
 			# does this work if you only pass through function 1 or 2, and leave 0 empty?
-			_devices="${_devices} -s${_slot}:${_orig_func},passthru,${_dev}"
+			_devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
 			_last_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
 		else
 			break

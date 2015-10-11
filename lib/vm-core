@@ -231,7 +231,7 @@ __vm_run(){
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
-	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev:-raw}]"
+	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev:-file}]"
 
 	# check basic settings
 	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then

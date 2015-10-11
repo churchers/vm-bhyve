@@ -224,10 +224,10 @@ During install, the guest will reboot twice (three runs in total). You can see
 the guest reboot by watching the log file
 .Pa $vm_dir/guestname/vm-bhyve.log .
 The third run should boot fully into Windows. The
-.Pa virtio
+.Sy virtio
 network adapter will request an IP address using DHCP. Connect to the guest console
 and press
-.Pa i
+.Sy i
 to see the IP address that has been assigned. The default unattended installation files
 should make RDP available, using Administrator and Test123 as the default login details.
 .Pp
@@ -434,7 +434,7 @@ whilst leaving test/un-needed guests alone)
 .Pp
 The delay between starting guests can be set using the
 .Pa $vm_delay
-variable, which defaults to 5 seconds. Too small a delay can cause problems as each guest doesn't
+variable, which defaults to 5 seconds. Too small a delay can cause problems, as each guest doesn't
 have enough time to claim a null modem device before the next guest starts. Increasing this value
 can be useful if you have disk-intensive guests and want to give each guest a chance to fully
 boot before the next starts.
@@ -499,7 +499,7 @@ An overview of the available configuration options is listed below.
 .Bl -tag -width 15n
 .It guest
 Specify the type of guest to be installed in this virtual machine. Current valid options
-for this are freebsd, netbsd, openbsd centos, ubuntu, debian & alpine linux.
+for this are freebsd, netbsd, openbsd, windows, centos, ubuntu, debian & alpine linux.
 .It uefi
 Set this (any non-empty value) for guests that need UEFI firmware.
 .It cpu

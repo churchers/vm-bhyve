@@ -358,7 +358,7 @@ __vm_lock(){
 __vm_unlock(){
 	local _name="$1"
 
-	unlink "${vm_dir}/${_name}/run.lock"
+	rm "${vm_dir}/${_name}/run.lock"
 }
 
 # get bhyve device string for basic devices

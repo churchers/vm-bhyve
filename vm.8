@@ -86,7 +86,9 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility is used to provide simplified management of bhyve virtual machines,
+utility is used to provide simplified management of
+.Xr bhyve 8
+virtual machines,
 including networking and console access.
 .Pp
 Networking is handled by creating one or more virtual switches. Each switch
@@ -529,6 +531,11 @@ to. This should correspond to a virtual switch created using the
 .Pa vm switch create
 subcommand. If the virtual switch is not found, an interface will still be assigned,
 but not connected to any bridge.
+.It network0_mac
+This option allows you to specify a mac address to use for this interface. If not
+provided,
+.Xr bhyve 8
+will generate a mac address.
 .It disk0_type
 The emulation type for the first virtual disk. At least one virtual disk is required.
 Valid options for this are currently

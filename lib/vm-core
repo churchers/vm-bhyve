@@ -26,10 +26,10 @@
 
 # list virtual machines
 __vm_list(){
-	local _name _guest _cpu _memory _run _vm _auto _num
-	local _format="%-15s %-10s %-6s %-9s %-12s %-20s\n"
+	local _name _guest _cpu _memory _run _vm _auto _num _comconsole
+	local _format="%-15s %-10s %-6s %-9s %-12s %-20s %-10s\n"
 
-	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
+	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE" "COMCONSOLE"
 
 	ls -1 "${vm_dir}" | \
 	while read _name; do
@@ -40,6 +40,8 @@ __vm_list(){
 			_guest=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" guest)
 			_cpu=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" cpu)
 			_memory=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" memory)
+			_comconsole=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" comconsole)
+			_comconsole=${_comconsole:=com1}
 
 			# see if bhyve running
 			if [ -n "${_run}" ]; then
@@ -64,7 +66,7 @@ __vm_list(){
 				_num=$(($_num + 1))
 			done
 
-			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
+			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}" "${_comconsole}"
 		fi
 	done
 }
@@ -214,7 +216,7 @@ __vm_run(){
 	local _name="$1"
 	local _com="$2"
 	local _iso="$3" _iso_dev
-	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
+	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi _comconsole
 	local _conf _devices="" _slot=7 _prislot=3 _func=0 _prifunc=0 _taplist _exit
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
@@ -224,12 +226,15 @@ __vm_run(){
 	_bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
 	_bootdisk_dev=$(sysrc -inqf "${_conf}" disk0_dev)
 	_uefi=$(sysrc -inqf "${_conf}" uefi)
+	_comconsole=$(sysrc -inqf "${_conf}" comconsole)
+	_comconsole=${_comconsole:=com1}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
 	__log "guest" "${_name}" " [uefi: ${_uefi:-no}]"
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
+	__log "guest" "${_name}" " [comconsole: ${_comconsole}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
 	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev:-file}]"
 
@@ -297,7 +302,7 @@ __vm_run(){
 		fi
 
 		__log "guest" "${_name}" " [bhyve devices: ${_devices}]"
-		__log "guest" "${_name}" " [bhyve console: ${_com}]"
+		__log "guest" "${_name}" " [bhyve console: ${_comconsole},${_com}]"
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
@@ -307,13 +312,13 @@ __vm_run(){
 			bhyve -c ${_cpu} -m ${_memory} -AHP \
 				 ${_devices} \
 				 ${_iso_dev} \
-				 -l com1,/dev/${_com} \
+				 -l ${_comconsole},/dev/${_com} \
 				 ${_name}
 		else
 			bhyve -c ${_cpu} -m ${_memory} -Hw \
 				 ${_devices} \
 				 ${_iso_dev} \
-				 -l com1,/dev/${_com} \
+				 -l ${_comconsole},/dev/${_com} \
 				 -l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd \
 				 ${_name}
 		fi

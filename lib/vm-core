@@ -200,22 +200,19 @@ __vm_start(){
 	[ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ] && \
 		__err "incomplete virtual machine configuration"
 
-	# create a console
-	_com=$(__vm_create_console)
-
 	# run background process to actually start bhyve
 	# this will run as long as vm is running, including restarting bhyve after guest reboot
-	$0 _run "${_name}" "${_com}" "${_iso}" >/dev/null 2>&1 &
+	$0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
 }
 
 # run a virtual machine
 # this is the background process that does all the work
 __vm_run(){
 	local _name="$1"
-	local _com="$2"
-	local _iso="$3" _iso_dev
+	local _iso="$2" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
 	local _conf _devices="" _slot=7 _prislot=3 _func=0 _prifunc=0 _taplist _exit
+	local _com _comports _comstring
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
 	_cpu=$(sysrc -inqf "${_conf}" cpu)
@@ -224,14 +221,20 @@ __vm_run(){
 	_bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
 	_bootdisk_dev=$(sysrc -inqf "${_conf}" disk0_dev)
 	_uefi=$(sysrc -inqf "${_conf}" uefi)
+	_comports=$(sysrc -inqf "${_conf}" comports)
+
+	# set defaults
+	_bootdisk_dev=${_bootdisk_dev:-file}
+	_comports=${_comports:-com1}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
 	__log "guest" "${_name}" " [uefi: ${_uefi:-no}]"
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
+	__log "guest" "${_name}" " [com ports: ${_comports}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
-	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev:-file}]"
+	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 
 	# check basic settings
 	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
@@ -259,6 +262,7 @@ __vm_run(){
 	_bootdisk=$(__vm_get_disk_path "${_name}" "${_bootdisk}" "${_bootdisk_dev}")
 
 	# build bhyve device string
+	__vm_bhyve_device_comports
 	__vm_bhyve_device_basic
 	__vm_bhyve_device_disks
 	__vm_bhyve_device_networking
@@ -297,7 +301,7 @@ __vm_run(){
 		fi
 
 		__log "guest" "${_name}" " [bhyve devices: ${_devices}]"
-		__log "guest" "${_name}" " [bhyve console: ${_com}]"
+		__log "guest" "${_name}" " [bhyve console: ${_comstring}]"
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
@@ -307,13 +311,13 @@ __vm_run(){
 			bhyve -c ${_cpu} -m ${_memory} -AHP \
 				 ${_devices} \
 				 ${_iso_dev} \
-				 -l com1,/dev/${_com} \
+				 ${_comstring} \
 				 ${_name}
 		else
 			bhyve -c ${_cpu} -m ${_memory} -Hw \
 				 ${_devices} \
 				 ${_iso_dev} \
-				 -l com1,/dev/${_com} \
+				 ${_comstring} \
 				 -l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd \
 				 ${_name}
 		fi
@@ -359,6 +363,25 @@ __vm_unlock(){
 	local _name="$1"
 
 	rm "${vm_dir}/${_name}/run.lock"
+}
+
+# create string for guest com ports
+__vm_bhyve_device_comports(){
+	local _port _num=1 _nmdm=""
+
+	rm "${vm_dir}/${_name}/console" >/dev/null 2>&1
+
+	for _port in ${_comports}; do
+		_nmdm=$(__vm_create_console "${_nmdm}")
+
+		# use first com port for the loader
+		[ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
+
+		echo "${_port}=/dev/nmdm${_nmdm}B" >> "${vm_dir}/${_name}/console"
+		[ -n "${_comstring}" ] && _comstring="${_comstring} "
+		_comstring="${_comstring}-l ${_port},/dev/nmdm${_nmdm}A"
+		_num=$((_num + 1))
+	done
 }
 
 # get bhyve device string for basic devices
@@ -571,15 +594,23 @@ __vm_destroy(){
 # console
 __vm_console(){
 	local _name="$1"
+	local _port="$2"
 	local _console
 
 	[ -z "${_name}" ] && __usage
 	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+	[ ! -e "${vm_dir}/${_name}/console" ] && __err "can't locate console data for ${_name}"
 
-	_console=$(ps ax | grep "[_]run ${_name} " | awk '{print $9}' | rev | cut -c 2- | rev)
+	# did user specify a com port?
+	# if not, get first in the file (the first will also be the console used for loader)
+	if [ -n "${_port}" ]; then
+		_console=$(grep "${_port}=" "${vm_dir}/${_name}/console" | awk -F= '{print $2}')
+	else
+		_console=$(head -n 1 "${vm_dir}/${_name}/console" | awk -F= '{print $2}')
+	fi
+
 	[ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"
-
-	cu -l "/dev/${_console}B"
+	cu -l "${_console}"
 }
 
 # configure a machine (edit the configuration file)
@@ -608,6 +639,7 @@ __vm_iso(){
 # create a new console for a vm
 # for now we are using nmdm
 __vm_create_console(){
+	local _skip="$1"
 	local _ls
 	local _num=0
 
@@ -615,9 +647,9 @@ __vm_create_console(){
 	# using -e seemed to create devices so now scanning ls
 	while [ 1 ]; do
 		_ls=$(ls -1 /dev | grep "nmdm${_num}A")
-		[ -z "${_ls}" ] && break
+		[ -z "${_ls}" -a "${_num}" != "${_skip}" ] && break
 		_num=$(($_num + 1))
 	done
 
-	echo "nmdm${_num}A"
+	echo "${_num}"
 }

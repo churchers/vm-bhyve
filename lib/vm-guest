@@ -28,7 +28,7 @@
 # the following variables are already set
 #
 # _name: guest name
-# _com: com port - nmdmXA
+# _com: com port - /dev/nmdmXA
 # _iso: iso file (if an install)
 # _conf: full path to guest config file
 # _cpu: cpu count
@@ -48,11 +48,11 @@
 # FreeBSD
 __guest_freebsd(){
 	if [ "$1" = "install" ]; then
-		__log "guest" "${_name}" "bhyveload -c /dev/${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
-		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+		__log "guest" "${_name}" "bhyveload -c ${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
+		bhyveload -c "${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
 	else
-		__log "guest" "${_name}" "bhyveload -c /dev/${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
-		bhyveload -c "/dev/${_com}" -m "${_memory}" -d "${_bootdisk}" "${_name}"
+		__log "guest" "${_name}" "bhyveload -c ${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
+		bhyveload -c "${_com}" -m "${_memory}" -d "${_bootdisk}" "${_name}"
 	fi
 
 	_exit=$?
@@ -176,12 +176,12 @@ __guest_ubuntu(){
 	if [ "$1" = "install" ]; then
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-		__log "guest" "${_name}" "grub-bhyve -c /dev/${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		/usr/local/sbin/grub-bhyve -c "/dev/${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+		/usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-		__log "guest" "${_name}" "grub-bhyve -c /dev/${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		/usr/local/sbin/grub-bhyve -c "/dev/${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+		/usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	fi
 
 	_exit=$?

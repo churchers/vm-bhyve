@@ -51,6 +51,7 @@
 .Nm
 .Cm console
 .Ar name
+.Op Ar com1|com2
 .Nm
 .Cm reset
 .Ar name
@@ -405,9 +406,12 @@ Stop a named virtual machine. All
 and
 .Xr nmdm 4
 devices will be automatically cleaned up once the guest has exited.
-.It Cm console Ar name
+.It Cm console Ar name Op Ar com1|com2
 Connect to the console of the named virtual machine. Without network access, this is the primary
 way of connecting to the guest once it is running.
+.Pp
+By default this will connect to the first com port specified in the client configuration, which
+is usually com1. Alternatively you can specify the com port to connect to.
 .Pp
 This looks for the
 .Xr nmdm 4
@@ -513,6 +517,15 @@ gigabytes using the
 and
 .Sy G
 suffixes.
+.It comports
+This option allows you to specify which com ports to create for the guest. The default
+is to create a single
+.Sy com1
+port. Valid values for this are
+.Sy com1
+and
+.Sy com2 .
+You can also connect two com ports by specifying both, separated by a space.
 .It network0_type
 The emulation to use for the first network adapter. This option can be unspecified
 if no guest networking is required. The recommended value for this is

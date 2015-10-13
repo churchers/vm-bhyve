@@ -199,3 +199,10 @@ __guest_windows(){
 
 	_exit=0
 }
+
+# Other
+
+# Illumos based guests
+__guest_illumos(){
+	_exit=0
+}

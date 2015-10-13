@@ -211,7 +211,7 @@ __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
-	local _conf _devices="" _slot=7 _prislot=3 _func=0 _prifunc=0 _taplist _exit
+	local _conf _opts="" _devices="" _slot=7 _prislot=3 _func=0 _prifunc=0 _taplist _exit
 	local _com _comports _comstring
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
@@ -242,10 +242,25 @@ __vm_run(){
 		exit 15
 	fi
 
+	# default bhyve options
+	_opts="-AHP"
+
+	# if uefi, make sure we have bootrom, then update options for uefi support
 	if [ -n "${_uefi}" ]; then
-		if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
-			__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
-			exit 15
+		if [ "${_uefi}" = "csm" ]; then
+			if [ ! -e "${vm_dir}/.config/BHYVE_UEFI_CSM.fd" ]; then
+				__log "guest" "${_name}" "please download uefi csm firmware to ${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+				exit 15
+			fi
+
+			_opts="-Hw -l bootrom,${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+		else
+			if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
+				__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
+				exit 15
+			fi
+
+			_opts="-Hw -l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd"
 		fi
 	fi
 
@@ -302,25 +317,18 @@ __vm_run(){
 
 		__log "guest" "${_name}" " [bhyve devices: ${_devices}]"
 		__log "guest" "${_name}" " [bhyve console: ${_comstring}]"
+		__log "guest" "${_name}" " [bhyve options: ${_opts}]"
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
 		# acutlly run bhyve!
 		# we're already in the background so we just wait for it to exit
-		if [ -z "${_uefi}" ]; then
-			bhyve -c ${_cpu} -m ${_memory} -AHP \
-				 ${_devices} \
-				 ${_iso_dev} \
-				 ${_comstring} \
-				 ${_name}
-		else
-			bhyve -c ${_cpu} -m ${_memory} -Hw \
-				 ${_devices} \
-				 ${_iso_dev} \
-				 ${_comstring} \
-				 -l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd \
-				 ${_name}
-		fi
+		bhyve -c ${_cpu} -m ${_memory} \
+			 ${_devices} \
+			 ${_iso_dev} \
+			 ${_comstring} \
+			 ${_opts} \
+			 ${_name}
 
 		# get bhyve exit code
 		_exit=$?

@@ -191,18 +191,12 @@ __guest_ubuntu(){
 
 # No loader needed for any Win version
 __guest_windows(){
-	if [ "$1" = "run" ]; then
-		# pass in a blank cd for Windows guests
-		# Apparently only for desktop versions but hopefully won't cause servers a problem
-		_iso_dev="-s ${_prislot},ahci-cd,${vm_dir}/.config/null.iso"
-	fi
-
 	_exit=0
 }
 
-# Other
+# Generic guest
+# With uefi, many guests may not need any special handling
 
-# Illumos based guests
-__guest_illumos(){
+__guest_generic(){
 	_exit=0
 }

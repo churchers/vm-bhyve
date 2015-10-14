@@ -211,7 +211,7 @@ __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
-	local _conf _opts="" _devices="" _slot=7 _prislot=3 _func=0 _prifunc=0 _taplist _exit
+	local _conf _opts="" _devices="" _slot=4 _func=0 _taplist _exit
 	local _com _comports _comstring
 
 	_conf="${vm_dir}/${_name}/${_name}.conf"
@@ -303,9 +303,11 @@ __vm_run(){
 
 		# load guest
 		if [ -n "${_iso}" ]; then
-			_iso_dev="-s ${_prislot},ahci-cd,${vm_dir}/.iso/${_iso}"
+			_iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
 			eval "__guest_${_guest}" "install"
 		else
+			# always provide a cd for UEFI guests at the moment
+			[ -n "${_uefi}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
 			eval "__guest_${_guest}" "run"
 		fi
 
@@ -359,18 +361,12 @@ __vm_run(){
 # lock a vm
 # stop another instance being started on this or another host
 __vm_lock(){
-	local _name="$1"
-	local _host
-
-	_host=$(hostname)
-	echo "${_host}" > "${vm_dir}/${_name}/run.lock"
+	hostname > "${vm_dir}/$1/run.lock"
 }
 
 # unlock a vm
 __vm_unlock(){
-	local _name="$1"
-
-	rm "${vm_dir}/${_name}/run.lock"
+	rm "${vm_dir}/$1/run.lock"
 }
 
 # create string for guest com ports
@@ -412,25 +408,24 @@ __vm_bhyve_device_disks(){
 
 		if [ -n "${_disk}" -a -n "${_type}" ]; then
 			# we need to move slot if we've hit function 8
-			if [ ${_prifunc} -ge 8 ]; then
-				_prifunc=0
-				_prislot=$(($_prislot + 1))
+			if [ ${_func} -ge 8 ]; then
+				_func=0
+				_slot=$(($_slot + 1))
 			fi
 
 			_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
-			_devices="${_devices} -s ${_prislot}:${_prifunc},${_type},${_path}"
+			_devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
 
 			if [ -n "${_uefi}" ]; then
-				_prislot=$(($_prislot + 1))
+				_slot=$(($_slot + 1))
 
-				# can't go past slot 5 with current UEFI firmware
-				# 6 is needed for the cd
-				if [ ${_prislot} -ge 6 ]; then
+				# can't go past slot 6 with current UEFI firmware
+				if [ ${_prislot} -ge 7 ]; then
 					__log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
 					break
 				fi
 			else
-				_prifunc=$(($_prifunc + 1))
+				_func=$(($_func + 1))
 			fi
 		else
 			break
@@ -440,8 +435,8 @@ __vm_bhyve_device_disks(){
 	done
 
 	if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
-		_prislot=$(($_prislot + 1))
-		_prifunc=0
+		_slot=$(($_slot + 1))
+		_func=0
 	fi
 }
 

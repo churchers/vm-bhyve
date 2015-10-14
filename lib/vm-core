@@ -257,14 +257,14 @@ __vm_run(){
 				exit 15
 			fi
 
-			_opts="-Hw -l bootrom,${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+			_opts="-l bootrom,${vm_dir}/.config/BHYVE_UEFI_CSM.fd -Hw"
 		else
 			if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
 				__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
 				exit 15
 			fi
 
-			_opts="-Hw -l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd"
+			_opts="-l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd -Hw"
 		fi
 	fi
 
@@ -525,6 +525,9 @@ __vm_bhyve_device_passthru(){
 
 	if [ ${_num} -ge 1 ]; then
 	        _slot=$(($_slot + 1))
+
+		# add wired memory for 11+
+		[ `uname -K` -ge 1100000 ] && _opts="${_opts}S"
 	fi
 }
 

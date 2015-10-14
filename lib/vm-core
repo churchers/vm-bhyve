@@ -227,8 +227,6 @@ __vm_run(){
 	_uefi=$(__config_get uefi)
 	_comports=$(__config_get comports)
 
-	echo "CPU: ${_cpu}"
-
 	# set defaults
 	_bootdisk_dev=${_bootdisk_dev:-file}
 	_comports=${_comports:-com1}

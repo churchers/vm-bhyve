@@ -133,10 +133,6 @@ __guest_alpine(){
 }
 
 # CentOS
-# not too viable at the moment
-# user needs to run loader manaully to find exact kernel version
-# then add that to linux_kernel option in guest config
-# that kernel may change after a guest update
 __guest_centos(){
 	local _kernel=$(__config_get linux_kernel)
 
@@ -165,6 +161,24 @@ __guest_centos(){
 	fi
 }
 
+# CentOS - using grub bootloader inside guest
+__guest_centos-grub(){
+	if [ "$1" = "install" ]; then
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+		__log_and_write "write" "${_name}" "boot.cmd" "linux /isolinux/vmlinuz"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /isolinux/initrd.img"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+		__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+		/usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+	else
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		echo "" | /usr/local/sbin/grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -d "/grub" -M "${_memory}" "${_name}"
+	fi
+
+	_exit=$?
+}
+
 # Debian
 # same commands as ubuntu
 __guest_debian(){
@@ -177,11 +191,11 @@ __guest_ubuntu(){
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
 		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		/usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		echo "" | /usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		/usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		echo "" | /usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	fi
 
 	_exit=$?

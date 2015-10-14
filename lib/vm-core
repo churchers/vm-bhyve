@@ -34,12 +34,14 @@ __vm_list(){
 	ls -1 "${vm_dir}" | \
 	while read _name; do
 		if [ -e "${vm_dir}/${_name}/${_name}.conf" ]; then
+			__config_load "${vm_dir}/${_name}/${_name}.conf"
+
 			_num=1
 			_auto="No"
 			_run=$(ps ax | grep " ${_name} [(]bhyve" |awk '{print $1}')
-			_guest=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" guest)
-			_cpu=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" cpu)
-			_memory=$(sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" memory)
+			_guest=$(__config_get guest)
+			_cpu=$(__config_get cpu)
+			_memory=$(__config_get memory)
 
 			# see if bhyve running
 			if [ -n "${_run}" ]; then
@@ -211,17 +213,21 @@ __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
-	local _conf _opts="" _devices="" _slot=4 _func=0 _taplist _exit
+	local _opts="" _devices="" _slot=4 _func=0 _taplist _exit
 	local _com _comports _comstring
+	local _conf="${vm_dir}/${_name}/${_name}.conf"
 
-	_conf="${vm_dir}/${_name}/${_name}.conf"
-	_cpu=$(sysrc -inqf "${_conf}" cpu)
-	_memory=$(sysrc -inqf "${_conf}" memory)
-	_guest=$(sysrc -inqf "${_conf}" guest)
-	_bootdisk=$(sysrc -inqf "${_conf}" disk0_name)
-	_bootdisk_dev=$(sysrc -inqf "${_conf}" disk0_dev)
-	_uefi=$(sysrc -inqf "${_conf}" uefi)
-	_comports=$(sysrc -inqf "${_conf}" comports)
+	__config_load "${vm_dir}/${_name}/${_name}.conf"
+
+	_cpu=$(__config_get cpu)
+	_memory=$(__config_get memory)
+	_guest=$(__config_get guest)
+	_bootdisk=$(__config_get disk0_name)
+	_bootdisk_dev=$(__config_get disk0_dev)
+	_uefi=$(__config_get uefi)
+	_comports=$(__config_get comports)
+
+	echo "CPU: ${_cpu}"
 
 	# set defaults
 	_bootdisk_dev=${_bootdisk_dev:-file}
@@ -402,9 +408,9 @@ __vm_bhyve_device_disks(){
 
 	# get disks
 	while [ 1 ]; do
-		_disk=$(sysrc -inqf "${_conf}" "disk${_num}_name")
-		_type=$(sysrc -inqf "${_conf}" "disk${_num}_type")
-		_dev=$(sysrc -inqf "${_conf}" "disk${_num}_dev")
+		_disk=$(__config_get "disk${_num}_name")
+		_type=$(__config_get "disk${_num}_type")
+		_dev=$(__config_get "disk${_num}_dev")
 
 		if [ -n "${_disk}" -a -n "${_type}" ]; then
 			# we need to move slot if we've hit function 8
@@ -448,9 +454,9 @@ __vm_bhyve_device_networking(){
 	local _num=0
 
 	while [ 1 ]; do
-		_type=$(sysrc -inqf "${_conf}" "network${_num}_type")
-		_switch=$(sysrc -inqf "${_conf}" "network${_num}_switch")
-		_mac=$(sysrc -inqf "${_conf}" "network${_num}_mac")
+		_type=$(__config_get "network${_num}_type")
+		_switch=$(__config_get "network${_num}_switch")
+		_mac=$(__config_get "network${_num}_mac")
 
 		if [ -n "${_type}" -a -n "${_switch}" ]; then
 			_tap=$(ifconfig tap create)
@@ -495,7 +501,7 @@ __vm_bhyve_device_passthru(){
 	local _num=0
 
 	while [ 1 ]; do
-		_dev=$(sysrc -inqf "${_conf}" "passthru${_num}")
+		_dev=$(__config_get "passthru${_num}")
 
 		if [ -n "${_dev}" ]; then
 			_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')

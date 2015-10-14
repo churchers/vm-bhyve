@@ -24,7 +24,7 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.8.4
+VERSION=0.8.5
 
 . /etc/rc.subr
 load_rc_config "vm"
@@ -41,6 +41,7 @@ fi
 
 # load libs
 . "${LIB}/vm-common"
+. "${LIB}/vm-config"
 . "${LIB}/vm-cmd"
 . "${LIB}/vm-sysrc"
 . "${LIB}/vm-switch"

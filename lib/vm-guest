@@ -82,8 +82,8 @@ __guest_netbsd(){
 # requires guest kernel version in config file
 # open of the awkward guests that have version in kernel load path
 __guest_openbsd(){
-	local _gver=$(sysrc -inqf "${_conf}" guest_version)
-	local _arch=$(sysrc -inqf "${_conf}" arch)
+	local _gver=$(__config_get guest_version)
+	local _arch=$(__config_get arch)
 
 	if [ -z "${_gver}" ]; then
 		__log "guest" "${_name}" "openbsd machines require \"guest_version\" value in configuration"
@@ -138,7 +138,7 @@ __guest_alpine(){
 # then add that to linux_kernel option in guest config
 # that kernel may change after a guest update
 __guest_centos(){
-	local _kernel=$(sysrc -inqf "${_conf}" linux_kernel)
+	local _kernel=$(__config_get linux_kernel)
 
 	if [ -z "${_kernel}" ]; then
 		__log "guest" "${_name}" "centos machines require \"linux_kernel\" value in configuration"

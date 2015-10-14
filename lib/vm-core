@@ -74,7 +74,7 @@ __vm_list(){
 # create a new virtual machine
 __vm_create(){
 	local _name
-	local _template _opt _size _vmdir _disk _disk_dev
+	local _template _opt _size _vmdir _disk _disk_dev _uuid
 
 	while getopts t:s: _opt ; do
 		case $_opt in
@@ -116,6 +116,11 @@ __vm_create(){
 
 	cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
 	[ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
+
+	# generate a uuid
+	_uuid=$(uuidgen)
+	echo "" >> "${_vmdir}/${_name}.conf"
+	sysrc -inqf "${_vmdir}/${_name}.conf" "uuid=${_uuid}" >/dev/null 2>&1
 
 	# create the disk
 	case "${_disk_dev}" in 
@@ -212,7 +217,7 @@ __vm_start(){
 __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
-	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi
+	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi _uuid
 	local _opts="" _devices="" _slot=4 _func=0 _taplist _exit
 	local _com _comports _comstring
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
@@ -226,6 +231,7 @@ __vm_run(){
 	_bootdisk_dev=$(__config_get disk0_dev)
 	_uefi=$(__config_get uefi)
 	_comports=$(__config_get comports)
+	_uuid=$(__config_get uuid)
 
 	# set defaults
 	_bootdisk_dev=${_bootdisk_dev:-file}
@@ -237,6 +243,7 @@ __vm_run(){
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [com ports: ${_comports}]"
+	__log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
 	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 
@@ -276,6 +283,9 @@ __vm_run(){
 		__log "guest" "${_name}" "unsupported guest type: ${_guest}"
 		exit 15
 	fi
+
+	# set uuid
+	[ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
 	# complete the boot disk path
 	_bootdisk=$(__vm_get_disk_path "${_name}" "${_bootdisk}" "${_bootdisk_dev}")
@@ -527,7 +537,7 @@ __vm_bhyve_device_passthru(){
 	        _slot=$(($_slot + 1))
 
 		# add wired memory for 11+
-		[ `uname -K` -ge 1100000 ] && _opts="${_opts}S"
+		[ `uname -K` -ge 1100000 ] && _opts="${_opts} -S"
 	fi
 }
 

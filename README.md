@@ -13,6 +13,7 @@ Some of the main features include:
 * Automatic assignment of console devices to access guest console
 * Integration with rc.d startup/shutdown
 * Guest reboot handling
+* Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
 
 ## Install
 
@@ -69,7 +70,7 @@ To install the sample templates, run the following command:
     # cp /usr/local/share/examples/vm-bhyve/* /my/vm/path/.templates/
 
 If you look inside the template files with a text editor, you will see they are very simple. You
-can create as many templates as you like. For example for could have web-server.conf, containing the setting
+can create as many templates as you like. For example you could have web-server.conf, containing the setting
 for your web servers, or freebsd-large.conf for large FreeBSD guests, and so on. This is the contents of
 the default template:
 

@@ -38,7 +38,7 @@ __config_get(){
 	local _line _value
 
 	for _line in ${VM_CONFIG}; do
-		_value=$(echo "${_line}" | grep "${_key}=" | awk -F= '{print $2}')
+		_value=$(echo "${_line}" | grep "^${_key}=" | awk -F= '{print $2}')
 
 		if [ -n "${_value}" ]; then
 			echo "${_value}"

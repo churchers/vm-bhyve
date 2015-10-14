@@ -164,13 +164,8 @@ __guest_centos(){
 # CentOS - using grub bootloader inside guest
 __guest_centos-grub(){
 	if [ "$1" = "install" ]; then
-		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-		__log_and_write "write" "${_name}" "boot.cmd" "linux /isolinux/vmlinuz"
-		__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /isolinux/initrd.img"
-		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-		__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-		/usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+		__guest_centos "$1"
+		return
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		echo "" | /usr/local/sbin/grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -d "/grub" -M "${_memory}" "${_name}"
@@ -180,23 +175,47 @@ __guest_centos-grub(){
 }
 
 # Debian
-# same commands as ubuntu
 __guest_debian(){
-	__guest_ubuntu "$1"
+	__guest_linux "$1"
 }
 
 # Ubuntu
 __guest_ubuntu(){
+	__guest_linux "$1"
+}
+
+# Arch Linux
+__guest_arch(){
+	local _date=$(date +%Y%m)
+
+	if [ "$1" = "install" ]; then
+		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+		__log_and_write "write" "${_name}" "boot.cmd" "linux (cd0)/arch/boot/x86_64/vmlinuz archisobasedir=arch archisolabel=ARCH_${_date} ro"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "initrd (cd0)/arch/boot/x86_64/archiso.img"
+		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+		__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+		/usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+	else
+		__guest_linux "$1"
+		return
+	fi
+
+	_exit=$?
+}
+
+# Basic Linux
+__guest_linux(){
 	if [ "$1" = "install" ]; then
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
 		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		echo "" | /usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		/usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		echo "" | /usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
-	fi
+		/usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+	fi	
 
 	_exit=$?
 }

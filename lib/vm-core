@@ -27,7 +27,7 @@
 # list virtual machines
 __vm_list(){
 	local _name _guest _cpu _memory _run _vm _auto _num
-	local _format="%-15s %-10s %-6s %-9s %-12s %-20s\n"
+	local _format="%-15s %-15s %-6s %-9s %-12s %-20s\n"
 
 	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
 

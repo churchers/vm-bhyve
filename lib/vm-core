@@ -420,7 +420,7 @@ __vm_bhyve_device_disks(){
 				_slot=$(($_slot + 1))
 
 				# can't go past slot 6 with current UEFI firmware
-				if [ ${_prislot} -ge 7 ]; then
+				if [ ${_slot} -ge 7 ]; then
 					__log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
 					break
 				fi

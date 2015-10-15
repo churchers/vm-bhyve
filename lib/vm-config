@@ -34,8 +34,8 @@ __config_load(){
 # get a configuration value from the current config file
 __config_get(){
 	local _key="$1"
-	local IFS=$'\n'
 	local _line _value
+	local IFS=$'\n'
 
 	for _line in ${VM_CONFIG}; do
 		_value=$(echo "${_line}" | grep "^${_key}=" | awk -F= '{print $2}')

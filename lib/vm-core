@@ -74,7 +74,7 @@ __vm_list(){
 # create a new virtual machine
 __vm_create(){
 	local _name
-	local _template _opt _size _vmdir _disk _disk_dev _uuid
+	local _template _opt _size _vmdir _disk _disk_dev _uuid _newline
 
 	while getopts t:s: _opt ; do
 		case $_opt in
@@ -93,8 +93,8 @@ __vm_create(){
 	shift $((OPTIND - 1))
 	_name=$1
 
-	[ -z "$_size" ] && _size="20G"
-	[ -z "$_template" ] && _template="default"
+	: ${_size:=20G}
+	: ${_template:=default}
 
 	[ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
 		__err "unable to find template ${vm_dir}/.templates/${_template}.conf"
@@ -118,8 +118,10 @@ __vm_create(){
 	[ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
 
 	# generate a uuid
+	# jump through some hoops to make sure it gets its own line (but no gap)
 	_uuid=$(uuidgen)
-	echo "" >> "${_vmdir}/${_name}.conf"
+	_newline=$(tail -1 "${_vmdir}/${_name}.conf" | wc -l | tr -d " ")
+	[ "${_newline}" -eq "0" ] && echo "" >> "${_vmdir}/${_name}.conf" 
 	sysrc -inqf "${_vmdir}/${_name}.conf" "uuid=${_uuid}" >/dev/null 2>&1
 
 	# create the disk
@@ -234,8 +236,8 @@ __vm_run(){
 	_uuid=$(__config_get uuid)
 
 	# set defaults
-	_bootdisk_dev=${_bootdisk_dev:-file}
-	_comports=${_comports:-com1}
+	: ${_bootdisk_dev:=file}
+	: ${_comports:=com1}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
@@ -405,7 +407,6 @@ __vm_bhyve_device_comports(){
 # get bhyve device string for basic devices
 # hostbridge & lpc on their own slots
 __vm_bhyve_device_basic(){
-
 	_devices="-s 0,hostbridge -s 31,lpc"
 }
 

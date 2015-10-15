@@ -83,7 +83,7 @@ Usage: vm ...
 	reset <name>
 	poweroff <name>
 	configure <name>
-        clone <name> <new-name>
+	clone <name> <new-name>
 	iso [url]
 	image list
 	image create [-d description] <name>

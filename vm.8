@@ -65,6 +65,10 @@
 .Nm
 .Cm configure
 .Ar name
+.Nm
+.Cm clone
+.Ar name
+.Ar new-name
 .Pp
 .Nm
 .Cm iso
@@ -456,6 +460,15 @@ The
 command simply opens the virtual machine configuration file in your default editor,
 allowing you to easily make changes. Please note, changes do not take effect until
 the virtual machine is fully shutdown and restarted.
+.It Cm clone Ar name Ar new-name
+Create a clone of the virtual machine
+.Pa name ,
+as long as it is currently powered off. The new machine will be called
+.Pa new-name ,
+and will be ready to boot with a newly assigned UUID and empty log file.
+.Pp
+Please note that this function requires ZFS, and a snapshot will be taken of the original
+guest, along with any descendant datasets.
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso

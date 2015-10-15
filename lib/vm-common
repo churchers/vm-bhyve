@@ -77,12 +77,13 @@ Usage: vm ...
 	install <name> <iso>
 	start <name>
 	stop <name>
-	console <name>
+	console <name> [com1|com2]
 	startall
 	stopall
 	reset <name>
 	poweroff <name>
 	configure <name>
+        clone <name> <new-name>
 	iso [url]
 	image list
 	image create [-d description] <name>

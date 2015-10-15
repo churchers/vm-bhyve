@@ -82,6 +82,9 @@ __parse_cmd(){
 		configure)
 			__vm_configure "$@"
 			;;
+		clone)
+			__zfs_clone "$@"
+			;;
 		*)
 			__usage
 			;;

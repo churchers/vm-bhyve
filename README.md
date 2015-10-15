@@ -215,7 +215,7 @@ If you are using the default csh/tcsh shell built into FreeBSD, the following co
 autocomplete to work for all the currently supported functions:
 
     complete vm \
-     'p@1@(list create install start stop console configure reset poweroff switch iso)@' \
+     'p@1@(list create install start stop console configure reset poweroff destroy clone switch iso)@' \
      'n@create@n@' \
      'n@list@n@' \
      'n@iso@n@' \

@@ -86,6 +86,38 @@ __zfs_make_zvol(){
 	[ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
 }
 
+# clone a vm
+__zfs_clone(){
+	local _old="$1"
+	local _new="$2"
+	local _uuid _uuidpart _fs _newfs
+
+	[ -z "${_old}" -o -z "${_new}" ] && __usage
+	[ ! "${VM_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
+	[ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} does not appear to be an existing virtual machine"
+	[ -e "${vm_dir}/${_old}/run.lock" ] && __err "${_old} must be powered off first"
+	[ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
+
+	_uuid=$(uuidgen)
+	_uuidpart=$(echo "${_uuid}" |awk -F- '{print $1}')
+
+	zfs snapshot -r ${VM_ZFS_DATASET}/${_old}@${_uuidpart}
+	[ $? -ne 0 ] && __err "failed to create snapshot ${VM_ZFS_DATASET}/${_old}@${_uuidpart}"
+
+	zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_old} | \
+	while read _fs; do
+		_newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_new}@")
+
+		zfs clone ${_fs}@${_uuidpart} ${_newfs}
+		[ $? -ne 0 ] && __err "error while cloning datasets"
+	done
+
+	# update new guest
+	mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf"
+	sysrc -inqf "${vm_dir}/${_new}/${_new}.conf" "uuid=${_uuid}" >/dev/null 2>&1
+	rm "${vm_dir}/${_new}/vm-bhyve.log" >/dev/null 2>&1
+}
+
 # create an image of a vm
 __zfs_image_create(){
 	local _name

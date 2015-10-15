@@ -212,7 +212,7 @@ The default login details are Administrator and Test123.
 ## Autocomplete
 
 If you are using the default csh/tcsh shell built into FreeBSD, the following command should allow
-autocomplete to function for all the currently supported functions:
+autocomplete to work for all the currently supported functions:
 
     complete vm \
      'p@1@(list create install start stop console configure reset poweroff switch iso)@' \
@@ -220,6 +220,6 @@ autocomplete to function for all the currently supported functions:
      'n@list@n@' \
      'n@iso@n@' \
      'n@switch@(list create add remove destroy vlan nat)@' \
-     'N@switch@`sysrc -inqf /data/vm/.config/switch switch_list`@' \
+     'N@switch@`sysrc -inqf /path/to/vm/.config/switch switch_list`@' \
      'N@nat@(off on)@' \
-     'p@2@`ls -1 /data/vm | grep -v "^\." | grep -v "^images"`@'
+     'p@2@`ls -1 /path/to/vm | grep -v "^\." | grep -v "^images"`@'

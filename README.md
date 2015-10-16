@@ -187,7 +187,8 @@ See the man page for a full description of all available commands.
 
 Windows has been very quickly tested as of version 0.7.2 (Using Server 2012R2).
 I see no reason why other versions supported by bhyve shouldn't work as the basic bhyve
-commands are all the same.
+commands are all the same. Please note that you need FreeBSD 11-CURRENT for the UEFI support
+to be functional.
 
 As there is no VGA console, you must follow the instructions at 
 https://people.freebsd.org/~grehan/bhyve_uefi/windows_iso_repack.txt 
@@ -198,9 +199,10 @@ You also need the UEFI firmware, which can be retrieved from
 http://people.freebsd.org/~grehan/bhyve_uefi/BHYVE_UEFI_20151002.fd
 and needs to be placed in `$vm_dir/.config/BHYVE_UEFI.fd`.
 
-One you have an ISO capable of installing without user interaction, vm-bhyve works as normal,
-just copy the ISO to `$vm_dir/.iso`, then run the following to install:
+One you have an ISO capable of installing without user interaction, vm-bhyve works as normal.
+Just copy the ISO to `$vm_dir/.iso/`, then run the following to install:
 
+    # vm create -t windows -s 50G winguest
     # vm install winguest mywiniso.iso
 
 Installation can take around 25 minutes. If you look in the vm-bhyve.log file in the virtual

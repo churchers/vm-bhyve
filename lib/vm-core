@@ -167,15 +167,15 @@ __vm_add(){
 	[ -z "${_name}" ] && __usage
 	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be a valid virtual machine"
 
-	case "${_type}" in
+	case "${_device}" in
 		disk)
-			__vm_add_disk "${_name}" "${_device}" "${_sopt}"
+			__vm_add_disk "${_name}" "${_type}" "${_sopt}"
 			;;
 		network)
 			__vm_add_network "${_name}" "${_sopt}"
 			;;
 		*)
-			__err "type must be one of the following: disk network"
+			__err "device must be one of the following: disk network"
 			;;
 	esac
 }
@@ -235,8 +235,8 @@ __vm_add_disk(){
 
 # add network interface to guest
 __vm_add_network(){
-        local _name="$1"
-        local _switch="$2"
+	local _name="$1"
+	local _switch="$2"
 	local _num=0 _curr _emulation
 
 	[ -z "${_switch}" ] && __usage
@@ -249,6 +249,9 @@ __vm_add_network(){
 		[ -z "${_curr}" ] && break
 		_num=$((_num + 1))
 	done
+
+	# handle no existing network
+	: ${_emulation:=virtio-net}
 
 	# update configuration
 	# all newer guests should have a newline, but just in case of old guests,
@@ -662,7 +665,7 @@ __vm_bhyve_device_passthru(){
 	done
 
 	if [ ${_num} -ge 1 ]; then
-	        _slot=$(($_slot + 1))
+		_slot=$(($_slot + 1))
 
 		# add wired memory for 11+
 		[ `uname -K` -ge 1100000 ] && _opts="${_opts} -S"

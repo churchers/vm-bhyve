@@ -78,6 +78,7 @@ Usage: vm ...
 	start <name>
 	stop <name>
 	console <name> [com1|com2]
+	add [-d device] [-t type] [-s size|switch] <name>
 	startall
 	stopall
 	reset <name>

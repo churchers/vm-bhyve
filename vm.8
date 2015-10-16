@@ -53,6 +53,12 @@
 .Ar name
 .Op Ar com1|com2
 .Nm
+.Cm add
+.Op Fl d Ar device
+.Op Fl t Ar type
+.Op Fl s Ar size|switch
+.Ar name
+.Nm
 .Cm reset
 .Ar name
 .Nm
@@ -422,6 +428,37 @@ This looks for the
 device associated with the virtual machine, and connects to it with
 .Xr cu 1 .
 Use ~+Ctrl-D to exit the console and return to the host.
+.It Xo
+.Cm add
+.Op Fl d Ar device
+.Op Fl t Ar type
+.Op Fl s Ar size|switch
+.Ar name
+.Xc
+Add a new network or disk device to the named virtual machine. The options depend on
+the type of device that is being added:
+.Bl -tag -width 15n
+.It Fl d Ar device
+The type of device to add. Currently this can either be
+.Pa disk
+or
+.Pa network
+.It Fl t Ar type
+For disk devices, this specifies the type of disk device to create.
+Valid options for this are
+.Pa zvol ,
+.Pa sparse-zvol
+and
+.Pa file .
+If not specified, this defaults to
+.Pa file .
+.It Fl s Ar size|switch
+For disk devices, this is used to specify the size of the disk image to create. For
+network devices, use this option to specify the virtual switch to connect the network interface to.
+.El
+.Pp
+For both types of device, the emulation type will be chosen automatically based on the
+emulation used for the existing guest devices.
 .It Cm reset Ar name
 Forcefully reset the named virtual machine. This can cause corruption to the guest file system just
 as with real hardware and should only be used if necessary.

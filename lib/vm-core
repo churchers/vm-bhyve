@@ -139,6 +139,128 @@ __vm_create(){
 	esac
 }
 
+# add a device to an existing guest
+__vm_add(){
+	local _name _device _type _sopt _opt
+
+	while getopts d:t:s: _opt; do
+		case $_opt in
+			d)
+				_device=${OPTARG}
+				;;
+			t)
+				_type=${OPTARG}
+				;;
+			s)
+				_sopt=${OPTARG}
+				;;
+			*)
+				__usage
+				;;
+		esac
+	done
+
+	shift $((OPTIND - 1))
+	_name="$1"
+
+	# check guest
+	[ -z "${_name}" ] && __usage
+	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be a valid virtual machine"
+
+	case "${_type}" in
+		disk)
+			__vm_add_disk "${_name}" "${_device}" "${_sopt}"
+			;;
+		network)
+			__vm_add_network "${_name}" "${_sopt}"
+			;;
+		*)
+			__err "type must be one of the following: disk network"
+			;;
+	esac
+}
+
+# add a disk to guest
+__vm_add_disk(){
+	local _name="$1"
+	local _device="$2"
+	local _size="$3"
+	local _num=0 _curr _diskname _newline _emulation
+
+	: ${_device:=file}
+
+	[ -z "${_size}" ] && __usage
+
+	# get the last existing disk
+	__config_load "${vm_dir}/${_name}/${_name}.conf"
+
+	while [ 1 ]; do
+		_curr=$(__config_get "disk${_num}_name")
+		[ -z "${_curr}" ] && break
+		_emulation=$(__config_get "disk${_num}_type")
+		_num=$((_num + 1))
+	done
+
+	# create the disk first, then update config if no problems
+	case "${_device}" in
+		zvol)
+			__zfs_make_zvol "${_name}/disk${_num}" "${_size}"
+			_diskname="disk${_num}"
+			;;
+		sparse-zvol)
+			__zfs_make_zvol "${_name}/disk${_num}" "${_size}" "1"
+			_diskname="disk${_num}"
+			;;
+		file)
+			truncate -s "${_size}" "${vm_dir}/${_name}/disk${_num}.img"
+			[ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+			_diskname="disk${_num}.img"
+			;;
+		*)
+			__err "device must be one of the following: zvol sparse-zvol file"
+			;;
+	esac
+
+	# update configuration
+	# all newer guests should have a newline, but just in case of old guests,
+	# make sure we have a newline at the end
+	_newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+	[ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
+
+	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_name=${_diskname}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_type=${_emulation}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_dev=${_device}" >/dev/null 2>&1
+	[ $? -ne 0 ] && __err "disk image created but errors while updating guest configuration"
+}
+
+# add network interface to guest
+__vm_add_network(){
+        local _name="$1"
+        local _switch="$2"
+	local _num=0 _curr _emulation
+
+	[ -z "${_switch}" ] && __usage
+
+	__config_load "${vm_dir}/${_name}/${_name}.conf"
+
+	while [ 1 ]; do
+		_emulation="${_curr}"
+		_curr=$(__config_get "network${_num}_type")
+		[ -z "${_curr}" ] && break
+		_num=$((_num + 1))
+	done
+
+	# update configuration
+	# all newer guests should have a newline, but just in case of old guests,
+	# make sure we have a newline at the end
+	_newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+	[ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
+
+	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_type=${_emulation}" >/dev/null 2>&1
+	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_switch=${_switch}" >/dev/null 2>&1
+	[ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
+}
+
 # install os to a virtual machine
 __vm_install(){
 	local _name="$1"

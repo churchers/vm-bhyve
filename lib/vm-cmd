@@ -58,6 +58,9 @@ __parse_cmd(){
 		stop)
 			__vm_stop "$@"
 			;;
+		add)
+			__vm_add "$@"
+			;;
 		reset)
 			__vm_reset "$@"
 			;;

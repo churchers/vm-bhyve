@@ -22,10 +22,12 @@ install:
 	$(MKDIR) -p $(BINDIR)
 	$(MKDIR) -p $(FILESDIR)
 	$(MKDIR) -p $(EXAMPLESDIR)
+	$(MKDIR) -p $(RCDIR)
+	$(MKDIR) -p $(MANDIR)
 	$(INSTALL) -m $(BINMODE) $(PROG) $(BINDIR)/
 	$(INSTALL) lib/* $(FILESDIR)/
 	$(INSTALL) sample-templates/* $(EXAMPLESDIR)/
-	$(INSTALL) rc.d/* $(RCDIR)/
+	$(INSTALL) -m 555 rc.d/* $(RCDIR)/
 	rm -f $(MAN).gz
 	gzip -k $(MAN)
 	$(INSTALL) $(MAN).gz $(MANDIR)/

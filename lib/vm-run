@@ -34,7 +34,7 @@ __vm_run(){
 	local _com _comports _comstring
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
 
-	__config_load "${vm_dir}/${_name}/${_name}.conf"
+	__config_load "${_conf}"
 
 	_cpu=$(__config_get cpu)
 	_memory=$(__config_get memory)
@@ -48,10 +48,11 @@ __vm_run(){
 	# set defaults
 	: ${_bootdisk_dev:=file}
 	: ${_comports:=com1}
+	: ${_uefi:=no}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
-	__log "guest" "${_name}" " [uefi: ${_uefi:-no}]"
+	__log "guest" "${_name}" " [uefi: ${_uefi}]"
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [com ports: ${_comports}]"
@@ -69,7 +70,7 @@ __vm_run(){
 	_opts="-AHP"
 
 	# if uefi, make sure we have bootrom, then update options for uefi support
-	if [ -n "${_uefi}" ]; then
+	if __checkyesno "${_uefi}"; then
 		if [ `uname -K` -lt 1100000 ]; then
 			__log "guest" "${_name}" "uefi guests can only be run on FreeBSD 11 or newer"
 			exit 15
@@ -90,11 +91,12 @@ __vm_run(){
 
 			_opts="-l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd -Hw"
 		fi
+	else
+		_uefi=""
 	fi
 
 	# try to find guest support
-	_guest_support=$(type "__guest_${_guest}")
-	_guest_support=$(echo "${_guest_support}" | grep "shell function")
+	_guest_support=$(type "__guest_${_guest}" 2>&1 | grep "shell function")
 
 	if [ -z "${_guest_support}" ]; then
 		__log "guest" "${_name}" "unsupported guest type: ${_guest}"
@@ -154,7 +156,7 @@ __vm_run(){
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
-		# acutlly run bhyve!
+		# actually run bhyve!
 		# we're already in the background so we just wait for it to exit
 		bhyve -c ${_cpu} -m ${_memory} \
 			 ${_devices} \
@@ -197,7 +199,7 @@ __vm_lock(){
 
 # unlock a vm
 __vm_unlock(){
-	rm "${vm_dir}/$1/run.lock"
+	rm "${vm_dir}/$1/run.lock" >/dev/null 2>&1
 }
 
 # create string for guest com ports
@@ -207,7 +209,7 @@ __vm_bhyve_device_comports(){
 	rm "${vm_dir}/${_name}/console" >/dev/null 2>&1
 
 	for _port in ${_comports}; do
-		_nmdm=$(__vm_create_console "${_nmdm}")
+		_nmdm=$(__vm_find_console "${_nmdm}")
 
 		# use first com port for the loader
 		[ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
@@ -220,6 +222,7 @@ __vm_bhyve_device_comports(){
 
 # get bhyve device string for basic devices
 # hostbridge & lpc on their own slots
+# windows requires slot 0 & 31, nothing else cares fortunately
 __vm_bhyve_device_basic(){
 	_devices="-s 0,hostbridge -s 31,lpc"
 }
@@ -235,34 +238,35 @@ __vm_bhyve_device_disks(){
 		_type=$(__config_get "disk${_num}_type")
 		_dev=$(__config_get "disk${_num}_dev")
 
-		if [ -n "${_disk}" -a -n "${_type}" ]; then
-			# we need to move slot if we've hit function 8
-			if [ ${_func} -ge 8 ]; then
-				_func=0
-				_slot=$(($_slot + 1))
-			fi
+		# break if disk not found
+		[ -z "${_disk}" -o -z "${_type}" ] && break
 
-			_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
-			_devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+		# we need to move slot if we've hit function 8
+		if [ ${_func} -ge 8 ]; then
+			_func=0
+			_slot=$(($_slot + 1))
+		fi
 
-			if [ -n "${_uefi}" ]; then
-				_slot=$(($_slot + 1))
+		_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
+		_devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
 
-				# can't go past slot 6 with current UEFI firmware
-				if [ ${_slot} -ge 7 ]; then
-					__log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
-					break
-				fi
-			else
-				_func=$(($_func + 1))
+		if [ -n "${_uefi}" ]; then
+			_slot=$(($_slot + 1))
+
+			# can't go past slot 6 with current UEFI firmware
+			if [ ${_slot} -ge 7 ]; then
+				__log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
+				break
 			fi
 		else
-			break
+			_func=$(($_func + 1))
 		fi
 
 		_num=$(($_num + 1))
 	done
 
+	# if we have any disks, move next devices to new slot
+	# unless uefi mode, because we'll have incremented slot anyway
 	if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
 		_slot=$(($_slot + 1))
 		_func=0
@@ -281,30 +285,30 @@ __vm_bhyve_device_networking(){
 		_switch=$(__config_get "network${_num}_switch")
 		_mac=$(__config_get "network${_num}_mac")
 
-		if [ -n "${_type}" -a -n "${_switch}" ]; then
-			_tap=$(ifconfig tap create)
+		# we need a type and switch
+		[ -z "${_type}" -o -z "${_switch}" ] && break
 
-			if [ -n "${_tap}" ]; then
-				# move slot if we've hit function 8
-				if [ ${_func} -ge 8 ]; then
-					_func=0
-					_slot=$(($_slot + 1))
-				fi
+		# create interface
+		_tap=$(ifconfig tap create)
 
-				__log "guest" "${_name}" "created network device ${_tap}"
-				ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
-				_sid=$(__switch_get_ident "${_switch}")
-
-				[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
-
-				_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
-				[ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
-
-				_func=$(($_func + 1))
-				_taplist="${_taplist}${_taplist:+ }${_tap}"
+		if [ -n "${_tap}" ]; then
+			# move slot if we've hit function 8
+			if [ ${_func} -ge 8 ]; then
+				_func=0
+				_slot=$(($_slot + 1))
 			fi
-		else
-			break
+
+			__log "guest" "${_name}" "created network device ${_tap}"
+			ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
+			_sid=$(__switch_get_ident "${_switch}")
+
+			[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
+
+			_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
+			[ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+			_func=$(($_func + 1))
+			_taplist="${_taplist}${_taplist:+ }${_tap}"
 		fi
 
 		_num=$(($_num + 1))
@@ -325,24 +329,22 @@ __vm_bhyve_device_passthru(){
 	while [ 1 ]; do
 		_dev=$(__config_get "passthru${_num}")
 
-		if [ -n "${_dev}" ]; then
-			_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
-			_orig_func=$(echo "${_dev}" | awk -F'/' '{print $3}')
+		[ -z "${_dev}" ] && break
 
-			# only move to new slot if the original device is on a different slot to the last one.
-			# if user wants to passthru a device that has multiple functions which must stay together
-			# on one slot, they should be together in configuration file
-			if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
-				_slot=$(($_slot + 1))
-			fi
+		_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
+		_orig_func=$(echo "${_dev}" | awk -F'/' '{print $3}')
 
-			# we use the original function number for all devices.
-			# does this work if you only pass through function 1 or 2, and leave 0 empty?
-			_devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
-			_last_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
-		else
-			break
+		# only move to new slot if the original device is on a different slot to the last one.
+		# if user wants to passthru a device that has multiple functions which must stay together
+		# on one slot, they should be together in configuration file
+		if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
+			_slot=$(($_slot + 1))
 		fi
+
+		# we use the original function number for all devices.
+		# does this work if you only pass through function 1 or 2, and leave 0 empty?
+		_devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
+		_last_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
 
 		_num=$(($_num + 1))
 	done
@@ -367,28 +369,31 @@ __vm_get_disk_path(){
 			;&
 		sparse-zvol)
 			# need to look at this, don't really want to reference VM_ZFS* variables here
-			_path="/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
+			echo "/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
 			;;
 		*)
-			_path="${vm_dir}/${_name}/${_disk}"
+			echo "${vm_dir}/${_name}/${_disk}"
 			;;
 	esac
-
-	echo "${_path}"
 }
 
-# create a new console for a vm
-# for now we are using nmdm
-__vm_create_console(){
-	local _skip="$1"
+# find a spare console for a vm
+# if passed a console number, start looking after that
+__vm_find_console(){
+	local _num="$1"
 	local _ls
-	local _num=0
+
+	if [ -n "${_num}" ]; then
+		_num=$((_num + 1))
+	else
+		_num=0
+	fi
 
 	# loop until we find an available nmdm
 	# using -e seemed to create devices so now scanning ls
 	while [ 1 ]; do
 		_ls=$(ls -1 /dev | grep "nmdm${_num}A")
-		[ -z "${_ls}" -a "${_num}" != "${_skip}" ] && break
+		[ -z "${_ls}" ] && break
 		_num=$(($_num + 1))
 	done
 

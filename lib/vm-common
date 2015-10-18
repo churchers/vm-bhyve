@@ -163,3 +163,19 @@ __confirm(){
 		esac
 	done
 }
+
+# our own checkyesno copy
+# return 1 if its no/false/off/0
+# any other value is returned as yes
+__checkyesno(){
+	local _value="$1"
+
+	case "$_value" in
+		[Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
+			return 1
+			;;
+		*)
+			return 0
+			;;		
+	esac
+}

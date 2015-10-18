@@ -73,8 +73,7 @@ __vm_list(){
 
 # create a new virtual machine
 __vm_create(){
-	local _name
-	local _template _opt _size _vmdir _disk _disk_dev _uuid _newline
+	local _name _template _opt _size _vmdir _disk _disk_dev _uuid _newline
 
 	while getopts t:s: _opt ; do
 		case $_opt in
@@ -217,7 +216,7 @@ __vm_add_disk(){
 			_diskname="disk${_num}.img"
 			;;
 		*)
-			__err "device must be one of the following: zvol sparse-zvol file"
+			__err "device type must be one of the following: zvol sparse-zvol file"
 			;;
 	esac
 
@@ -402,9 +401,9 @@ __vm_console(){
 	# did user specify a com port?
 	# if not, get first in the file (the first will also be the console used for loader)
 	if [ -n "${_port}" ]; then
-		_console=$(grep "${_port}=" "${vm_dir}/${_name}/console" | awk -F= '{print $2}')
+		_console=$(grep "${_port}=" "${vm_dir}/${_name}/console" | cut -d= -f2)
 	else
-		_console=$(head -n 1 "${vm_dir}/${_name}/console" | awk -F= '{print $2}')
+		_console=$(head -n 1 "${vm_dir}/${_name}/console" | cut -d= -f2)
 	fi
 
 	[ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"

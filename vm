@@ -31,7 +31,7 @@ PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 load_rc_config "vm"
 
 # get libs
-if [ -e "./lib" ]; then
+if [ -e "./lib/vm-core" ]; then
 	LIB="./lib"
 elif [ -e "/usr/local/lib/vm-bhyve" ]; then
 	LIB="/usr/local/lib/vm-bhyve"

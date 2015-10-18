@@ -24,17 +24,17 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.8.7
+VERSION=0.8.8
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
 . /etc/rc.subr
 load_rc_config "vm"
 
 # get libs
-if [ -e "/usr/local/lib/vm-bhyve" ]; then
-	LIB="/usr/local/lib/vm-bhyve"
-elif [ -e "./lib" ]; then
+if [ -e "./lib" ]; then
 	LIB="./lib"
+elif [ -e "/usr/local/lib/vm-bhyve" ]; then
+	LIB="/usr/local/lib/vm-bhyve"
 else
 	echo "unable to locate vm-bhyve libriaries"
 	exit 1

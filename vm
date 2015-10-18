@@ -41,13 +41,14 @@ else
 fi
 
 # load libs
+. "${LIB}/vm-cmd"
 . "${LIB}/vm-common"
 . "${LIB}/vm-config"
-. "${LIB}/vm-cmd"
-. "${LIB}/vm-sysrc"
-. "${LIB}/vm-switch"
 . "${LIB}/vm-core"
 . "${LIB}/vm-guest"
+. "${LIB}/vm-run"
+. "${LIB}/vm-switch"
+. "${LIB}/vm-sysrc"
 . "${LIB}/vm-zfs"
 
 # check environment

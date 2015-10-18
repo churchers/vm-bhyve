@@ -1,0 +1,396 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# run a virtual machine
+# this is the background process that does all the work
+__vm_run(){
+	local _name="$1"
+	local _iso="$2" _iso_dev
+	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi _uuid
+	local _opts="" _devices="" _slot=4 _func=0 _taplist _exit
+	local _com _comports _comstring
+	local _conf="${vm_dir}/${_name}/${_name}.conf"
+
+	__config_load "${vm_dir}/${_name}/${_name}.conf"
+
+	_cpu=$(__config_get cpu)
+	_memory=$(__config_get memory)
+	_guest=$(__config_get guest)
+	_bootdisk=$(__config_get disk0_name)
+	_bootdisk_dev=$(__config_get disk0_dev)
+	_uefi=$(__config_get uefi)
+	_comports=$(__config_get comports)
+	_uuid=$(__config_get uuid)
+
+	# set defaults
+	: ${_bootdisk_dev:=file}
+	: ${_comports:=com1}
+
+	__log "guest" "${_name}" "initialising"
+	__log "guest" "${_name}" " [guest: ${_guest}]"
+	__log "guest" "${_name}" " [uefi: ${_uefi:-no}]"
+	__log "guest" "${_name}" " [cpu: ${_cpu}]"
+	__log "guest" "${_name}" " [memory: ${_memory}]"
+	__log "guest" "${_name}" " [com ports: ${_comports}]"
+	__log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
+	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
+	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
+
+	# check basic settings
+	if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+		__log "guest" "${_name}" "unable to start - missing required configuration"
+		exit 15
+	fi
+
+	# default bhyve options
+	_opts="-AHP"
+
+	# if uefi, make sure we have bootrom, then update options for uefi support
+	if [ -n "${_uefi}" ]; then
+		if [ `uname -K` -lt 1100000 ]; then
+			__log "guest" "${_name}" "uefi guests can only be run on FreeBSD 11 or newer"
+			exit 15
+		fi
+
+		if [ "${_uefi}" = "csm" ]; then
+			if [ ! -e "${vm_dir}/.config/BHYVE_UEFI_CSM.fd" ]; then
+				__log "guest" "${_name}" "please download uefi csm firmware to ${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+				exit 15
+			fi
+
+			_opts="-l bootrom,${vm_dir}/.config/BHYVE_UEFI_CSM.fd -Hw"
+		else
+			if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
+				__log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
+				exit 15
+			fi
+
+			_opts="-l bootrom,${vm_dir}/.config/BHYVE_UEFI.fd -Hw"
+		fi
+	fi
+
+	# try to find guest support
+	_guest_support=$(type "__guest_${_guest}")
+	_guest_support=$(echo "${_guest_support}" | grep "shell function")
+
+	if [ -z "${_guest_support}" ]; then
+		__log "guest" "${_name}" "unsupported guest type: ${_guest}"
+		exit 15
+	fi
+
+	# set uuid
+	[ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
+
+	# complete the boot disk path
+	_bootdisk=$(__vm_get_disk_path "${_name}" "${_bootdisk}" "${_bootdisk_dev}")
+
+	# build bhyve device string
+	__vm_bhyve_device_comports
+	__vm_bhyve_device_basic
+	__vm_bhyve_device_disks
+	__vm_bhyve_device_networking
+	__vm_bhyve_device_passthru
+
+	__vm_lock "${_name}"
+	__log "guest" "${_name}" "booting"
+
+	while [ 1 ]; do
+
+		# destroy existing vmm
+		# freebsd seems happy to run a bhyveload/bhyve loop
+		# grub-bhyve doesn't seem to like it
+		# Peter says don't destroy in Windows instructions, so don't if in UEFI mode
+		if [ -e "/dev/vmm/${_name}" -a -z "${_uefi}" ]; then
+			bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
+			if [ $? -ne 0 ]; then
+				__log "guest" "${_name}" "failed to destroy existing vmm device"
+				_exit=15
+				break
+			fi
+		fi
+
+		# load guest
+		if [ -n "${_iso}" ]; then
+			_iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
+			eval "__guest_${_guest}" "install"
+		else
+			# always provide a cd for UEFI guests at the moment
+			[ -n "${_uefi}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
+			eval "__guest_${_guest}" "run"
+		fi
+
+		# check no errors
+		if [ ${_exit} -ne 0 ]; then
+			__log "guest" "${_name}" "loader returned error ${_exit}"
+			break
+		fi
+
+		__log "guest" "${_name}" " [bhyve devices: ${_devices}]"
+		__log "guest" "${_name}" " [bhyve console: ${_comstring}]"
+		__log "guest" "${_name}" " [bhyve options: ${_opts}]"
+		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
+		__log "guest" "${_name}" "starting bhyve"
+
+		# acutlly run bhyve!
+		# we're already in the background so we just wait for it to exit
+		bhyve -c ${_cpu} -m ${_memory} \
+			 ${_devices} \
+			 ${_iso_dev} \
+			 ${_comstring} \
+			 ${_opts} \
+			 ${_name}
+
+		# get bhyve exit code
+		_exit=$?
+		__log "guest" "${_name}" "bhyve exited with status ${_exit}"
+
+		# if 0, guest rebooted so continue loop
+		# anything else we break and shutdown
+		[ $_exit -ne 0 ] && break
+		__log "guest" "${_name}" "restarting"
+
+		# remove install iso so guest reboots from disk
+		# after install bhyve will still get install cd until a full shutdown+restart
+		_iso=""
+	done
+
+	# destroy taps
+	for _devices in ${_taplist}; do
+		__log "guest" "${_name}" "destroying network device ${_devices}"
+		ifconfig "${_devices}" destroy
+	done
+
+	__log "guest" "${_name}" "stopped"
+	bhyvectl --destroy --vm=${_name}
+	__vm_unlock "${_name}"
+	exit ${_exit}
+}
+
+# lock a vm
+# stop another instance being started on this or another host
+__vm_lock(){
+	hostname > "${vm_dir}/$1/run.lock"
+}
+
+# unlock a vm
+__vm_unlock(){
+	rm "${vm_dir}/$1/run.lock"
+}
+
+# create string for guest com ports
+__vm_bhyve_device_comports(){
+	local _port _num=1 _nmdm=""
+
+	rm "${vm_dir}/${_name}/console" >/dev/null 2>&1
+
+	for _port in ${_comports}; do
+		_nmdm=$(__vm_create_console "${_nmdm}")
+
+		# use first com port for the loader
+		[ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
+
+		echo "${_port}=/dev/nmdm${_nmdm}B" >> "${vm_dir}/${_name}/console"
+		_comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
+		_num=$((_num + 1))
+	done
+}
+
+# get bhyve device string for basic devices
+# hostbridge & lpc on their own slots
+__vm_bhyve_device_basic(){
+	_devices="-s 0,hostbridge -s 31,lpc"
+}
+
+# get bhyve device string for disk devices
+__vm_bhyve_device_disks(){
+	local _disk _type _dev _path
+	local _num=0
+
+	# get disks
+	while [ 1 ]; do
+		_disk=$(__config_get "disk${_num}_name")
+		_type=$(__config_get "disk${_num}_type")
+		_dev=$(__config_get "disk${_num}_dev")
+
+		if [ -n "${_disk}" -a -n "${_type}" ]; then
+			# we need to move slot if we've hit function 8
+			if [ ${_func} -ge 8 ]; then
+				_func=0
+				_slot=$(($_slot + 1))
+			fi
+
+			_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
+			_devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+
+			if [ -n "${_uefi}" ]; then
+				_slot=$(($_slot + 1))
+
+				# can't go past slot 6 with current UEFI firmware
+				if [ ${_slot} -ge 7 ]; then
+					__log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
+					break
+				fi
+			else
+				_func=$(($_func + 1))
+			fi
+		else
+			break
+		fi
+
+		_num=$(($_num + 1))
+	done
+
+	if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
+		_slot=$(($_slot + 1))
+		_func=0
+	fi
+}
+
+# get bhyve device string for networking
+# we add each tap to __taplist from __vm_run as it
+# needs to clean them up afterwards
+__vm_bhyve_device_networking(){
+	local _type _switch _mac _tap _sid
+	local _num=0
+
+	while [ 1 ]; do
+		_type=$(__config_get "network${_num}_type")
+		_switch=$(__config_get "network${_num}_switch")
+		_mac=$(__config_get "network${_num}_mac")
+
+		if [ -n "${_type}" -a -n "${_switch}" ]; then
+			_tap=$(ifconfig tap create)
+
+			if [ -n "${_tap}" ]; then
+				# move slot if we've hit function 8
+				if [ ${_func} -ge 8 ]; then
+					_func=0
+					_slot=$(($_slot + 1))
+				fi
+
+				__log "guest" "${_name}" "created network device ${_tap}"
+				ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
+				_sid=$(__switch_get_ident "${_switch}")
+
+				[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
+
+				_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
+				[ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+				_func=$(($_func + 1))
+				_taplist="${_taplist}${_taplist:+ }${_tap}"
+			fi
+		else
+			break
+		fi
+
+		_num=$(($_num + 1))
+	done
+
+	if [ ${_num} -ge 1 ]; then
+		_slot=$(($_slot + 1))
+		_func=0
+	fi
+}
+
+# get any pci passthrough devices
+__vm_bhyve_device_passthru(){
+	local _dev _orig_slot _orig_func
+	local _last_orig_slot
+	local _num=0
+
+	while [ 1 ]; do
+		_dev=$(__config_get "passthru${_num}")
+
+		if [ -n "${_dev}" ]; then
+			_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
+			_orig_func=$(echo "${_dev}" | awk -F'/' '{print $3}')
+
+			# only move to new slot if the original device is on a different slot to the last one.
+			# if user wants to passthru a device that has multiple functions which must stay together
+			# on one slot, they should be together in configuration file
+			if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
+				_slot=$(($_slot + 1))
+			fi
+
+			# we use the original function number for all devices.
+			# does this work if you only pass through function 1 or 2, and leave 0 empty?
+			_devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
+			_last_orig_slot=$(echo "${_dev}" | awk -F'/' '{print $1}')
+		else
+			break
+		fi
+
+		_num=$(($_num + 1))
+	done
+
+	if [ ${_num} -ge 1 ]; then
+		_slot=$(($_slot + 1))
+
+		# add wired memory for 11+
+		[ `uname -K` -ge 1100000 ] && _opts="${_opts} -S"
+	fi
+}
+
+# get the path to a disk image depending on type
+__vm_get_disk_path(){
+	local _name="$1"
+	local _disk="$2"
+	local _disk_dev="$3"
+	local _path
+
+	case "${_disk_dev}" in
+		zvol)
+			;&
+		sparse-zvol)
+			# need to look at this, don't really want to reference VM_ZFS* variables here
+			_path="/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
+			;;
+		*)
+			_path="${vm_dir}/${_name}/${_disk}"
+			;;
+	esac
+
+	echo "${_path}"
+}
+
+# create a new console for a vm
+# for now we are using nmdm
+__vm_create_console(){
+	local _skip="$1"
+	local _ls
+	local _num=0
+
+	# loop until we find an available nmdm
+	# using -e seemed to create devices so now scanning ls
+	while [ 1 ]; do
+		_ls=$(ls -1 /dev | grep "nmdm${_num}A")
+		[ -z "${_ls}" -a "${_num}" != "${_skip}" ] && break
+		_num=$(($_num + 1))
+	done
+
+	echo "${_num}"
+}

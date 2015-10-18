@@ -528,8 +528,7 @@ __vm_bhyve_device_comports(){
 		[ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
 
 		echo "${_port}=/dev/nmdm${_nmdm}B" >> "${vm_dir}/${_name}/console"
-		[ -n "${_comstring}" ] && _comstring="${_comstring} "
-		_comstring="${_comstring}-l ${_port},/dev/nmdm${_nmdm}A"
+		_comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
 		_num=$((_num + 1))
 	done
 }
@@ -617,8 +616,7 @@ __vm_bhyve_device_networking(){
 				[ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
 				_func=$(($_func + 1))
-				[ -n "${_taplist}" ] && _taplist="${_taplist} "
-				_taplist="${_taplist}${_tap}"
+				_taplist="${_taplist}${_taplist:+ }${_tap}"
 			fi
 		else
 			break

@@ -60,7 +60,8 @@ __switch_list(){
 	local _switchlist _portlist _switch _port _vlan _nat
 	local _id _format="%-19s %-12s %-7s %-7s %s\n"
 
-	_switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+	__config_load "${vm_dir}/.config/switch"
+	_switchlist=$(__config_get switch_list)
 
 	printf "${_format}" "NAME" "IDENT" "VLAN" "NAT" "PORTS"
 
@@ -68,13 +69,13 @@ __switch_list(){
 		_id=$(__switch_get_ident "${_switch}")
 		[ -z "${_id}" ] && _id="-"
 
-		_portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
-		_vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
-		_nat=$(sysrc -inqf "${vm_dir}/.config/switch" "nat_${_switch}")
+		_portlist=$(__config_get "ports_${_switch}")
+		_vlan=$(__config_get "vlan_${_switch}")
+		_nat=$(__config_get "nat_${_switch}")
 
-		[ -z "${_portlist}" ] && _portlist="-"
-		[ -z "${_vlan}" ] && _vlan="-"
-		[ -z "${_nat}" ] && _nat="-"
+		: ${_portlist:=-}
+		: ${_vlan:=-}
+		: ${_nat:=-}
 
 		printf "${_format}" "${_switch}" "${_id}" "${_vlan}" "${_nat}" "${_portlist}"
 	done

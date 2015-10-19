@@ -41,10 +41,10 @@ __vm_list(){
 
 			_num=1
 			_auto="No"
-			_run=$(__vm_running_check "${_name}")
-			_guest=$(__config_get guest)
-			_cpu=$(__config_get cpu)
-			_memory=$(__config_get memory)
+			__vm_running_check "_run" "${_name}"
+			__config_get "_guest" "guest"
+			__config_get "_cpu" "cpu"
+			__config_get "_memory" "memory"
 
 			# find out if we auto-start this vm, and get sequence number
 			for _vm in ${vm_list}; do
@@ -97,8 +97,10 @@ __vm_create(){
 		__err "unable to find template ${vm_dir}/.templates/${_template}.conf"
 
 	# we need to get disk0 name and device type from the template
-	_disk=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_name)
-	_disk_dev=$(sysrc -inqf "${vm_dir}/.templates/${_template}.conf" disk0_dev)
+	__config_load "${vm_dir}/.templates/${_template}.conf"
+	__config_get "_disk" "disk0_name"
+	__config_get "_disk_dev" "disk0_dev"
+
 	[ -z "${_disk}" ] && __err "template is missing disk0_name specification"
 
 	# get the directory to store our vm data in
@@ -207,9 +209,9 @@ __vm_add_disk(){
 	__config_load "${vm_dir}/${_name}/${_name}.conf"
 
 	while [ 1 ]; do
-		_curr=$(__config_get "disk${_num}_name")
+		__config_get "_curr" "disk${_num}_name"
 		[ -z "${_curr}" ] && break
-		_emulation=$(__config_get "disk${_num}_type")
+		__config_get "_emulation" "disk${_num}_type"
 		_num=$((_num + 1))
 	done
 
@@ -264,7 +266,7 @@ __vm_add_network(){
 
 	while [ 1 ]; do
 		_emulation="${_curr}"
-		_curr=$(__config_get "network${_num}_type")
+		__config_get "_curr" "network${_num}_type"
 		[ -z "${_curr}" ] && break
 		_num=$((_num + 1))
 	done
@@ -363,9 +365,9 @@ __vm_start(){
 	__config_load "${_conf}"
 
 	# check basic settings before going into background mode
-	_memory=$(__config_get memory)
-	_guest=$(__config_get guest)
-	_disk=$(__config_get disk0_name)
+	__config_get "_memory" "memory"
+	__config_get "_guest" "guest"
+	__config_get "_disk" "disk0_name"
 
 	if [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ]; then
 		__warn "incomplete virtual machine configuration"

@@ -199,7 +199,7 @@ You also need the UEFI firmware, which can be retrieved from
 http://people.freebsd.org/~grehan/bhyve_uefi/BHYVE_UEFI_20151002.fd
 and needs to be placed in `$vm_dir/.config/BHYVE_UEFI.fd`.
 
-One you have an ISO capable of installing without user interaction, vm-bhyve works as normal.
+Once you have an ISO capable of installing without user interaction, vm-bhyve works as normal.
 Just copy the ISO to `$vm_dir/.iso/`, then run the following to install:
 
     # vm create -t windows -s 50G winguest

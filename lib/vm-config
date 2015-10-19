@@ -37,17 +37,23 @@ __config_load(){
 
 # get a configuration value from the current config file
 #
+# @param string _var the variable to put value into
 # @param string _key the name of the config key to retrieve
 #
 __config_get(){
-	local _key="$1"
-	local _line
+	local _c_var="$1"
+	local _c_key="$2"
+	local _c_line
 	local IFS=$'\n'
 
-	for _line in ${VM_CONFIG}; do
-		if [ "${_key}" = "${_line%%=*}" ]; then
-			echo "${_line##*=}"
-			break
+	for _c_line in ${VM_CONFIG}; do
+		if [ "${_c_key}" = "${_c_line%%=*}" ]; then
+			setvar "${_c_var}" "${_c_line##*=}"
+			return 0
 		fi
 	done
+
+	# not found
+	setvar "${_c_var}" ""
+	return 1
 }

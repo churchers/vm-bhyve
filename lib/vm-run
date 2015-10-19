@@ -41,15 +41,14 @@ __vm_run(){
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
 
 	__config_load "${_conf}"
-
-	_cpu=$(__config_get cpu)
-	_memory=$(__config_get memory)
-	_guest=$(__config_get guest)
-	_bootdisk=$(__config_get disk0_name)
-	_bootdisk_dev=$(__config_get disk0_dev)
-	_uefi=$(__config_get uefi)
-	_comports=$(__config_get comports)
-	_uuid=$(__config_get uuid)
+	__config_get "_cpu" "cpu"
+	__config_get "_memory" "memory"
+	__config_get "_guest" "guest"
+	__config_get "_bootdisk" "disk0_name"
+	__config_get "_bootdisk_dev" "disk0_dev"
+	__config_get "_uefi" "uefi"
+	__config_get "_comports" "comports"
+	__config_get "_uuid" "uuid"
 
 	# set defaults
 	: ${_bootdisk_dev:=file}
@@ -113,7 +112,7 @@ __vm_run(){
 	[ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
 	# complete the boot disk path
-	_bootdisk=$(__vm_get_disk_path "${_name}" "${_bootdisk}" "${_bootdisk_dev}")
+	__vm_get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
 
 	# build bhyve device string
 	__vm_bhyve_device_comports
@@ -231,7 +230,7 @@ __vm_bhyve_device_comports(){
 	rm "${vm_dir}/${_name}/console" >/dev/null 2>&1
 
 	for _port in ${_comports}; do
-		_nmdm=$(__vm_find_console "${_nmdm}")
+		__vm_find_console "_nmdm" "${_nmdm}"
 
 		# use first com port for the loader
 		[ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
@@ -266,9 +265,9 @@ __vm_bhyve_device_disks(){
 
 	# get disks
 	while [ 1 ]; do
-		_disk=$(__config_get "disk${_num}_name")
-		_type=$(__config_get "disk${_num}_type")
-		_dev=$(__config_get "disk${_num}_dev")
+		__config_get "_disk" "disk${_num}_name"
+		__config_get "_type" "disk${_num}_type"
+		__config_get "_dev" "disk${_num}_dev"
 
 		# break if disk not found
 		[ -z "${_disk}" -o -z "${_type}" ] && break
@@ -279,7 +278,7 @@ __vm_bhyve_device_disks(){
 			_slot=$((_slot + 1))
 		fi
 
-		_path=$(__vm_get_disk_path "${_name}" "${_disk}" "${_dev}")
+		__vm_get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 		_devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
 
 		if [ -n "${_uefi}" ]; then
@@ -318,9 +317,9 @@ __vm_bhyve_device_networking(){
 	local _num=0
 
 	while [ 1 ]; do
-		_type=$(__config_get "network${_num}_type")
-		_switch=$(__config_get "network${_num}_switch")
-		_mac=$(__config_get "network${_num}_mac")
+		__config_get "_type" "network${_num}_type"
+		__config_get "_switch" "network${_num}_switch"
+		__config_get "_mac" "network${_num}_mac"
 
 		# we need a type and switch
 		[ -z "${_type}" -o -z "${_switch}" ] && break
@@ -337,8 +336,8 @@ __vm_bhyve_device_networking(){
 
 			__log "guest" "${_name}" "created network device ${_tap}"
 			ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
-			_sid=$(__switch_get_ident "${_switch}")
 
+			__switch_get_ident "_sid" "${_switch}"
 			[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
 
 			_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
@@ -369,12 +368,12 @@ __vm_bhyve_device_passthru(){
 	local _num=0
 
 	while [ 1 ]; do
-		_dev=$(__config_get "passthru${_num}")
+		__config_get "_dev" "passthru${_num}"
 
 		[ -z "${_dev}" ] && break
 
-		_orig_slot=$(echo "${_dev}" | cut -d/ -f1)
-		_orig_func=$(echo "${_dev}" | cut -d/ -f3)
+		_orig_slot=${_dev%%/*}
+		_orig_func=${_dev##*/}
 
 		# only move to new slot if the original device is on a different slot to the last one.
 		# if user wants to passthru a device that has multiple functions which must stay together
@@ -401,26 +400,26 @@ __vm_bhyve_device_passthru(){
 
 # get the path to a disk image depending on type
 #
+# @param string _var variable to put disk path into
 # @param string _name the name of the guest
 # @param string _disk the name of the disk
 # @param string _disk_dev=file|zvol|sparse-zvol type of device
-# @echo string full device path on the host file system
 #
 __vm_get_disk_path(){
-	local _name="$1"
-	local _disk="$2"
-	local _disk_dev="$3"
-	local _path
+	local _var="$1"
+	local _name="$2"
+	local _disk="$3"
+	local _disk_dev="$4"
 
 	case "${_disk_dev}" in
 		zvol)
 			;&
 		sparse-zvol)
 			# need to look at this, don't really want to reference VM_ZFS* variables here
-			echo "/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
+			setvar "${_var}" "/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
 			;;
 		*)
-			echo "${vm_dir}/${_name}/${_disk}"
+			setvar "${_var}" "${vm_dir}/${_name}/${_disk}"
 			;;
 	esac
 }
@@ -430,11 +429,13 @@ __vm_get_disk_path(){
 # of them, so we can pass in the number of the previous console, and use
 # that to start the next search from. otherwise we'd find the same number again
 #
+# @param string _var variable to put value into
 # @param optional int _num the device number to start searching at (default = 0)
 # @echo int the number of a spare nmdm device
 #
 __vm_find_console(){
-	local _num="$1"
+	local _var="$1"
+	local _num="$2"
 	local _ls
 
 	if [ -n "${_num}" ]; then
@@ -451,7 +452,8 @@ __vm_find_console(){
 		_num=$((_num + 1))
 	done
 
-	echo "${_num}"
+	# set value
+	setvar "${_var}" "${_num}"
 }
 
 # get a list of all running virtual machines
@@ -472,28 +474,30 @@ __vm_running_load(){
 # specified guest. If found we output "Running" or "Bootloader", along with
 # the PID. If not running we output "Stopped"
 #
+# @param string _var variable to put result into
 # @param string _name name of the guest to look for
 # @echo string "Running (PID)" or "Bootloader (PID)" or "Stopped"
 #
 __vm_running_check(){
-	local _name="$1"
+	local _var="$1"
+	local _name="$2"
 	local IFS=$'\n'
 	local _entry
 
 	for _entry in ${VM_RUN_BHYVE}; do
 		if [ "${_entry##* }" = "${_name}" ]; then
-			echo "Running (${_entry%% *})"
+			setvar "${_var}" "Running (${_entry%% *})"
 			return 0
 		fi
 	done
 
 	for _entry in ${VM_RUN_LOAD}; do
 		if [ "${_entry##* }" = "${_name}" ]; then
-			echo "Bootloader (${_entry%% *})"
+			setvar "${_var}" "Bootloader (${_entry%% *})"
 			return 0
 		fi
 	done
 
-	echo "Stopped"
+	setvar "${_var}" "Stopped"
 	return 1
 }

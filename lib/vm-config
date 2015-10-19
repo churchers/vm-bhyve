@@ -34,13 +34,11 @@ __config_load(){
 # get a configuration value from the current config file
 __config_get(){
 	local _key="$1"
-	local _line _entry
+	local _line
 	local IFS=$'\n'
 
 	for _line in ${VM_CONFIG}; do
-		_entry="${_line%%=*}"
-
-		if [ "${_key}" = "${_entry}" ]; then
+		if [ "${_key}" = "${_line%%=*}" ]; then
 			echo "${_line##*=}"
 			break
 		fi

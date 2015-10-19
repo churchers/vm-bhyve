@@ -312,7 +312,8 @@ __vm_start(){
 
 	if [ -e "${vm_dir}/${_name}/run.lock" ]; then
 		_host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
-		__err "${_name} appears to already be running on ${_host} (locked)"
+		__warn "${_name} appears to already be running on ${_host} (locked)"
+		return 1
 	fi
 
 	__config_load "${_conf}"
@@ -322,8 +323,10 @@ __vm_start(){
 	_guest=$(__config_get guest)
 	_disk=$(__config_get disk0_name)
 
-	[ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ] && \
-		__err "incomplete virtual machine configuration"
+	if [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ]; then
+		__warn "incomplete virtual machine configuration"
+		return 1
+	fi
 
 	# run background process to actually start bhyve
 	# this will run as long as vm is running, including restarting bhyve after guest reboot

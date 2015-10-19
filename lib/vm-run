@@ -71,7 +71,7 @@ __vm_run(){
 
 	# if uefi, make sure we have bootrom, then update options for uefi support
 	if __checkyesno "${_uefi}"; then
-		if [ `uname -K` -lt 1100000 ]; then
+		if [ ${BSD_VERSION} -lt 1100000 ]; then
 			__log "guest" "${_name}" "uefi guests can only be run on FreeBSD 11 or newer"
 			exit 15
 		fi
@@ -353,7 +353,7 @@ __vm_bhyve_device_passthru(){
 		_slot=$((_slot + 1))
 
 		# add wired memory for 11+
-		[ `uname -K` -ge 1100000 ] && _opts="${_opts} -S"
+		[ ${BSD_VERSION} -ge 1100000 ] && _opts="${_opts} -S"
 	fi
 }
 

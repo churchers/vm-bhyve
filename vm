@@ -26,6 +26,7 @@
 
 VERSION=0.8.9
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
+BSD_VERSION=$(uname -K)
 
 . /etc/rc.subr
 load_rc_config "vm"
@@ -53,7 +54,7 @@ fi
 
 # check environment
 [ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
-[ `uname -K` -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
+[ ${BSD_VERSION} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
 
 # we should be enabled in rc.conf
 if ! checkyesno vm_enable; then

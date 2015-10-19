@@ -40,6 +40,9 @@ __vm_run(){
 	local _com _comports _comstring
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
 
+	# bail out immediately if no guest or locked
+	[ -z "${_name}" -o -e "${vm_dir}/${_name}/run.lock" -o ! -f "${_conf}" ] && exit 10
+
 	__config_load "${_conf}"
 	__config_get "_cpu" "cpu"
 	__config_get "_memory" "memory"

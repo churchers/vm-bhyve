@@ -63,7 +63,7 @@ __switch_init(){
 #
 __switch_list(){
 	local _switchlist _portlist _switch _port _vlan _nat
-	local _id _format="%-19s %-12s %-7s %-7s %s\n"
+	local _id _format="%-15s %-15s %-6s %-9s %s\n"
 
 	__config_load "${vm_dir}/.config/switch"
 	_switchlist=$(__config_get switch_list)

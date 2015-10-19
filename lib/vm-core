@@ -29,6 +29,7 @@ __vm_list(){
 	local _name _guest _cpu _memory _run _vm _auto _num
 	local _format="%-15s %-15s %-6s %-9s %-12s %-20s\n"
 
+	__vm_running_load
 	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
 
 	ls -1 "${vm_dir}" | \
@@ -38,33 +39,22 @@ __vm_list(){
 
 			_num=1
 			_auto="No"
-			_run=$(ps ax | grep " ${_name} [(]bhyve" |awk '{print $1}')
+			_run=$(__vm_running_check "${_name}")
 			_guest=$(__config_get guest)
 			_cpu=$(__config_get cpu)
 			_memory=$(__config_get memory)
 
-			# see if bhyve running
-			if [ -n "${_run}" ]; then
-				_run="Running (${_run})"
-			else
-				_run="Stopped"
-			fi
-
-			# if no bhyve, look for bhyveload/grub-bhyve
-			if [ "${_run}" = "Stopped" ]; then
-				_run=$(ps ax |grep -E "[b]hyveload|[g]rub-bhyve" |grep -E "[ ]${_name}$" |awk '{print $1}')
-
-				if [ -n "${_run}" ]; then
-					_run="Bootloader"
-				else
-					_run="Stopped"
-				fi
-			fi
-
+			# find out if we auto-start this vm, and get sequence number
 			for _vm in ${vm_list}; do
 				[ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
 				_num=$(($_num + 1))
 			done
+
+			# if stopped, see if it's locked by another host
+			if [ "${_run}" = "Stopped" -a -e "${vm_dir}/${_name}/run.lock" ]; then
+				_run=$(head -n1 "${vm_dir}/${_name}/run.lock")
+				_run="Locked (${_run})"
+			fi
 
 			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
 		fi
@@ -301,7 +291,7 @@ __vm_startall(){
 # stop all bhyve instances
 # note this will also stop instances not started by vm-bhyve
 __vm_stopall(){
-	local _pids=$(ps ax | grep "[(]bhyve)" | awk '{print $1}')
+	local _pids=$(pgrep -f 'bhyve:')
 
 	echo "Shutting down all bhyve virtual machines"
 	killall bhyve
@@ -348,7 +338,7 @@ __vm_stop(){
 	[ -z "${_name}" ] && __usage
 	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
-	_pid=$(ps ax | grep ": ${_name} [(]bhyve)" | awk '{print $1}')
+	_pid=$(pgrep -fx "bhyve: ${_name}")
 	[ -z "${_pid}" ] && __err "unable to locate process id for this virtual machine"
 
 	kill "${_pid}"

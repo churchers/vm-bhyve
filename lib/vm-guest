@@ -168,6 +168,7 @@ __guest_centos-grub(){
 		return
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__log "guest" "${_name}" "grub-bhyve -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -d /grub -M ${_memory} ${_name}"
 		echo "" | grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -d "/grub" -M "${_memory}" "${_name}"
 	fi
 

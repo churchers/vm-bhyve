@@ -399,3 +399,33 @@ __vm_find_console(){
 
 	echo "${_num}"
 }
+
+# get a list of all running virtual machines
+__vm_running_load(){
+	VM_RUN_BHYVE=$(pgrep -fl "bhyve:" | awk '{print $1,$NF}')
+	VM_RUN_LOAD=$(pgrep -fl "grub-bhyve|bhyveload" | awk '{print $1,$NF}')
+}
+
+# see if a specific virtual machine is running
+__vm_running_check(){
+	local _name="$1"
+	local IFS=$'\n'
+	local _entry
+
+	for _entry in ${VM_RUN_BHYVE}; do
+		if [ "${_entry##* }" = "${_name}" ]; then
+			echo "Running (${_entry%% *})"
+			return 0
+		fi
+	done
+
+	for _entry in ${VM_RUN_LOAD}; do
+		if [ "${_entry##* }" = "${_name}" ]; then
+			echo "Bootloader (${_entry%% *})"
+			return 0
+		fi
+	done
+
+	echo "Stopped"
+	return 1
+}

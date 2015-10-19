@@ -24,8 +24,14 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# 'vm _run'
 # run a virtual machine
 # this is the background process that does all the work
+# in most cases this should not be run directly
+#
+# @param string _name the name of the guest to run
+# @param optional string _iso the iso file for an install
+#
 __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
@@ -175,7 +181,8 @@ __vm_run(){
 		__log "guest" "${_name}" "restarting"
 
 		# remove install iso so guest reboots from disk
-		# after install bhyve will still get install cd until a full shutdown+restart
+		# after install non-uefi guests will still get install cd until a full shutdown+restart
+		# as we don't reset _iso_dev
 		_iso=""
 	done
 
@@ -193,16 +200,31 @@ __vm_run(){
 
 # lock a vm
 # stop another instance being started on this or another host
+# we write hostname so vm-bhyve can inform user which host locked a vm
+#
+# @param string - the name of the guest to lock
+#
 __vm_lock(){
 	hostname > "${vm_dir}/$1/run.lock"
 }
 
 # unlock a vm
+#
+# @param string - the name of the guest to unlock
+#
 __vm_unlock(){
 	rm "${vm_dir}/$1/run.lock" >/dev/null 2>&1
 }
 
 # create string for guest com ports
+# this builds the '-l comX' part of the bhyve command into _comstring
+# _com is used by bhyveload|grub_bhyve so we set that to the first
+# com port we come across.
+# The nmdm devices are written to $vm_dir/{guest}/console so we can
+# read them back later for the 'vm console' command
+#
+# @modifies _com _comstring
+#
 __vm_bhyve_device_comports(){
 	local _port _num=1 _nmdm=""
 
@@ -223,11 +245,21 @@ __vm_bhyve_device_comports(){
 # get bhyve device string for basic devices
 # hostbridge & lpc on their own slots
 # windows requires slot 0 & 31, nothing else cares fortunately
+#
+# @modifies _devices
+#
 __vm_bhyve_device_basic(){
 	_devices="-s 0,hostbridge -s 31,lpc"
 }
 
 # get bhyve device string for disk devices
+# read all disks starting at 0 and add to the _devices string
+# this is done first so disks will start at slot 4. For uefi,
+# we move through slots and stop at slot 6. For non-uefi we
+# step through all functions and just keep going
+#
+# @modifies _devices _slot
+#
 __vm_bhyve_device_disks(){
 	local _disk _type _dev _path
 	local _num=0
@@ -274,8 +306,13 @@ __vm_bhyve_device_disks(){
 }
 
 # get bhyve device string for networking
-# we add each tap to __taplist from __vm_run as it
-# needs to clean them up afterwards
+# we dynamically create a new tap device for each interface
+# if we can find the correct bridge, we then add the tap as a member
+# we add each tap to __taplist from __vm_run which it will
+# use to desstroy them all on shutdown
+#
+# @modifies _devices _slot _taplist
+#
 __vm_bhyve_device_networking(){
 	local _type _switch _mac _tap _sid
 	local _num=0
@@ -321,6 +358,11 @@ __vm_bhyve_device_networking(){
 }
 
 # get any pci passthrough devices
+# FreeBSD 11 needs wired memory so update _opts in that case if
+# we have any pass through devices
+#
+# @modifies _devices _slot _opts
+#
 __vm_bhyve_device_passthru(){
 	local _dev _orig_slot _orig_func
 	local _last_orig_slot
@@ -358,6 +400,12 @@ __vm_bhyve_device_passthru(){
 }
 
 # get the path to a disk image depending on type
+#
+# @param string _name the name of the guest
+# @param string _disk the name of the disk
+# @param string _disk_dev=file|zvol|sparse-zvol type of device
+# @echo string full device path on the host file system
+#
 __vm_get_disk_path(){
 	local _name="$1"
 	local _disk="$2"
@@ -377,8 +425,14 @@ __vm_get_disk_path(){
 	esac
 }
 
-# find a spare console for a vm
-# if passed a console number, start looking after that
+# find a spare nmdm device for a vm
+# for guests that have multiple consoles, we won't yet have opened any
+# of them, so we can pass in the number of the previous console, and use
+# that to start the next search from. otherwise we'd find the same number again
+#
+# @param optional int _num the device number to start searching at (default = 0)
+# @echo int the number of a spare nmdm device
+#
 __vm_find_console(){
 	local _num="$1"
 	local _ls
@@ -401,12 +455,26 @@ __vm_find_console(){
 }
 
 # get a list of all running virtual machines
+# this loads a list of all running guests into global variables
+# both variables are in the following format with one guest per line
+# "pid guest"
+#
+# VM_RUN_BHYVE = all running bhyve instances
+# VM_RUN_LOAD  = all loading guests (bhyveload|grub-bhyve)
+#
 __vm_running_load(){
 	VM_RUN_BHYVE=$(pgrep -fl "bhyve:" | awk '{print $1,$NF}')
 	VM_RUN_LOAD=$(pgrep -fl "grub-bhyve|bhyveload" | awk '{print $1,$NF}')
 }
 
 # see if a specific virtual machine is running
+# we search the VM_RUN_BHYVE and VM_RUN_LOAD variables looking for the
+# specified guest. If found we output "Running" or "Bootloader", along with
+# the PID. If not running we output "Stopped"
+#
+# @param string _name name of the guest to look for
+# @echo string "Running (PID)" or "Bootloader (PID)" or "Stopped"
+#
 __vm_running_check(){
 	local _name="$1"
 	local IFS=$'\n'

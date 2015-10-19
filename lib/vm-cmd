@@ -25,6 +25,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # cmd: vm ...
+#
+# process the vm command line to see which function is requested
+#
+# @param string _cmd the command right after 'vm '
+#
 __parse_cmd(){
 	local _cmd="$1"
 	shift
@@ -95,6 +100,12 @@ __parse_cmd(){
 }
 
 # cmd: vm switch ...
+#
+# parse switch command
+# we've already shifted once, so $1 is the switch function
+#
+# @param string _cmd the command right after 'vm switch '
+#
 __parse_switch_cmd(){
 	local _cmd="$1"
 	shift

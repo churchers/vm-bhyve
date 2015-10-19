@@ -25,6 +25,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # add a value to an rc file, appending to an existing string value
+#
+# @param string _file the file to update (relative to $vm_dir/)
+# @param string _var the variable to update
+# @param string _value value to add to the string
+#
 __rc_append_string(){
 	local _file="${vm_dir}/$1"
 	local _var="$2"
@@ -40,6 +45,12 @@ __rc_append_string(){
 }
 
 # remove a value from a string list
+# eg. removing "two" from var="one two three" would result in var="one three"
+#
+# @param string _file the file to update (relative to $vm_dir/)
+# @param string _var the variable to update
+# @param string _value the value to remove
+#
 __rc_splice_string(){
 	local _file="${vm_dir}/$1"
 	local _var="$2"

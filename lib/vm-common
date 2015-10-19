@@ -25,6 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # make sure we have the right environment
+#
 __setup(){
 	__load_module "vmm"
 	__load_module "nmdm"
@@ -35,6 +36,9 @@ __setup(){
 }
 
 # load a kernel module
+#
+# @param string _mod the module name
+#
 __load_module(){
 	local _mod="$1"
 	kldstat -n ${_mod} >/dev/null 2>&1
@@ -45,6 +49,10 @@ __load_module(){
 }
 
 # restart a local service
+# checks if service is running and either starts or restarts
+#
+# @param string _serv the name of the service
+#
 __restart_service(){
 	local _serv="$1"
 
@@ -59,7 +67,9 @@ __restart_service(){
 	[ $? -ne 0 ] && __warn "failed to start/restart service ${_serv}"
 }
 
-# show usage
+# show version & usage information
+# we exit after running this
+#
 __usage(){
 cat << EOT
 vm: Bhyve virtual machine managament v${VERSION}
@@ -95,17 +105,33 @@ EOT
 }
 
 # error
+# display an error message an exit immediately
+#
+# @param string - the message to display
+#
 __err(){
 	echo "${0}: ERROR: $1"
 	exit 1
 }
 
 # warn
+# display warning, but do not exit
+#
+# @param string - the message to display
+#
 __warn(){
 	echo "${0}: WARNING: $1"
 }
 
 # log to file
+# writes the date and a message to the specified log
+# the global log is in $vm_dir/vm-bhyve.log
+# guest logs are $vm_dir/{guest}/vm-bhyve.log
+#
+# @param string _type=guest|system log to global vm-bhyve log or guest
+# @param string _guest if _type=guest, the guest name, otherwise do not provide at all
+# @param string _message the message to log
+#
 __log(){
 	local _type="$1"
 	local _lf="vm-bhyve.log"
@@ -129,6 +155,14 @@ __log(){
 
 # write content to a file, and log what we
 # did to the guest log file
+# it's useful to be able to see what files vm-bhyve is creating
+# and the contents so we write that to the log.
+# The file is created in $vm_dir/{guest}
+#
+# @param string _type=write|appnd create file or append to it
+# @param string _guest the guest name
+# @param string _file the file name to write to
+#
 __log_and_write(){
 	local _type="$1"
 	local _guest="$2"
@@ -148,6 +182,10 @@ __log_and_write(){
 }
 
 # confirm yes or no
+#
+# @param string _msh message to display
+# @return int success if confirmed
+#
 __confirm(){
 	local _msg="$1"
 	local _resp
@@ -165,8 +203,12 @@ __confirm(){
 }
 
 # our own checkyesno copy
-# return 1 if its no/false/off/0
-# any other value is returned as yes
+# doesn't warn for unsupported values
+# also returns as 'yes' unless value is specifically no/off/false/0 
+#
+# @param _value the value to test
+# @return int 1 if set to "off/false/no/0", 0 otherwise
+#
 __checkyesno(){
 	local _value="$1"
 

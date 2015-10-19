@@ -25,6 +25,10 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # load a configuration file
+# this reads the specfied file into the global VM_CONFIG variable
+#
+# @param string _file full path of the file to read
+#
 __config_load(){
 	local _file="$1"
 
@@ -32,6 +36,9 @@ __config_load(){
 }
 
 # get a configuration value from the current config file
+#
+# @param string _key the name of the config key to retrieve
+#
 __config_get(){
 	local _key="$1"
 	local _line

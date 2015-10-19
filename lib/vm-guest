@@ -24,8 +24,13 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# __guest_*
+# these functions are responsible for doing any pre-load tasks for a guest
+# for non uefi guests this normally means running bhyveload or grub-bhyve
+# these functions should update _exit to a non-zero value if there's a problem
+# or 0 on success
 # As these functions are called from within the scope of __vm_run,
-# the following variables are already set
+# the following variables are already set (among others)
 #
 # _name: guest name
 # _com: com port - /dev/nmdmXA
@@ -41,6 +46,9 @@
 #
 # I've written append wrong as it just needs to be something other than 'write',
 # and is much more readable when all the __log* calls line up
+#
+# @modifies _exit
+# @param string _type=install|run whether this is an install or normal run
 #
 
 # BSDs

@@ -25,6 +25,10 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # create switches from rc list on init
+# this should run once per boot to make sure switches from the
+# configuration file have bridge interfaces. If any new switches are
+# created, the bridge is done at the same time
+#
 __switch_init(){
 	local _switchlist _switch _id
 	local _nat _havenat=0
@@ -56,6 +60,7 @@ __switch_init(){
 }
 
 # list switches, currently just from stored configuration
+#
 __switch_list(){
 	local _switchlist _portlist _switch _port _vlan _nat
 	local _id _format="%-19s %-12s %-7s %-7s %s\n"
@@ -81,7 +86,11 @@ __switch_list(){
 	done
 }
 
+# 'vm switch create'
 # create a new virtual switch
+#
+# @param string _switch name of the switch to create
+#
 __switch_create(){
 	local _switch="$1"
 	local _id _curr_list _curr
@@ -102,7 +111,11 @@ __switch_create(){
 	ifconfig "${_id}" description "vm-${_switch}" up
 }
 
+# 'vm switch destroy'
 # remove a virtual switch
+#
+# @param string _switch name of the switch
+#
 __switch_remove(){
 	local _switch="$1"
 	local _id _nat
@@ -124,7 +137,13 @@ __switch_remove(){
 	[ -n "${_nat}" ] && __switch_nat_init
 }
 
+# 'vm switch vlan'
 # set vlan number for a switch
+# all interfaces will be removed, vlan interfaces created, then re-added
+#
+# @param string _switch name of the switch
+# @param int _vlan vlan number (or 0 to switch vlan off)
+#
 __switch_vlan(){
 	local _switch="$1"
 	local _vlan="$2"
@@ -149,7 +168,14 @@ __switch_vlan(){
 	__switch_add_allmembers "${_switch}"
 }
 
-# add all configured members to a switch
+# physically add switch member interfaces
+# this will add all configured interfaces to the bridge
+# if vlan specified, each real interface will be assigned to a vlan interface
+#
+# @private
+# @param string _switch the switch to configure
+# @param optional string _id switch id (eg bridge0) if already known
+#
 __switch_add_allmembers(){
 	local _switch="$1"
 	local _id="$2"
@@ -169,7 +195,12 @@ __switch_add_allmembers(){
 	fi
 }
 
-# remove all configured members from a switch
+# physically remove all configured members from a switch
+#
+# @private
+# @param string _switch name of the switch
+# @param optional string _id switch id if already known
+#
 __switch_remove_allmembers(){
 	local _switch="$1"
 	local _id="$2"
@@ -189,9 +220,15 @@ __switch_remove_allmembers(){
 	fi
 }
 
-# adds a port to a virtual switch
+# physically adds a port to a virtual switch
 # if vlan is configured, we need to create the relevant vlan interface first,
 # then add that to the bridge
+#
+# @private
+# @param string _switch the switch to add port to
+# @param string _id the switch id
+# @param string _member name of the member interface to add
+#
 __switch_configure_port(){
 	local _switch="$1"
 	local _id="$2"
@@ -217,7 +254,13 @@ __switch_configure_port(){
 	[ $? -ne 0 ] && __err "failed to add member to the virtual switch"
 }
 
+# 'vm switch add'
 # configure a member interface to a "switch"
+# add the interface to bridge and update switch configuration
+#
+# @param string _switch name of the switch
+# @param string _member name of the interface to add
+#
 __switch_add_member(){
 	local _switch="$1"
 	local _member="$2"
@@ -231,6 +274,12 @@ __switch_add_member(){
 }
 
 # physically remove a port from a virtual switch / bridge
+#
+# @private
+# @param string _switch the switch to update
+# @param string _id the switch id
+# @param string _member the interface to remove
+#
 __switch_unconfigure_port(){
 	local _switch="$1"
 	local _id="$2"
@@ -259,7 +308,13 @@ __switch_unconfigure_port(){
 	fi
 }
 
+# 'vm switch remove'
 # remove a member interface from a switch configuration
+# update configuration then remove device from bridge
+#
+# @param string _switch the switch to update
+# @param string _member the interface to remove
+#
 __switch_remove_member(){
 	local _switch="$1"
 	local _member="$2"
@@ -272,8 +327,13 @@ __switch_remove_member(){
 	__switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
 }
 
+# 'vm switch nat'
 # configure nat on a switch
 # this function just deals with the vm-bhyve configuration
+#
+# @param string _switch the name of the switch
+# @param string _nat=on|off whether to switch it on or off
+#
 __switch_nat(){
 	local _switch="$1"
 	local _nat="$2"
@@ -310,6 +370,9 @@ __switch_nat(){
 # we completely take over dnsmasq and assign it to the required interfaces
 # /etc/pf.conf gets an include statement added pointing to a file in
 # out .config directory. This file contains a nat rule for each nat switch
+#
+# @private
+#
 __switch_nat_init(){
 	local _pf_rules="${vm_dir}/.config/pf-nat.conf"
 	local _havenat=0
@@ -372,12 +435,17 @@ __switch_nat_init(){
 }
 
 # get the interface name for a switch
+# the id will be the name of the bridge interface (eg. "bridge0")
+# ifconfig will have "description: vm-switchname" directly below the first interface line
+#
+# @param string _switch the switch to look for
+#
 __switch_get_ident(){
 	local _switch="$1"
 	local _id
 
 	# search ifconfig for our switch id, and pull bridge interface name from preceeding line
-	# we've got rid of trailing '-' on switch names but on upgrade, before host reboot, users may still have them
+	# we've got rid of trailing '-' on switch names but on vm-bhyve upgrade, before host reboot, users may still have them
 	_id=$(ifconfig -a | grep -B 1 "vm-${_switch}\$" | head -n 1 | awk -F: '{print $1}')
 	[ -z "${_id}" ] && _id=$(ifconfig -a | grep -B 1 "vm-${_switch}-\$" | head -n 1 | awk -F: '{print $1}')
 

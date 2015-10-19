@@ -24,7 +24,9 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# 'vm list'
 # list virtual machines
+#
 __vm_list(){
 	local _name _guest _cpu _memory _run _vm _auto _num
 	local _format="%-15s %-15s %-6s %-9s %-12s %-20s\n"
@@ -61,7 +63,13 @@ __vm_list(){
 	done
 }
 
+# 'vm create'
 # create a new virtual machine
+#
+# @param optional string (-t) _template the template to use (default = default)
+# @param optional string (-s) _size guest size (default = 20G)
+# @param string _name the name of the guest to create
+#
 __vm_create(){
 	local _name _template _opt _size _vmdir _disk _disk_dev _uuid _newline
 
@@ -128,7 +136,14 @@ __vm_create(){
 	esac
 }
 
+# 'vm add'
 # add a device to an existing guest
+#
+# @param string (-d) _device=network|disk the type of device to add
+# @param string (-t) _type for disk, the type of disk - file|zvol|sparse-zvol
+# @param string (-s) _sopt for disk the size, for network the virtual switch name
+# @param string _name name of the guest
+#
 __vm_add(){
 	local _name _device _type _sopt _opt
 
@@ -170,6 +185,14 @@ __vm_add(){
 }
 
 # add a disk to guest
+# this creates the disk image or zvol and updates configuration file
+# we use the same emulation as the existing disk(s)
+#
+# @private
+# @param string _name name of the guest
+# @param string _device type of device file|zvol|sparse-zvol
+# @param string _size size of the disk to create
+#
 __vm_add_disk(){
 	local _name="$1"
 	local _device="$2"
@@ -189,6 +212,8 @@ __vm_add_disk(){
 		_emulation=$(__config_get "disk${_num}_type")
 		_num=$((_num + 1))
 	done
+
+	[ -z "${_emulation}" ] && __err "failed to get emulation type of the existing guest disks"
 
 	# create the disk first, then update config if no problems
 	case "${_device}" in
@@ -223,6 +248,11 @@ __vm_add_disk(){
 }
 
 # add network interface to guest
+#
+# @private
+# @param string _name name of the guest
+# @param string _switch the switch name for this interface
+#
 __vm_add_network(){
 	local _name="$1"
 	local _switch="$2"
@@ -253,7 +283,12 @@ __vm_add_network(){
 	[ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
 }
 
+# 'vm install'
 # install os to a virtual machine
+#
+# @param string _name the guest to install to
+# @param string _iso the iso file in $vm_dir/.iso to use
+#
 __vm_install(){
 	local _name="$1"
 	local _iso="$2"
@@ -264,7 +299,9 @@ __vm_install(){
 	__vm_start "$1" "$2"
 }
 
+# 'vm startall'
 # start all virtual machines listed in rc.conf:$vm_list
+#
 __vm_startall(){
 	local _vm _done _conf
 
@@ -288,8 +325,10 @@ __vm_startall(){
 	done
 }
 
+# 'vm stopall'
 # stop all bhyve instances
 # note this will also stop instances not started by vm-bhyve
+#
 __vm_stopall(){
 	local _pids=$(pgrep -f 'bhyve:')
 
@@ -298,7 +337,12 @@ __vm_stopall(){
 	wait_for_pids ${_pids}
 }
 
+# 'vm start'
 # start a virtual machine
+#
+# @param string _name the name of the guest to start
+# @param optional string _iso iso file is this is an install (can only be provided through 'vm install' command)
+#
 __vm_start(){
 	local _name="$1"
 	local _iso="$2"
@@ -333,7 +377,11 @@ __vm_start(){
 	$0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
 }
 
-# stop vm
+# 'vm stop'
+# send a kill signal to the specified guest
+#
+# @param string _name name of the guest to stop
+#
 __vm_stop(){
 	local _name="$1"
 	local _pid
@@ -347,7 +395,11 @@ __vm_stop(){
 	kill "${_pid}"
 }
 
+# 'vm reset'
 # force reset
+#
+# @param string _name name of the guest
+#
 __vm_reset(){
 	local _name="$1"
 
@@ -358,7 +410,11 @@ __vm_reset(){
 	bhyvectl --force-reset --vm=${_name}
 }
 
+# 'vm poweroff'
 # force poweroff
+#
+# @param string _name name of the guest
+#
 __vm_poweroff(){
 	local _name="$1"
 
@@ -369,7 +425,11 @@ __vm_poweroff(){
 	bhyvectl --force-poweroff --vm=${_name}
 }
 
-# destroy
+# 'vm destroy'
+# completely remove a guest
+#
+# @param string _name name of the guest
+#
 __vm_destroy(){
 	local _name="$1"
 
@@ -381,7 +441,16 @@ __vm_destroy(){
 	[ -e "${vm_dir}/${_name}" ] && rm -R "${vm_dir}/${_name}"
 }
 
-# console
+# 'vm console'
+# connect to the console (nmdm) of the specified guest
+# we store the nmdm for com1 & com2 in $vm_dir/{guest}/console
+# if no port is specified, we use the first one that is specified in the configuration file
+# so if comports="com2 com1", it will connect to com2
+# the boot loader always using the nmdm device of the first com port listed
+#
+# @param string _name name of the guest
+# @param string _port the port to connect to (default = first in configuration)
+#
 __vm_console(){
 	local _name="$1"
 	local _port="$2"
@@ -403,7 +472,11 @@ __vm_console(){
 	cu -l "${_console}"
 }
 
+# 'vm configure'
 # configure a machine (edit the configuration file)
+#
+# @param string _name name of the guest
+#
 __vm_configure(){
 	local _name="$1"
 
@@ -414,7 +487,11 @@ __vm_configure(){
 	$EDITOR "${vm_dir}/${_name}/${_name}.conf"
 }
 
+# 'vm iso'
 # list iso images or get a new one
+#
+# @param string _url if specified, the url will be fetch'ed into $vm_dir/.iso
+#
 __vm_iso(){
 	local _url="$1"
 

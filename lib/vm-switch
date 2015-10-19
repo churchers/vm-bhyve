@@ -41,7 +41,7 @@ __switch_init(){
 			if [ -z "${_id}" ]; then
 				_id=$(ifconfig bridge create)
 				[ $? -ne 0 ] && __err "failed to create bridge interface"
-				ifconfig "${_id}" description "vm-${_switch}-" up
+				ifconfig "${_id}" description "vm-${_switch}" up
 
 				# add all member interfaces
 				__switch_add_allmembers "${_switch}" "${_id}"
@@ -83,16 +83,22 @@ __switch_list(){
 # create a new virtual switch
 __switch_create(){
 	local _switch="$1"
-	local _id
+	local _id _curr_list _curr
 
 	echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9_]{0,14}[a-z0-9]$'
 	[ $? -ne 0 ] && __err "invalid switch name"
+
+	_curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+
+	for _curr in $_curr_list; do
+		[ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
+	done
 
 	__rc_append_string ".config/switch" "switch_list" "${_switch}"
 
 	_id=$(ifconfig bridge create)
 	[ $? -ne 0 ] && __err "failed to create bridge interface"
-	ifconfig "${_id}" description "vm-${_switch}-" up
+	ifconfig "${_id}" description "vm-${_switch}" up
 }
 
 # remove a virtual switch
@@ -107,7 +113,7 @@ __switch_remove(){
 	sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}" "nat_${_switch}"
 
 	if [ -n "${_id}" ]; then
-		ifconfig "${_id}" destroy
+		ifconfig "${_id}" destroy >/dev/null 2>&1
 		[ $? -ne 0 ] && __warn "removed configuration but failed to remove bridge"
 	else
 		__warn "removed configuration but failed to remove bridge"
@@ -199,12 +205,12 @@ __switch_configure_port(){
 		if [ -z "${_vid}" ]; then
 			_vid=$(ifconfig vlan create)
 			[ $? -ne 0 ] && __err "failed to create vlan interface"
-			ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}-"
+			ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}"
 		fi
 
-		ifconfig ${_id} addm ${_vid}
+		ifconfig ${_id} addm ${_vid} >/dev/null 2>&1
 	else
-		ifconfig ${_id} addm ${_member}
+		ifconfig ${_id} addm ${_member} >/dev/null 2>&1
 	fi
 
 	[ $? -ne 0 ] && __err "failed to add member to the virtual switch"
@@ -247,8 +253,8 @@ __switch_unconfigure_port(){
 	# we want to remove the vlan interface if possible, but not if it's
 	# still assigned to another switch
 	if [ -n "${_vlan}" -a -n "${_vid}" ]; then
-		_usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan}-")
-		[ -z "${_usage}" ] && ifconfig "${_vid}" destroy
+		_usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan}\$")
+		[ -z "${_usage}" ] && ifconfig "${_vid}" destroy >/dev/null 2>&1
 	fi
 }
 
@@ -261,8 +267,8 @@ __switch_remove_member(){
 	_id=$(__switch_get_ident "${_switch}")
 	[ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
 
-	__switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
 	__rc_splice_string ".config/switch" "ports_${_switch}" "${_member}"
+	__switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
 }
 
 # configure nat on a switch
@@ -370,6 +376,9 @@ __switch_get_ident(){
 	local _id
 
 	# search ifconfig for our switch id, and pull bridge interface name from preceeding line
-	_id=$(ifconfig -a | grep -B 1 "vm-${_switch}-" | head -n 1 | awk -F: '{print $1}')
+	# we've got rid of trailing '-' on switch names but on upgrade, before host reboot, users may still have them
+	_id=$(ifconfig -a | grep -B 1 "vm-${_switch}\$" | head -n 1 | awk -F: '{print $1}')
+	[ -z "${_id}" ] && _id=$(ifconfig -a | grep -B 1 "vm-${_switch}-\$" | head -n 1 | awk -F: '{print $1}')
+
 	echo "${_id}"
 }

@@ -35,7 +35,7 @@
 __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
-	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi _uuid
+	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi _uuid _utc
 	local _opts="" _devices="" _slot=4 _func=0 _taplist _exit
 	local _com _comports _comstring
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
@@ -52,6 +52,7 @@ __vm_run(){
 	__config_get "_uefi" "uefi"
 	__config_get "_comports" "comports"
 	__config_get "_uuid" "uuid"
+	__config_get "_utc" "utctime"
 
 	# set defaults
 	: ${_bootdisk_dev:=file}
@@ -111,8 +112,17 @@ __vm_run(){
 		exit 15
 	fi
 
-	# set uuid
+	# set uuid in opts
 	[ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
+
+	# set utc time in opts if requested
+	if __checkyesno "${_utc}"; then
+		if [ ${BSD_VERSION} -ge 1002000 ]; then
+			_opts="${_opts} -u"
+		else
+			__log "guest" "${_name}" "utc time requested but not available pre FreeBSD 10.2"
+		fi
+	fi
 
 	# add cpu and memory to opts so we can see all bhyve command in logs
 	_opts="-c ${_cpu} -m ${_memory} ${_opts}"

@@ -360,15 +360,11 @@ __vm_start(){
 	[ -z "${_name}" ] && __usage
 	[ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
 
-	if [ -e "${vm_dir}/${_name}/run.lock" ]; then
-		_host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
-		__warn "${_name} appears to already be running on ${_host} (locked)"
-		return 1
-	fi
-
-	__config_load "${_conf}"
+	# confirm we aren't running
+	__vm_confirm_stopped "${_name}"
 
 	# check basic settings before going into background mode
+	__config_load "${_conf}"
 	__config_get "_memory" "memory"
 	__config_get "_guest" "guest"
 	__config_get "_disk" "disk0_name"
@@ -442,6 +438,9 @@ __vm_destroy(){
 	[ -z "${_name}" ] && __usage
 	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} doesn't appear to be a valid virtual machine"
 
+	# make sure it's stopped!
+	__vm_confirm_stopped "${_name}"
+
 	__confirm "Are you sure you want to completely remove this virtual machine" || exit 0
 	__zfs_destroy_dataset "${_name}"
 	[ -e "${vm_dir}/${_name}" ] && rm -R "${vm_dir}/${_name}"
@@ -459,11 +458,13 @@ __vm_rename(){
 
 	[ -z "${_old}" -o -z "${_new}" ] && __usage
 	[ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} doesn't appear to be a valid virtual machine"
-	[ -e "${vm_dir}/${_old}/run.lock" ] && __err "${_old} appears to be running (locked)"
 	[ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
 
 	echo "${_new}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
 	[ $? -ne 0 ] && __err "invalid virtual machine name '${_new}'"
+
+	# confirm guest stopped
+	__vm_confirm_stopped "${_old}"
 
 	# rename zfs dataset
 	__zfs_rename_dataset "${_old}" "${_new}"

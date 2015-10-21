@@ -95,6 +95,7 @@ Usage: vm ...
 	reset <name>
 	poweroff <name>
 	configure <name>
+	destroy <name>
 	clone <name> <new-name>
 	iso [url]
 	image list

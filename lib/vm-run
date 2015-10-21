@@ -506,3 +506,24 @@ __vm_running_check(){
 	setvar "${_var}" "Stopped"
 	return 1
 }
+
+# make sure a virtual machine is not running
+# exit with an error if it is
+#
+# @param string _name the guest name
+#
+__vm_confirm_stopped(){
+	local _name="$1"
+	local _host
+
+	# check vm-bhyve lock
+	# this will err even if guest is running on another node
+	if [ -e "${vm_dir}/${_name}/run.lock" ]; then
+		_host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
+		__err "${_name} appears to already be running on ${_host} (locked)"
+	fi
+
+	# check local machine, just in case guest run manually
+	[ -e "/dev/vmm/${_name}" ] && \
+		__err "${_name} appears to be running outside of vm-bhyve (vmm exists)"
+}

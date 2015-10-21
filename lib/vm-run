@@ -481,7 +481,7 @@ __vm_running_load(){
 #
 # @param string _var variable to put result into
 # @param string _name name of the guest to look for
-# @echo string "Running (PID)" or "Bootloader (PID)" or "Stopped"
+# @return success if running
 #
 __vm_running_check(){
 	local _var="$1"
@@ -508,9 +508,10 @@ __vm_running_check(){
 }
 
 # make sure a virtual machine is not running
-# exit with an error if it is
+# display warning if it is. up to caller to decide whether to continue
 #
 # @param string _name the guest name
+# @return success if not running
 #
 __vm_confirm_stopped(){
 	local _name="$1"
@@ -520,10 +521,15 @@ __vm_confirm_stopped(){
 	# this will err even if guest is running on another node
 	if [ -e "${vm_dir}/${_name}/run.lock" ]; then
 		_host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
-		__err "${_name} appears to already be running on ${_host} (locked)"
+		__warn "${_name} appears to already be running on ${_host} (locked)"
+		return 1
 	fi
 
 	# check local machine, just in case guest run manually
-	[ -e "/dev/vmm/${_name}" ] && \
-		__err "${_name} appears to be running outside of vm-bhyve (vmm exists)"
+	if [ -e "/dev/vmm/${_name}" ]; then
+		__warn "${_name} appears to be running outside of vm-bhyve (vmm exists)"
+		return 1
+	fi
+
+	return 0
 }

@@ -361,7 +361,7 @@ __vm_start(){
 	[ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
 
 	# confirm we aren't running
-	__vm_confirm_stopped "${_name}"
+	__vm_confirm_stopped "${_name}" || return 1
 
 	# check basic settings before going into background mode
 	__config_load "${_conf}"
@@ -439,7 +439,7 @@ __vm_destroy(){
 	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} doesn't appear to be a valid virtual machine"
 
 	# make sure it's stopped!
-	__vm_confirm_stopped "${_name}"
+	__vm_confirm_stopped "${_name}" || exit 1
 
 	__confirm "Are you sure you want to completely remove this virtual machine" || exit 0
 	__zfs_destroy_dataset "${_name}"
@@ -464,7 +464,7 @@ __vm_rename(){
 	[ $? -ne 0 ] && __err "invalid virtual machine name '${_new}'"
 
 	# confirm guest stopped
-	__vm_confirm_stopped "${_old}"
+	__vm_confirm_stopped "${_old}" || exit 1
 
 	# rename zfs dataset
 	__zfs_rename_dataset "${_old}" "${_new}"

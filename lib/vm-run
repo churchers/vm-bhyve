@@ -58,6 +58,7 @@ __vm_run(){
 	: ${_bootdisk_dev:=file}
 	: ${_comports:=com1}
 	: ${_uefi:=no}
+	: ${_utc:=no}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
@@ -66,6 +67,7 @@ __vm_run(){
 	__log "guest" "${_name}" " [memory: ${_memory}]"
 	__log "guest" "${_name}" " [com ports: ${_comports}]"
 	__log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
+	__log "guest" "${_name}" " [utctime: ${_utc}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
 	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 

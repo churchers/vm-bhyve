@@ -90,6 +90,10 @@ __vm_create(){
 	shift $((OPTIND - 1))
 	_name=$1
 
+	[ -z "${_name}" ] && __usage
+	echo "${_name}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+	[ $? -ne 0 ] && __err "invalid virtual machine name '${_name}'"
+
 	: ${_size:=20G}
 	: ${_template:=default}
 
@@ -110,7 +114,7 @@ __vm_create(){
 	# if we're on zfs, make a new filesystem
 	__zfs_make_dataset "${_name}"
 
-	[ ! -d "${_vmdir}" ] && mkdir "${_vmdir}"
+	[ ! -d "${_vmdir}" ] && mkdir "${_vmdir}" >/dev/null 2>&1
 	[ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"
 
 	cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
@@ -441,6 +445,38 @@ __vm_destroy(){
 	__confirm "Are you sure you want to completely remove this virtual machine" || exit 0
 	__zfs_destroy_dataset "${_name}"
 	[ -e "${vm_dir}/${_name}" ] && rm -R "${vm_dir}/${_name}"
+}
+
+# 'vm rename'
+# rename an existing guest
+#
+# @param string _old the existing guest name
+# @param string _new the new guest name
+#
+__vm_rename(){
+	local _old="$1"
+	local _new="$2"
+
+	[ -z "${_old}" -o -z "${_new}" ] && __usage
+	[ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} doesn't appear to be a valid virtual machine"
+	[ -e "${vm_dir}/${_old}/run.lock" ] && __err "${_old} appears to be running (locked)"
+	[ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
+
+	echo "${_new}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+	[ $? -ne 0 ] && __err "invalid virtual machine name '${_new}'"
+
+	# rename zfs dataset
+	__zfs_rename_dataset "${_old}" "${_new}"
+
+	# rename folder if it still exists (shouldn't if zfs mode and rename worked)
+	if [ -d "${vm_dir}/${_old}" ]; then
+		mv "${vm_dir}/${_old}" "${vm_dir}/${_new}" >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "failed to rename guest directory"
+	fi
+
+	# rename config file
+	mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf" >/dev/null 2>&1
+	[ $? -ne 0 ] && __err "changed guest directory but failed to rename configuration file"
 }
 
 # 'vm console'

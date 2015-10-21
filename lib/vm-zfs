@@ -91,6 +91,23 @@ __zfs_destroy_dataset(){
 	fi
 }
 
+# rename a dataset
+# as with other zfs functions, the arguments should just be the name
+# of the dataset under $VM_ZFS_DATASET (in this case just guest name)
+#
+# @param string _old the name of the dataset to rename
+# @param string _new the new name
+#
+__zfs_rename_dataset(){
+	local _old="$1"
+	local _new="$2"
+
+	if [ -n "${_old}" -a -n "${_new}" -a "${VM_ZFS}" = "1" ]; then
+		zfs rename "${VM_ZFS_DATASET}/${_old}" "${VM_ZFS_DATASET}/${_new}" >/dev/null 2>&1
+		[ $? -ne 0 ] && __err "failed to rename ZFS dataset ${VM_ZFS_DATASET}/${_old}"
+	fi
+}
+
 # make a zvol for a guest disk image
 #
 # @param string _name name of the guest (will be a dataset under VM_ZFS_DATASET)

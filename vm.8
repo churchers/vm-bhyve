@@ -53,6 +53,10 @@
 .Ar name
 .Op Ar com1|com2
 .Nm
+.Cm rename
+.Ar name
+.Ar newname
+.Nm
 .Cm add
 .Op Fl d Ar device
 .Op Fl t Ar type
@@ -428,6 +432,8 @@ This looks for the
 device associated with the virtual machine, and connects to it with
 .Xr cu 1 .
 Use ~+Ctrl-D to exit the console and return to the host.
+.It Cm rename Ar name Ar new-name
+Renames the specified virtual machine. The guest must be stopped to use this function.
 .It Xo
 .Cm add
 .Op Fl d Ar device

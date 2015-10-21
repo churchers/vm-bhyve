@@ -54,6 +54,9 @@ __parse_cmd(){
 		destroy)
 			__vm_destroy "$@"
 			;;
+		rename)
+			__vm_rename "$@"
+			;;
 		install)
 			__vm_install "$@"
 			;;

@@ -88,7 +88,7 @@ Usage: vm ...
 	start <name>
 	stop <name>
 	console <name> [com1|com2]
-	rename <name> <newname>
+	rename <name> <new-name>
 	add [-d device] [-t type] [-s size|switch] <name>
 	startall
 	stopall

@@ -519,6 +519,7 @@ __vm_configure(){
 	local _name="$1"
 
 	[ -z "${_name}" ] && __usage
+	[ -z "${EDITOR}" ] && EDITOR=vi
 	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && \
 		__err "cannot locate configuration file for virtual machine: ${_name}"
 

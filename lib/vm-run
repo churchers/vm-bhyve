@@ -114,6 +114,9 @@ __vm_run(){
 	# set uuid
 	[ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
+	# add cpu and memory to opts so we can see all bhyve command in logs
+	_opts="-c ${_cpu} -m ${_memory} ${_opts}"
+
 	# complete the boot disk path
 	__vm_get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
 
@@ -158,20 +161,19 @@ __vm_run(){
 			break
 		fi
 
+		__log "guest" "${_name}" " [bhyve options: ${_opts}]"
 		__log "guest" "${_name}" " [bhyve devices: ${_devices}]"
 		__log "guest" "${_name}" " [bhyve console: ${_comstring}]"
-		__log "guest" "${_name}" " [bhyve options: ${_opts}]"
 		[ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
 		__log "guest" "${_name}" "starting bhyve"
 
 		# actually run bhyve!
 		# we're already in the background so we just wait for it to exit
-		bhyve -c ${_cpu} -m ${_memory} \
-			 ${_devices} \
-			 ${_iso_dev} \
-			 ${_comstring} \
-			 ${_opts} \
-			 ${_name}
+		bhyve ${_opts} \
+		      ${_devices} \
+		      ${_iso_dev} \
+		      ${_comstring} \
+		      ${_name}
 
 		# get bhyve exit code
 		_exit=$?

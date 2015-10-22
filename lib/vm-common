@@ -97,6 +97,8 @@ Usage: vm ...
 	configure <name>
 	destroy <name>
 	clone <name> <new-name>
+	snapshot [-f] <name[@snapshot]>
+	rollback [-r] <name@snapshot>
 	iso [url]
 	image list
 	image create [-d description] <name>

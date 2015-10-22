@@ -96,6 +96,12 @@ __parse_cmd(){
 		clone)
 			__zfs_clone "$@"
 			;;
+		snapshot)
+			__zfs_snapshot "$@"
+			;;
+		rollback)
+			__zfs_rollback "$@"
+			;;
 		*)
 			__usage
 			;;

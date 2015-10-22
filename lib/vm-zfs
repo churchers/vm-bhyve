@@ -130,6 +130,98 @@ __zfs_make_zvol(){
 	[ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
 }
 
+# 'vm snapshot'
+# create a snapshot of a guest
+# specify the snapshot name in zfs format guest@snap
+# if no snapshot name is specified, Y-m-d-H:M:S will be used
+# 
+# @param flag (-f) force snapshot if guest is running
+# @param string _name the name of the guest to snapshot
+#
+__zfs_snapshot(){
+	local _name _snap _opt _force _snap_exists
+
+	while getopts f _opt; do
+		case $_opt in
+			f)
+				_force=1
+				;;
+			*)
+				__usage
+				;;
+		esac
+	done
+
+	shift $((OPTIND - 1))
+	_name="$1"
+
+	# try to get snapshot name
+	# we support normal zfs syntax for this
+	_snap_exists=$(echo "${_name}" | grep "@")
+
+	if [ -n "${_snap_exists}" ]; then
+		_snap=${_name##*@}
+		_name=${_name%%@*}
+	fi
+
+	[ -z "${_name}" ] && __usage
+	[ ! "${VM_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
+	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
+	[ -z "${_snap}" ] && _snap=$(date +"%Y-%m-%d-%H:%M:%S")
+
+	if ! __vm_confirm_stopped "${_name}" >/dev/null; then
+		[ -z "${_force}" ] && __err "${_name} must be powered off first (use -f to override)"
+	fi
+
+	zfs snapshot -r ${VM_ZFS_DATASET}/${_name}@${_snap}
+	[ $? -ne 0 ] && __err "failed to create recursive snapshot of virtual machine"
+}
+
+# 'vm rollback'
+# roll a guest back to a previous snapshot
+# we output zfs here as it will fail if the snapshot is not the most recent
+# zfs will output an error mentioning to use '-r', and listing the snapshots
+# that will be deleted. makes sense to just support that option directly
+#
+# @param flag (-r) force deletion of more recent snapshots
+# @param string _name name of the guest
+#
+__zfs_rollback(){
+	local _name _snap _opt _force _fs _snap_exists
+
+	while getopts r _opt; do
+		case $_opt in
+			r)
+				_force="-r"
+				;;
+			*)
+				__usage
+				;;
+		esac
+	done
+
+	shift $((OPTIND - 1))
+
+	_snap_exists=$(echo "${1}" | grep "@")
+	[ -z "${_snap_exists}" ] && __err "a snapshot name must be provided in guest@snapshot format"
+
+	_name="${1%%@*}"
+	_snap="${1##*@}"
+
+	[ -z "${_name}" -o -z "${_snap}" ] && __usage
+	[ ! "${VM_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
+	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
+
+	__vm_confirm_stopped "${_name}" || exit 1
+
+	# list all datasets and zvols under guest
+	zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_name} | \
+	while read _fs; do
+		zfs rollback ${_force} ${_fs}@${_snap}
+		[ $? -ne 0 ] && exit $?
+	done
+}
+
 # 'vm clone'
 # clone a vm
 # this makes a true zfs clone of the specifies guest

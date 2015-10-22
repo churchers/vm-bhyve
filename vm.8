@@ -1,4 +1,4 @@
-.Dd Jun 30, 2015
+.Dd Oct 22, 2015
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -79,6 +79,14 @@
 .Cm clone
 .Ar name
 .Ar new-name
+.Nm
+.Cm snapshot
+.Op Fl f
+.Ar name|name@snapshot
+.Nm
+.Cm rollback
+.Op Fl r
+.Ar name@snapshot
 .Pp
 .Nm
 .Cm iso
@@ -512,6 +520,44 @@ and will be ready to boot with a newly assigned UUID and empty log file.
 .Pp
 Please note that this function requires ZFS, and a snapshot will be taken of the original
 guest, along with any descendant datasets.
+.It Xo
+.Cm snapshot
+.Op Fl f
+.Ar name|name@snapshot
+.Xc
+Create a snapshot of the names virtual machine. This command is only supported with ZFS
+and will take a snapshot of the guest dataset and any descendent ZVOL devices.
+.Pp
+The guest and snapshot name can be specified in the normal
+.Pa name@snapshot
+way familiar to ZFS users. If no snapshot name is given, the snapshot is based on the current timestamp in
+.Pa Y-m-d-H:M:S
+format.
+.Pp
+By default the guest must be stopped to use this command, although you can force a snapshot
+of a running guest by using the
+.Fl f
+option.
+.It Xo
+.Cm rollback
+.Op Fl r
+.Ar name@snapshot
+.Xc
+Rollback the guest to the specified snapshot. This will roll back the guest dataset and all
+descendent ZVOL devices.
+.Pp
+Normally, ZFS will only allow you to roll back to the most recent snapshot.
+If the snapshot given is not the most recent, ZFS will produce a warning detailing that you
+need to use the
+.Fl r
+option to remove the more recent snapshots. It will also produce a list of the snapshots that
+will be destroyed if you use this option. The
+.Fl r
+option can be passed directly into
+.Nm
+.Cm rollback
+.Pp
+The guest must always be stopped to use this command.
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso
@@ -586,6 +632,17 @@ You can also connect two com ports by specifying both, separated by a space.
 Set this option to
 .Sy yes
 if the guest RTC should keep UTC time.
+.It debug
+If this is set to
+.Sy yes ,
+all output from the
+.Xr bhyve 8
+process will be written to
+.Sy ${vm_dir}/guest/bhyve.log .
+This is useful for debugging purposes as it allows you to see any error messages
+that are being produced by
+.Xr bhyve 8
+itself.
 .It network0_type
 The emulation to use for the first network adapter. This option can be unspecified
 if no guest networking is required. The recommended value for this is

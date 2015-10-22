@@ -35,9 +35,10 @@
 __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
-	local _cpu _memory _bootdisk _bootdisk_dev _guest _guest_support _uefi _uuid _utc
-	local _opts="" _devices="" _slot=4 _func=0 _taplist _exit
-	local _com _comports _comstring
+	local _cpu _memory _bootdisk _bootdisk_dev _guest
+	local _guest_support _uefi _uuid _utc _debug
+	local _opts _devices _slot=4 _func=0 _taplist _exit
+	local _com _comports _comstring _logpath
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
 
 	# bail out immediately if no guest or locked
@@ -53,12 +54,14 @@ __vm_run(){
 	__config_get "_comports" "comports"
 	__config_get "_uuid" "uuid"
 	__config_get "_utc" "utctime"
+	__config_get "_debug" "debug"
 
 	# set defaults
 	: ${_bootdisk_dev:=file}
 	: ${_comports:=com1}
 	: ${_uefi:=no}
 	: ${_utc:=no}
+	: ${_debug:=no}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
@@ -68,6 +71,7 @@ __vm_run(){
 	__log "guest" "${_name}" " [com ports: ${_comports}]"
 	__log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
 	__log "guest" "${_name}" " [utctime: ${_utc}]"
+	__log "guest" "${_name}" " [debug mode: ${_debug}]"
 	__log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
 	__log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 
@@ -124,6 +128,13 @@ __vm_run(){
 		else
 			__log "guest" "${_name}" "utc time requested but not available pre FreeBSD 10.2"
 		fi
+	fi
+
+	# see where to send bhyve output
+	if __checkyesno "${_debug}"; then
+		_logpath="${vm_dir}/${_name}/bhyve.log"
+	else
+		_logpath="/dev/null"
 	fi
 
 	# add cpu and memory to opts so we can see all bhyve command in logs
@@ -185,7 +196,7 @@ __vm_run(){
 		      ${_devices} \
 		      ${_iso_dev} \
 		      ${_comstring} \
-		      ${_name}
+		      ${_name} >>"${_logpath}" 2>&1
 
 		# get bhyve exit code
 		_exit=$?
@@ -448,7 +459,6 @@ __vm_get_disk_path(){
 #
 # @param string _var variable to put value into
 # @param optional int _num the device number to start searching at (default = 0)
-# @echo int the number of a spare nmdm device
 #
 __vm_find_console(){
 	local _var="$1"
@@ -533,7 +543,7 @@ __vm_confirm_stopped(){
 	# this will err even if guest is running on another node
 	if [ -e "${vm_dir}/${_name}/run.lock" ]; then
 		_host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
-		__warn "${_name} appears to already be running on ${_host} (locked)"
+		__warn "${_name} appears to be running on ${_host} (locked)"
 		return 1
 	fi
 

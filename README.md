@@ -217,11 +217,12 @@ If you are using the default csh/tcsh shell built into FreeBSD, the following co
 autocomplete to work for all the currently supported functions:
 
     complete vm \
-     'p@1@(list create install start stop console configure reset poweroff destroy clone switch iso)@' \
+     'p@1@(list create install start stop console configure reset poweroff destroy clone snapshot rollback add switch iso)@' \
      'n@create@n@' \
      'n@list@n@' \
      'n@iso@n@' \
      'n@switch@(list create add remove destroy vlan nat)@' \
      'N@switch@`sysrc -inqf /path/to/vm/.config/switch switch_list`@' \
+     'N@install@`ls -1 /path/to/vm/.iso`@' \
      'N@nat@(off on)@' \
      'p@2@`ls -1 /path/to/vm | grep -v "^\." | grep -v "^images"`@'

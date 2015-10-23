@@ -209,7 +209,7 @@ __zfs_rollback(){
 	_snap="${1##*@}"
 
 	[ -z "${_name}" -o -z "${_snap}" ] && __usage
-	[ ! "${VM_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
+	[ ! "${VM_ZFS}" = "1" ] && __err "cannot rollback guests unless ZFS support is enabled"
 	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
 
 	__vm_confirm_stopped "${_name}" || exit 1

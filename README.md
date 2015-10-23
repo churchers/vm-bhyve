@@ -213,10 +213,13 @@ The default login details are Administrator and Test123.
 
 ## Autocomplete
 
-If you are using the default csh/tcsh shell built into FreeBSD, the following command should allow
+If you are using the default csh/tcsh shell built into FreeBSD, running the following command should allow
 autocomplete to work for all the currently supported functions. This is especially useful for viewing
 and completing guest & ISO file names. Please note that there's three ocurrances of '/path/to/vm' which
 need to be changed to the directory containing your virtual machines.
+
+To make the autocomplete features available permanently, add the following to your `$HOME/.cshrc` file. Then either
+logout/login, or run `source ~/.cshrc` to cause the `.cshrc` file to be reloaded.
 
     complete vm \
      'p@1@(list create install start stop console configure reset poweroff destroy clone snapshot rollback add switch iso)@' \

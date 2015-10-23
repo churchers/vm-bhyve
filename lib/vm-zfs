@@ -179,9 +179,10 @@ __zfs_snapshot(){
 
 # 'vm rollback'
 # roll a guest back to a previous snapshot
-# we output zfs here as it will fail if the snapshot is not the most recent
+# we show zfs errors here as it will fail if the snapshot is not the most recent.
 # zfs will output an error mentioning to use '-r', and listing the snapshots
-# that will be deleted. makes sense to just support that option directly
+# that will be deleted. makes sense to let user see this and just support 
+# that option directly
 #
 # @param flag (-r) force deletion of more recent snapshots
 # @param string _name name of the guest

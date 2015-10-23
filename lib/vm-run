@@ -426,12 +426,18 @@ __vm_bhyve_device_passthru(){
 	fi
 }
 
-# get the path to a disk image depending on type
+# get the path to a disk image depending on type.
+# the disk name in configuration is usually the name of the file
+# or zvol, directly under the guest directory/dataset.
+# if a user wants the disk image anywhere else, they can specify
+# the following:
+# diskX_type="custom"
+# diskX_name="/full/path/to/disk/device/or/file"
 #
 # @param string _var variable to put disk path into
 # @param string _name the name of the guest
 # @param string _disk the name of the disk
-# @param string _disk_dev=file|zvol|sparse-zvol type of device
+# @param string _disk_dev=file|zvol|sparse-zvol|custom type of device
 #
 __vm_get_disk_path(){
 	local _var="$1"
@@ -445,6 +451,9 @@ __vm_get_disk_path(){
 		sparse-zvol)
 			# need to look at this, don't really want to reference VM_ZFS* variables here
 			setvar "${_var}" "/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
+			;;
+		custom)
+			setvar "${_var}" "${_disk}"
 			;;
 		*)
 			setvar "${_var}" "${vm_dir}/${_name}/${_disk}"

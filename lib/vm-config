@@ -28,6 +28,7 @@
 # this reads the specfied file into the global VM_CONFIG variable
 #
 # @param string _file full path of the file to read
+# @modifies VM_CONFIG
 #
 __config_load(){
 	local _file="$1"

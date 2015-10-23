@@ -430,8 +430,8 @@ __vm_bhyve_device_passthru(){
 # the disk name in configuration is usually the name of the file
 # or zvol, directly under the guest directory/dataset.
 # if a user wants the disk image anywhere else, they can specify
-# the following:
-# diskX_type="custom"
+# the following
+# diskX_dev="custom"
 # diskX_name="/full/path/to/disk/device/or/file"
 #
 # @param string _var variable to put disk path into
@@ -499,6 +499,8 @@ __vm_find_console(){
 #
 # VM_RUN_BHYVE = all running bhyve instances
 # VM_RUN_LOAD  = all loading guests (bhyveload|grub-bhyve)
+#
+# @modifies VM_RUN_BHYVE VM_RUN_LOAD
 #
 __vm_running_load(){
 	VM_RUN_BHYVE=$(pgrep -fl "bhyve:" | awk '{print $1,$NF}')

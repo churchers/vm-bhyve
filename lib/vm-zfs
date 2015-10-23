@@ -39,6 +39,8 @@
 # VM_ZFS=1
 # VM_ZFS_DATASET={pool/dataset}
 #
+# @modifies VM_ZFS VM_ZFS_DATASET vm_dir
+#
 __zfs_init(){
 	local _zfs
 
@@ -118,15 +120,12 @@ __zfs_make_zvol(){
 	local _name="$1"
 	local _size="$2"
 	local _sparse="$3"
+	local _opt="-V"
 
 	[ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
+	[ -n "${_sparse}" ] && _opt="-sV"
 
-	if [ -n "${_sparse}" ]; then
-		zfs create -sV ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"
-	else
-		zfs create -V ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"
-	fi
-
+	zfs create ${_opt} ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"
 	[ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
 }
 

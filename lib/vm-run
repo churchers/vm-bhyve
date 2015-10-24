@@ -36,7 +36,7 @@ __vm_run(){
 	local _name="$1"
 	local _iso="$2" _iso_dev
 	local _cpu _memory _bootdisk _bootdisk_dev _guest
-	local _guest_support _uefi _uuid _utc _debug
+	local _guest_support _uefi _uuid _utc _debug _hostbridge
 	local _opts _devices _slot=4 _func=0 _taplist _exit
 	local _com _comports _comstring _logpath
 	local _conf="${vm_dir}/${_name}/${_name}.conf"
@@ -51,6 +51,7 @@ __vm_run(){
 	__config_get "_bootdisk" "disk0_name"
 	__config_get "_bootdisk_dev" "disk0_dev"
 	__config_get "_uefi" "uefi"
+	__config_get "_hostbridge" "hostbridge"
 	__config_get "_comports" "comports"
 	__config_get "_uuid" "uuid"
 	__config_get "_utc" "utctime"
@@ -62,12 +63,14 @@ __vm_run(){
 	: ${_uefi:=no}
 	: ${_utc:=no}
 	: ${_debug:=no}
+	: ${_hostbridge:=standard}
 
 	__log "guest" "${_name}" "initialising"
 	__log "guest" "${_name}" " [guest: ${_guest}]"
 	__log "guest" "${_name}" " [uefi: ${_uefi}]"
 	__log "guest" "${_name}" " [cpu: ${_cpu}]"
 	__log "guest" "${_name}" " [memory: ${_memory}]"
+	__log "guest" "${_name}" " [hostbridge: ${_hostbridge}]"
 	__log "guest" "${_name}" " [com ports: ${_comports}]"
 	__log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
 	__log "guest" "${_name}" " [utctime: ${_utc}]"
@@ -173,8 +176,8 @@ __vm_run(){
 			_iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
 			eval "__guest_${_guest}" "install"
 		else
-			# always provide a cd for UEFI guests at the moment
-			[ -n "${_uefi}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
+			# always provide a cd for non-csm UEFI guests at the moment
+			[ -n "${_uefi}" -a "${_uefi}" != "csm" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
 			eval "__guest_${_guest}" "run"
 		fi
 
@@ -276,7 +279,21 @@ __vm_bhyve_device_comports(){
 # @modifies _devices
 #
 __vm_bhyve_device_basic(){
-	_devices="-s 0,hostbridge -s 31,lpc"
+
+	# add hostbridge
+	case "$_hostbridge" in 
+		no*)
+			;;
+		amd)
+			_devices="-s 0,amd_hostbridge"
+			;;
+		*)
+			_devices="-s 0,hostbridge"
+			;;
+	esac
+
+	# lpc
+	_devices="${_devices}${_devices:+ }-s 31,lpc"
 }
 
 # get bhyve device string for disk devices

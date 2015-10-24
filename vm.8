@@ -386,7 +386,7 @@ disk images & configuration.
 .It Cm list
 .br
 List all the virtual machines in the
-.Pa $vm_dir/.templates
+.Pa $vm_dir
 directory. This will show the basic configuration for each virtual machine, and whether
 they are currently running.
 .It Cm install Ar name Ar iso
@@ -619,6 +619,17 @@ gigabytes using the
 and
 .Sy G
 suffixes.
+.It hostbridge
+This option allows you to specify the type of hostbridge used for the guest hardware.
+Normally you can leave this as default, which is to use a standard bhyve hostbridge.
+.Pp
+There are two other options.
+.Sy amd ,
+which is almost identical to the standard hostbridge, but advertises itself with a
+vendor ID of AMD. There are also some special cases where you may require no
+hostbridge at all, which can be achieved using the 
+.Sy none
+value.
 .It comports
 This option allows you to specify which com ports to create for the guest. The default
 is to create a single

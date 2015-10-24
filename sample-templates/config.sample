@@ -41,6 +41,19 @@ cpu="1"
 #
 memory="512M"
 
+# hostbridge
+# Allows you to specify the type of hostbridge to use for the
+# guest hardware. This can usually be left as default. The
+# additional options are 'amd', for a hostbridge that advertises
+# itself as AMD hardware and 'none' for no hostbridge. Note
+# that there is no requirement to use the 'amd' hostbridge if
+# you host has an AMD processor
+#
+# Default: standard
+# Valid Options: standard,amd,none
+#
+hostbridge=""
+
 # comports
 # This allows you to define the com ports which should be available.
 # By default only com1 is connected, and can be accessed using the
@@ -97,6 +110,7 @@ disk0_type="virtio-blk"
 #
 # Default: file
 # Valid Options: file,zvol,sparse-zvol,custom
+#
 disk0_dev=""
 
 # disk0_name (required)

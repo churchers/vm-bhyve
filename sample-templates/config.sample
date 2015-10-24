@@ -1,0 +1,180 @@
+# This is a sample configuration file containing all supported options
+# Please do not try and use this for a guest
+# For any option that contains a number in the name, such as "disk0_name",
+# you can add additional devices of that type by creating a new set of
+# variables using the next number in sequence, e.g "disk1_name"
+#
+# Please make sure all option names are specified in lowercase and
+# at the beginning of the line. If there is any whitespace before
+# the option name, the line will be ignored.
+# The '#' character signifies the start of a comment, even within
+# double-quotes, and so cannot be used inside any values.
+
+# guest (required)
+# The type of operating system this virtual machine will use.
+# Different systems often require specific steps to load the
+# virtual machine, or specific bhyve options. The generic option
+# does no specific loading and can be used for standard uefi guests.
+#
+# Valid Options: freebsd,netbsd,openbsd,centos,centos-grub,alpine
+#                ubuntu,debian,windows,generic
+guest=""
+
+# uefi
+# Tells bhyve that it should load the UEFI firmware. To use UEFI
+# this can be any value other than [empty]/off/false/no/0. If
+# it contains the string 'csm', the UEFI BIOS compatability (CSM)
+# firmware will be used
+#
+# Default: no
+#
+uefi=""
+
+# cpu (required)
+# specify the number of cpu cores to give to the guest
+#
+cpu="1"
+
+# memory (required)
+# specify the amount of ram to give to the guest. This can be
+# followed by M or G.
+#
+memory="512M"
+
+# comports
+# This allows you to define the com ports which should be available.
+# By default only com1 is connected, and can be accessed using the
+# 'vm console' command. If more than one com port is specified, you
+# can choose the port to connect to by running 'vm console guest com1|com2'.
+# When using the 'vm console' command, if no com port is specified,
+# you are connected to the first port listed in this string.
+#
+# Default: com1
+# Valid Options: com1,com2,com1 com2,com2 com1
+#
+comports=""
+
+# utctime
+# Set to any value other than [empty]/no/off/false/0 if you want the guest
+# clock to use UTC time.
+#
+# Default: no
+#
+utctime=""
+
+# debug
+# Set to a value other than [empty]/no/off/false/0 to run vm-bhyve in debug mode.
+# In this mode, all output from the bhyve process is written to
+# $vm_dir/{guest}/bhyve.log. This is useful if the guest is crashing or
+# exiting abnormally as the log will contain any output from bhyve.
+#
+# Default: no
+#
+debug=""
+
+# uuid
+# This is set automatically by vm-bhyve when creating a new guest. Normally
+# bhyve assigns a UUID at runtime based on host and guest name. This 
+# option allows you to specify a fixed UUID that will always be used. Remove
+# this or leave blank to return to the normal bhyve behaviour.
+#
+uuid=""
+
+# disk0_type (required)
+# This specifies the emulation type for disk0. Please note that each disk requires
+# at least a type and name.
+#
+# Valid Options: virtio-blk,ahci-hd
+#
+disk0_type="virtio-blk"
+
+# disk0_dev
+# The type of device used as the backing store for this disk. The default is 'file',
+# which means a sparse file is used. This file is stored in the guest's directory.
+# For the zvol options, the zvol must be directly under the guest dataset.
+# There is also a 'custom' option, in which case the disk name should be the full path
+# to the file or device you want to use.
+#
+# Default: file
+# Valid Options: file,zvol,sparse-zvol,custom
+disk0_dev=""
+
+# disk0_name (required)
+# The name of the file or zvol for this disk. If the device type is 'custom', it should
+# be the full path to whichever device or file you want to use
+#
+# This value is translated to a path as follows, based on disk0_dev
+#
+# DEVICE TYPE        DISK NAME      BHYVE PATH USED
+# file              'disk0.img' -> '$vm_dir/$name/disk0.img'
+# zvol|sparse-zvol  'disk0'     -> '/dev/zvol/pool/dataset/path/guest/disk0'
+# custom            '/dev/da10' -> '/dev/da10'
+#
+disk0_name="disk0.img"
+
+# network0_type
+# This specifies the emulation type to use for the first network interface.
+# Networking is not required, although this field is mandatory if you do want
+# to add an interface
+#
+# Valid Options: virtio-net
+#
+network0_type="virtio-net"
+
+# network_switch
+# The name of the virtual switch to connect this interface to. This is also a 
+# required field if this interface is to be added to the guest. When starting the
+# guest, if this switch cannot be found, the interface is still created but
+# will not be connected to anything.
+#
+# All default templates use a switch called 'public', although it's perfectly
+# reasonable to use other switch names that make sense in your environment
+#
+network0_switch="public"
+
+# network0_mac
+# This is the only networking option that is not required for each interface.
+# Without this option, bhyve will automatically assign a mac address to the
+# interface. This allows you to specify a fixed mac address
+#
+network0_mac=""
+
+# passthru0
+# Add a pass-through PCI device to the virtual machine. This allows the guest
+# to access a hardware device no differently than if it was running on bare
+# metal.
+#
+# Please note that in order to stop the bhyve host from attaching to the device,
+# there are some steps required to reserve the device in /boot/loader.conf.
+#
+# More details can be found in the FreeBSD bhyve wiki pages
+#
+passthru0=""
+
+# linux_kernel
+# This option is only used for CentOS guests, when booted using the standard
+# grub-bhyve loader. It should contain a value similar to '3.10.0-229.el7.x86_64'
+# which allows vm-bhyve to pass the correct kernel & initrd commands to the
+# CentOS loader.
+#
+linux_kernel=""
+
+# guest_version
+# The version of the guest operating system. This is only really used for
+# OpenBSD guests. For OpenBSD the path to the kernel includes the release
+# version, so we need to know the version in advance to be able to send
+# the correct commands to grub-bhyve.
+#
+guest_version=""
+
+# arch
+# Again this is only used for OpenBSD guests. As well as containing the OS
+# release version, the loader path also includes the CPU architecture. In 
+# order to allow both i386 and amd64 versions of OpenBSD to be booted, this
+# allows you to specify the architecture of the guest operating system
+# that you are installing
+#
+# Default: amd64
+# Valid Options: amd64,i386
+#
+arch=""

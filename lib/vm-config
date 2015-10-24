@@ -25,7 +25,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # load a configuration file
-# this reads the specfied file into the global VM_CONFIG variable
+# this reads the specfied file into the global VM_CONFIG variable.
+# we have very basic parsing that uses # for comments and requires
+# all variables to be at the beginning of the line in lowercase.
+# Note also that a # within double quotes will still be treated
+# as the start of a comment.
 #
 # @param string _file full path of the file to read
 # @modifies VM_CONFIG
@@ -33,7 +37,10 @@
 __config_load(){
 	local _file="$1"
 
-	VM_CONFIG=$(cat "${_file}" | tr -d '"')
+	# read config file
+	# we kick out any lines that don't start with a letter,
+	# scrap anything after a # character, and remove double-quotes
+	VM_CONFIG=$(grep '^[a-z]' "${_file}" | awk -F# '{print $1}' | tr -d '"')
 }
 
 # get a configuration value from the current config file

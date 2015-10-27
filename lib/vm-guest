@@ -77,10 +77,11 @@ __guest_netbsd(){
 		env -i TERM=xterm /usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd1) ${_bootdisk}"
+		__guestpri_custom_grub && return 0
 		__log_and_write "write" "${_name}" "boot.cmd" "knetbsd -h -r ld0a (hd1,msdos1)/netbsd"
 		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-		__log "guest" "${_name}" "grub-bhyve -r hd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-		env -i TERM=xterm /usr/local/sbin/grub-bhyve -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+		__log "guest" "${_name}" "grub-bhyve -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+		env -i TERM=xterm /usr/local/sbin/grub-bhyve -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	fi
 
 	_exit=$?
@@ -108,6 +109,7 @@ __guest_openbsd(){
 			env -i TERM=xterm /usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 		else
 			__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+			__guestpri_custom_grub && return 0
 			__log_and_write "write" "${_name}" "boot.cmd" "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd"
 			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
 			__log "guest" "${_name}" "grub-bhyve -r hd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
@@ -132,6 +134,7 @@ __guest_alpine(){
 		env -i TERM=xterm /usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__guestpri_custom_grub && return 0
 		__log_and_write "write" "${_name}" "boot.cmd" "linux /boot/vmlinuz-grsec root=/dev/vda3 modules=ext4"
 		__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /boot/initramfs-grsec"
 		__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
@@ -162,6 +165,7 @@ __guest_centos(){
 			env -i TERM=xterm /usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
 		else
 			__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+			__guestpri_custom_grub && return 0
 			__log_and_write "write" "${_name}" "boot.cmd" "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root"
 			__log_and_write "appnd" "${_name}" "boot.cmd" "initrd /initramfs-${_kernel}.img"
 			__log_and_write "appnd" "${_name}" "boot.cmd" "boot"
@@ -180,6 +184,7 @@ __guest_centos-grub(){
 		return
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__guestpri_custom_grub && return 0
 		__log_and_write "write" "${_name}" "boot.cmd" ""
 		__log "guest" "${_name}" "grub-bhyve -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -d /grub -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
 		env -i TERM=xterm /usr/local/sbin/grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -d "/grub" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
@@ -224,14 +229,32 @@ __guest_linux(){
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 		__log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
 		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		env -i TERM=xterm /usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		/usr/local/sbin/grub-bhyve -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	else
 		__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+		__guestpri_custom_grub && return 0
 		__log "guest" "${_name}" "grub-bhyve -c ${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-		env -i TERM=xterm /usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+		/usr/local/sbin/grub-bhyve -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
 	fi	
 
 	_exit=$?
+}
+
+# Run custom grub commands if available
+__guestpri_custom_grub(){
+	local _grub
+
+	__config_get "_grub" "grub_commands"
+
+	if [ -n "${_grub}" ]; then
+		__log "guest" "${_name}" "using grub commands from ${vm_dir}/${_name}/${_grub}"
+		__log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/${_grub}"
+		env -i TERM=xterm /usr/local/sbin/grub-bhyve -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/${_grub}"
+		_exit=$?
+		return 0
+	fi
+
+	return 1
 }
 
 # Windows
@@ -243,7 +266,6 @@ __guest_windows(){
 
 # Generic guest
 # With uefi, many guests may not need any special handling
-
 __guest_generic(){
 	_exit=0
 }

@@ -165,6 +165,16 @@ network0_mac=""
 #
 passthru0=""
 
+# grub_commands
+# If you need to use custom grub loader commands that are different to
+# the defaults used by vm-bhyve, you can use this setting.
+# Create a text file in the guest directory ($vm_dir/guest/) containing
+# the grub commands, then enter the filename (just the filename not the path)
+# into this setting. Usually the last entry in the file should be 'boot',
+# followed by a newline
+#
+grub_commands=""
+
 # linux_kernel
 # This option is only used for CentOS guests, when booted using the standard
 # grub-bhyve loader. It should contain a value similar to '3.10.0-229.el7.x86_64'

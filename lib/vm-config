@@ -40,7 +40,7 @@ __config_load(){
 	# read config file
 	# we kick out any lines that don't start with a letter,
 	# scrap anything after a # character, and remove double-quotes
-	VM_CONFIG=$(grep '^[a-z]' "${_file}" | awk -F# '{print $1}' | tr -d '"')
+	VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
 }
 
 # get a configuration value from the current config file

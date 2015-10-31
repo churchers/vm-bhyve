@@ -358,7 +358,7 @@ __vm_bhyve_device_disks(){
 # @modifies _devices _slot _taplist
 #
 __vm_bhyve_device_networking(){
-	local _type _switch _mac _tap _sid
+	local _type _switch _mac _tap _sid _mtu
 	local _num=0
 
 	while [ 1 ]; do
@@ -383,7 +383,20 @@ __vm_bhyve_device_networking(){
 			ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
 
 			__switch_get_ident "_sid" "${_switch}"
-			[ -n "${_sid}" ] && ifconfig "${_sid}" addm "${_tap}"
+
+			if [ -n "${_sid}" ]; then
+				_mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
+
+				if [ "${_mtu}" != "1500" ]; then
+					__log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
+					ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
+				fi
+
+				ifconfig "${_sid}" addm "${_tap}"
+				[ $? -ne 0 ] $$ __log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+			else
+				__log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
+			fi
 
 			_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
 			[ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"

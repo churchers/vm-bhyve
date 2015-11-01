@@ -151,6 +151,7 @@ __vm_run(){
 	__vm_bhyve_device_basic
 	__vm_bhyve_device_disks
 	__vm_bhyve_device_networking
+	__vm_bhyve_device_rand
 	__vm_bhyve_device_passthru
 
 	__vm_lock "${_name}"
@@ -305,7 +306,7 @@ __vm_bhyve_device_basic(){
 # @modifies _devices _slot
 #
 __vm_bhyve_device_disks(){
-	local _disk _type _dev _path
+	local _disk _type _dev _path _opts
 	local _num=0
 
 	# get disks
@@ -313,6 +314,7 @@ __vm_bhyve_device_disks(){
 		__config_get "_disk" "disk${_num}_name"
 		__config_get "_type" "disk${_num}_type"
 		__config_get "_dev" "disk${_num}_dev"
+		__config_get "_opts" "disk${_num}_opts"
 
 		# break if disk not found
 		[ -z "${_disk}" -o -z "${_type}" ] && break
@@ -325,6 +327,7 @@ __vm_bhyve_device_disks(){
 
 		__vm_get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 		_devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+		[ -n "${_opts}" ] && _devices="${_devices},${_opts}"
 
 		if [ -n "${_uefi}" ]; then
 			_slot=$((_slot + 1))
@@ -412,6 +415,21 @@ __vm_bhyve_device_networking(){
 	if [ ${_num} -ge 1 ]; then
 		_slot=$((_slot + 1))
 		_func=0
+	fi
+}
+
+# check if user wants a virtio-rand device
+#
+# @modifies _devices _slot
+#
+__vm_bhyve_device_rand(){
+	local _rand
+
+	__config_get "_rand" "virt_random"
+
+	if __checkyesno "${_rand}"; then
+		_devices="${_devices} -s ${_slot}:0,virtio-rnd"
+		_slot=$((_slot + 1))
 	fi
 }
 

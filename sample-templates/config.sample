@@ -126,6 +126,15 @@ disk0_dev=""
 #
 disk0_name="disk0.img"
 
+# disk0_opts
+# A comma separated list of additional options for the specified disk.
+# The available options are listed below. See the bhyve(8) man page for
+# more details
+#
+# Valid Options: direct,nocache,ro,sectorsize=logical[/physical]
+#
+disk0_opts=""
+
 # network0_type
 # This specifies the emulation type to use for the first network interface.
 # Networking is not required, although this field is mandatory if you do want
@@ -164,6 +173,12 @@ network0_mac=""
 # More details can be found in the FreeBSD bhyve wiki pages
 #
 passthru0=""
+
+# virt_random
+# Set to any value other than [empty]/off/false/no/0 to create
+# a virtio-rnd device for the guest
+#
+virt_random=""
 
 # grub_commands
 # If you need to use custom grub loader commands that are different to

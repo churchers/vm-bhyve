@@ -386,15 +386,23 @@ __vm_start(){
 #
 __vm_stop(){
 	local _name="$1"
-	local _pid
+	local _pid _loadpid
 
 	[ -z "${_name}" ] && __usage
 	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
 	_pid=$(pgrep -fx "bhyve: ${_name}")
-	[ -z "${_pid}" ] && __err "unable to locate process id for this virtual machine"
+	_loadpid=$(pgrep -fl "grub-bhyve|bhyveload" | grep " ${_name}\$" |cut -d' ' -f1)
 
-	kill "${_pid}"
+	if [ -n "${_pid}" ]; then
+		kill "${_pid}"
+	elif [ -n "${_loadpid}" ]; then
+		__confirm "Guest is in bootloader stage, do you wish to force exit" || exit 0
+		kill "${_loadpid}"
+		bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
+	else
+		__err "unable to locate process id for this virtual machine"
+	fi
 }
 
 # 'vm reset'

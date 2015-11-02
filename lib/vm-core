@@ -72,6 +72,7 @@ __vm_list(){
 #
 __vm_create(){
 	local _name _template _opt _size _vmdir _disk _disk_dev _uuid _newline
+	local _zfs_opts
 
 	while getopts t:s: _opt ; do
 		case $_opt in
@@ -104,6 +105,7 @@ __vm_create(){
 	__config_load "${vm_dir}/.templates/${_template}.conf"
 	__config_get "_disk" "disk0_name"
 	__config_get "_disk_dev" "disk0_dev"
+	__config_get "_zfs_opts" "zfs_dataset_opts"
 
 	[ -z "${_disk}" ] && __err "template is missing disk0_name specification"
 
@@ -112,7 +114,7 @@ __vm_create(){
 	[ -e "${_vmdir}" ] && __err "directory ${_vmdir} already exists"
 
 	# if we're on zfs, make a new filesystem
-	__zfs_make_dataset "${_name}"
+	__zfs_make_dataset "${_name}" "${_zfs_opts}"
 
 	[ ! -d "${_vmdir}" ] && mkdir "${_vmdir}" >/dev/null 2>&1
 	[ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"
@@ -127,13 +129,16 @@ __vm_create(){
 	[ "${_newline}" -eq "0" ] && echo "" >> "${_vmdir}/${_name}.conf" 
 	sysrc -inqf "${_vmdir}/${_name}.conf" "uuid=${_uuid}" >/dev/null 2>&1
 
+	# get any zvol options
+	__config_get "_zfs_opts" "zfs_zvol_opts"
+
 	# create the disk
 	case "${_disk_dev}" in 
 		zvol)
-			__zfs_make_zvol "${_name}/${_disk}" "${_size}"
+			__zfs_make_zvol "${_name}/${_disk}" "${_size}" "0" "${_zfs_opts}"
 			;;			
 		sparse-zvol)
-			__zfs_make_zvol "${_name}/${_disk}" "${_size}" "1"
+			__zfs_make_zvol "${_name}/${_disk}" "${_size}" "1" "${_zfs_opts}"
 			;;
 		*)
 			truncate -s "${_size}" "${_vmdir}/${_disk}"
@@ -203,7 +208,7 @@ __vm_add_disk(){
 	local _name="$1"
 	local _device="$2"
 	local _size="$3"
-	local _num=0 _curr _diskname _newline _emulation
+	local _num=0 _curr _diskname _newline _emulation _zfs_opts
 
 	: ${_device:=file}
 
@@ -211,6 +216,7 @@ __vm_add_disk(){
 
 	# get the last existing disk
 	__config_load "${vm_dir}/${_name}/${_name}.conf"
+	__config_get "_zfs_opts" "zfs_zvol_opts"
 
 	while [ 1 ]; do
 		__config_get "_curr" "disk${_num}_name"
@@ -224,11 +230,11 @@ __vm_add_disk(){
 	# create the disk first, then update config if no problems
 	case "${_device}" in
 		zvol)
-			__zfs_make_zvol "${_name}/disk${_num}" "${_size}"
+			__zfs_make_zvol "${_name}/disk${_num}" "${_size}" "0" "${_zfs_opts}"
 			_diskname="disk${_num}"
 			;;
 		sparse-zvol)
-			__zfs_make_zvol "${_name}/disk${_num}" "${_size}" "1"
+			__zfs_make_zvol "${_name}/disk${_num}" "${_size}" "1" "${_zfs_opts}"
 			_diskname="disk${_num}"
 			;;
 		file)

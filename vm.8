@@ -604,7 +604,7 @@ uses a similar format to the
 files, making them easy to edit by hand. The settings for each guest are stored in
 .Pa $vm_dir/$vm_name/$vm_name.conf .
 An overview of the available configuration options is listed below.
-.Bl -tag -width 15n
+.Bl -tag -width 17n
 .It guest
 Specify the type of guest to be installed in this virtual machine. Current valid options
 for this are generic, freebsd, netbsd, openbsd, windows, centos, ubuntu, debian & alpine linux.
@@ -766,6 +766,27 @@ Once you have created the file, set this option to the name of the file. From th
 on, during a normal boot
 .Pa vm-bhyve
 will use the commands from this file rather than attempting to generate them automatically.
+.It zfs_dataset_opts
+This allows you to specify one or more ZFS properties to set on the dataset when a 
+guest is created. Because properties are assigned as the dataset is created, this option
+is most useful when specified inside a template. As a guest is created, all properties
+listed in this option will be applied to the guest dataset.
+.Pp
+Multiple properties can be specified, separated by a space. Please note that spaces
+are not currently supported in the property values.
+.It zfs_zvol_opts
+Allows you to specify ZFS properties that should be assigned to any ZVOLs that are
+created for a guest. As with
+.Pa zfs_dataset_opts ,
+this makes most sense when entered into a template, as the properties can be assigned
+while a guest is being created. Some ZVOL options, such as
+.Pa volblocksize
+can only be set at creation time.
+.Pp
+Multiple properties can be specified, separated by a space. For example, the following
+will configure the ZVOL block size to 128k, and turn compression off.
+.Pp
+zfs_zvol_opts="volblocksize=128k compress=off"
 .It linux_kernel
 CentOS guests require the kernel to be loaded inside the boot loader. This option is
 required for these guests and specifies the kernel version number to load. Hopefully

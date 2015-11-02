@@ -217,3 +217,22 @@ guest_version=""
 # Valid Options: amd64,i386
 #
 arch=""
+
+# zfs_dataset_opts
+# A list of ZFS properties to set on any new dataset created for this
+# guest. Multiple properties can be specified, separated by a | character.
+# As a dataset is created while provisioning a new guest, this option
+# makes most sense when specified inside a template.
+#
+# Please note that spaces are currently not supported in this field
+#
+zfs_dataset_opts=""
+
+# zfs_zvol_opts
+# A list of ZFS properties to set on any new ZVOL created for this guest.
+# As with dataset_opts, this needs to be set inside the guest template
+# if you need the properties to apply to the guest as it is created.
+# Some options such as volblocksize cannot be changed once the guest
+# disk has been created.
+#
+zfs_zvol_opts=""

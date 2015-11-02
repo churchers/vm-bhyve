@@ -73,9 +73,11 @@ __zfs_init(){
 #
 __zfs_make_dataset(){
 	local _name="$1"
+	local _opts="$2"
 
 	if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
-		zfs create "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+		__zfs_format_options "_opts" "${_opts}"
+		zfs create ${_opts} "${VM_ZFS_DATASET}/${_name}"
 		[ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
 	fi
 }
@@ -120,13 +122,35 @@ __zfs_make_zvol(){
 	local _name="$1"
 	local _size="$2"
 	local _sparse="$3"
+	local _user_opts="$4"
 	local _opt="-V"
 
 	[ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
-	[ -n "${_sparse}" ] && _opt="-sV"
+	[ "${_sparse}" = "1" ] && _opt="-sV"
 
-	zfs create ${_opt} ${_size} -o volmode=dev "${VM_ZFS_DATASET}/${_name}"
+	__zfs_format_options "_user_opts" "${_user_opts}"
+	zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${VM_ZFS_DATASET}/${_name}"
 	[ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
+}
+
+# format options for zfs commands
+# options are stored in configuration separated by |
+# we need to replace that with -o
+#
+# @modifies $_val
+#
+__zfs_format_options(){
+	local _val="$1"
+	local _c_opts="$2"
+
+	if [ -n "${_c_opts}" ]; then
+		_c_opts=$(echo "${_c_opts}" |sed -e 's/\ / -o /')
+		_c_opts="-o ${_c_opts}"
+		setvar "${_val}" "${_c_opts}"
+		return 0
+	fi
+
+	setvar "${_val}" ""
 }
 
 # 'vm snapshot'

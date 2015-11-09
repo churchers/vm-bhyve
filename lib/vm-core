@@ -36,30 +36,30 @@ __vm_list(){
 
 	ls -1 "${vm_dir}" | \
 	while read _name; do
-		if [ -e "${vm_dir}/${_name}/${_name}.conf" ]; then
-			__config_load "${vm_dir}/${_name}/${_name}.conf"
+		[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && continue
 
-			_num=1
-			_auto="No"
-			__vm_running_check "_run" "${_name}"
-			__config_get "_guest" "guest"
-			__config_get "_cpu" "cpu"
-			__config_get "_memory" "memory"
+		__config_load "${vm_dir}/${_name}/${_name}.conf"
+		__config_get "_guest" "guest"
+		__config_get "_cpu" "cpu"
+		__config_get "_memory" "memory"
 
-			# find out if we auto-start this vm, and get sequence number
-			for _vm in ${vm_list}; do
-				[ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
-				_num=$(($_num + 1))
-			done
+		__vm_running_check "_run" "${_name}"
+		_num=1
+		_auto="No"
 
-			# if stopped, see if it's locked by another host
-			if [ "${_run}" = "Stopped" -a -e "${vm_dir}/${_name}/run.lock" ]; then
-				_run=$(head -n1 "${vm_dir}/${_name}/run.lock")
-				_run="Locked (${_run})"
-			fi
+		# find out if we auto-start this vm, and get sequence number
+		for _vm in ${vm_list}; do
+			[ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
+			_num=$(($_num + 1))
+		done
 
-			printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
+		# if stopped, see if it's locked by another host
+		if [ "${_run}" = "Stopped" -a -e "${vm_dir}/${_name}/run.lock" ]; then
+			_run=$(head -n1 "${vm_dir}/${_name}/run.lock")
+			_run="Locked (${_run})"
 		fi
+
+		printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
 	done
 }
 

@@ -40,21 +40,20 @@ __switch_init(){
 	if [ -n "${_switchlist}" ]; then
 		for _switch in ${_switchlist}; do
 			__switch_get_ident "_id" "${_switch}"
+			[ -n "${_id}" ] && continue
+
 			__config_get "_nat" "nat_${_switch}"
 			__config_get "_bridge" "bridge_${_switch}"
 
-			# not already loaded?
-			if [ -z "${_id}" ]; then
-				if [ -n "${_bridge}" ]; then
-					ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1
-				else
-					_id=$(ifconfig bridge create)
-					[ $? -ne 0 ] && __err "failed to create bridge interface"
-					ifconfig "${_id}" description "vm-${_switch}" up
+			if [ -n "${_bridge}" ]; then
+				ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1
+			else
+				_id=$(ifconfig bridge create)
+				[ $? -ne 0 ] && __err "failed to create bridge interface"
+				ifconfig "${_id}" description "vm-${_switch}" up
 
-					# add all member interfaces
-					__switch_add_allmembers "${_switch}" "${_id}"
-				fi
+				# add all member interfaces
+				__switch_add_allmembers "${_switch}" "${_id}"
 			fi
 
 			[ -n "${_nat}" ] &&_havenat="1"

@@ -88,6 +88,10 @@ interfaces by duplicating the two network configuration options and incrementing
 will not want to change the type from 'virtio-net', but you will notice the first interface is set to connect 
 to a switch called 'public'. See the next section for details on how to configure virtual switches.
 
+I recommend reading the man page or `sample-templates/config.sample` for a full list of supported template
+options and a description of their purpose. Almost all bhyve functionality is supported and a large variety
+of network/storage configurations can be achieved.
+
 ## Virtual Switches
 
 When a guest is started, each network interface is automatically connected to the virtual switch specified

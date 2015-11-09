@@ -367,7 +367,7 @@ __vm_start(){
 	[ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
 
 	# confirm we aren't running
-	__vm_confirm_stopped "${_name}" || return 1
+	__vm_confirm_stopped "${_name}" "1" || return 1
 
 	# check basic settings before going into background mode
 	__config_load "${_conf}"

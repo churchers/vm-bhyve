@@ -698,6 +698,19 @@ to. This should correspond to a virtual switch created using the
 .Pa vm switch create
 subcommand. If the virtual switch is not found, an interface will still be assigned,
 but not connected to any bridge.
+.Pp
+Note that this field is no longer strictly required. If you are using a custom device
+for the networking that is already configured, you may not need the interface connected
+to a virtual switch. See the
+.Sy network0_device
+configuration option.
+.It network0_device
+Normally vm-bhyve will create a
+.Xr tap 4
+device at run-time for each virtual network interface. This may be an issue in more advanced
+configurations where you want to pre-configure the networking manually in a way unsupported by
+vm-bhyve. This option allows you to instruct vm-bhyve to use an existing network device for 
+this virtual interface, rather than creating one dynamically.
 .It network0_mac
 This option allows you to specify a mac address to use for this interface. If not
 provided,

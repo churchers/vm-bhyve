@@ -92,9 +92,9 @@ __switch_list(){
 			: ${_nat:=-}
 		else
 			_type="manual"
-			: ${_portlist:=n/a}
-			: ${_vlan:=n/a}
-			: ${_nat:=n/a}
+			_portlist="n/a"
+			_vlan="n/a"
+			_nat="n/a"
 		fi
 
 		printf "${_format}" "${_switch}" "${_type}" "${_id}" "${_vlan}" "${_nat}" "${_portlist}"

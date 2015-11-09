@@ -362,19 +362,24 @@ __vm_bhyve_device_disks(){
 # @modifies _devices _slot _taplist
 #
 __vm_bhyve_device_networking(){
-	local _type _switch _mac _tap _sid _mtu
+	local _type _switch _mac _custom_tap _tap _sid _mtu
 	local _num=0
 
 	while [ 1 ]; do
 		__config_get "_type" "network${_num}_type"
 		__config_get "_switch" "network${_num}_switch"
 		__config_get "_mac" "network${_num}_mac"
+		__config_get "_custom_tap" "network${_num}_device"
 
-		# we need a type and switch
-		[ -z "${_type}" -o -z "${_switch}" ] && break
+		# we need at least a type
+		[ -z "${_type}" ] && break
 
 		# create interface
-		_tap=$(ifconfig tap create)
+		if [ -n "${_custom_tap}" ]; then
+			_tap="${_custom_tap}"
+		else
+			_tap=$(ifconfig tap create)
+		fi
 
 		if [ -n "${_tap}" ]; then
 			# move slot if we've hit function 8
@@ -383,31 +388,33 @@ __vm_bhyve_device_networking(){
 				_slot=$((_slot + 1))
 			fi
 
-			__log "guest" "${_name}" "created network device ${_tap}"
-			ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch}"
+			__log "guest" "${_name}" "initialising network device ${_tap}"
+			ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}"
 
-			__switch_get_ident "_sid" "${_switch}"
+			if [ -n "${_switch}" ]; then
+				__switch_get_ident "_sid" "${_switch}"
 
-			if [ -n "${_sid}" ]; then
-				_mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
+				if [ -n "${_sid}" ]; then
+					_mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
 
-				if [ "${_mtu}" != "1500" ]; then
-					__log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
-					ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
+					if [ "${_mtu}" != "1500" ]; then
+						__log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
+						ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
+					fi
+
+					__log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch})"
+					ifconfig "${_sid}" addm "${_tap}" >/dev/null 2>&1
+					[ $? -ne 0 ] && __log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+				else
+					__log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
 				fi
-
-				__log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch})"
-				ifconfig "${_sid}" addm "${_tap}" >/dev/null 2>&1
-				[ $? -ne 0 ] && __log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
-			else
-				__log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
 			fi
 
 			_devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
 			[ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
 			_func=$((_func + 1))
-			_taplist="${_taplist}${_taplist:+ }${_tap}"
+			[ -z "${_custom_tap}" ] && _taplist="${_taplist}${_taplist:+ }${_tap}"
 		fi
 
 		_num=$((_num + 1))

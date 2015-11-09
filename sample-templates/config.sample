@@ -145,15 +145,22 @@ disk0_opts=""
 network0_type="virtio-net"
 
 # network_switch
-# The name of the virtual switch to connect this interface to. This is also a 
-# required field if this interface is to be added to the guest. When starting the
-# guest, if this switch cannot be found, the interface is still created but
-# will not be connected to anything.
+# The name of the virtual switch to connect this interface to. When starting the
+# guest, if this switch cannot be found, or no switch is specified, the interface
+# is still created but will not be connected to anything.
 #
 # All default templates use a switch called 'public', although it's perfectly
 # reasonable to use other switch names that make sense in your environment
 #
 network0_switch="public"
+
+# network0_device
+# If you do not want vm-bhyve to create a new interface, but use an existing
+# one, enter the interface name here. This allows you to preconfigure the network
+# device in a custom configuration, then instruct vm-bhyve to use that rather
+# than create all interfaces dynamically at run time.
+#
+network0_device=""
 
 # network0_mac
 # This is the only networking option that is not required for each interface.

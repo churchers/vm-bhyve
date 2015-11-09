@@ -28,7 +28,8 @@ If you want to run guests other than FreeBSD, you will need the grub2-bhyve pack
 
     # pkg install grub2-bhyve
 
-Additionally, NAT support is only available if you have dnsmasq installed.
+Additionally, while not specifically required, dnsmasq can be used to provid DHCP services
+when vm-bhyve is configured to run NAT.
 
     # pkg install dnsmasq
 
@@ -106,9 +107,10 @@ side of the NAT network. Just enable NAT on the switch:
 
     # vm switch nat public on
 
-This will automatically create a private network on the switch, enable DHCP for it, and forward guest traffic
-via your default gateway. Please note that NAT functionality  requires the dnsmasq package to be installed, 
-and both dnsmasq & pf must be enabled in /etc/rc.conf. See the man page for more details.
+This will automatically create a private network on the switch, and forward guest traffic
+via your default gateway. Please note that pf must be enabled in /etc/rc.conf for NAT functionality to work.
+Whilst not strictly required, dnsmasq can be used to provide DHCP services to guests on the NAT network.
+vm-bhyve will generate a sample dnsmasq.conf file which can be installed for this purpose.
 
 If you want guest traffic to be on a specific VLAN when leaving the host, specify a vlan number. To turn
 off vlans, just set the vlan number to 0:

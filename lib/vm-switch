@@ -350,12 +350,14 @@ __switch_nat(){
 				__err "pf needs to be enabled for nat functionality"
 			fi
 
-			if ! checkyesno dnsmasq_enable; then
-				__err "dnsmasq needs to be installed and enabled for nat functionality"
-			fi
-
 			sysrc -inqf "${vm_dir}/.config/switch" "nat_${_switch}=yes" >/dev/null 2>&1
 			[ $? -ne 0 ] && __err "failed to store nat configuration"
+
+			echo "******"
+			echo "  NAT has been enabled on the specified switch"
+			echo "  A sample dnsmasq configuration has been created in /usr/local/etc/dnsmasq.conf.bhyve"
+			echo "  To enable DHCP on this switch, please install the dnsmasq confguration or merge with your existing."
+			echo "******"
 			;;
 		*)
 			__err "last option should either be 'on' or 'off' to enable/disable nat functionality"
@@ -384,14 +386,14 @@ __switch_nat_init(){
 	_gw=$(netstat -rn | grep default | awk '{print $4}')
 
 	# basic dnsmasq settings
-	echo "# vm-bhyve dhcp" > /usr/local/etc/dnsmasq.conf
-	echo "port=0" >> /usr/local/etc/dnsmasq.conf
-	echo "domain-needed" >> /usr/local/etc/dnsmasq.conf
-	echo "no-resolv" >> /usr/local/etc/dnsmasq.conf
-	echo "except-interface=lo0" >> /usr/local/etc/dnsmasq.conf
-	echo "bind-interfaces" >> /usr/local/etc/dnsmasq.conf
-	echo "local-service" >> /usr/local/etc/dnsmasq.conf
-	echo "dhcp-authoritative" >> /usr/local/etc/dnsmasq.conf
+	echo "# vm-bhyve dhcp" > /usr/local/etc/dnsmasq.conf.bhyve
+	echo "port=0" >> /usr/local/etc/dnsmasq.conf.bhyve
+	echo "domain-needed" >> /usr/local/etc/dnsmasq.conf.bhyve
+	echo "no-resolv" >> /usr/local/etc/dnsmasq.conf.bhyve
+	echo "except-interface=lo0" >> /usr/local/etc/dnsmasq.conf.bhyve
+	echo "bind-interfaces" >> /usr/local/etc/dnsmasq.conf.bhyve
+	echo "local-service" >> /usr/local/etc/dnsmasq.conf.bhyve
+	echo "dhcp-authoritative" >> /usr/local/etc/dnsmasq.conf.bhyve
 
 	# reset our pf config and create /etc/pf.conf if needed
 	echo "# vm-bhyve nat" > "${vm_dir}/.config/pf-nat.conf"
@@ -413,9 +415,9 @@ __switch_nat_init(){
 			_net24="172.16.${_bnum}"
 
 			echo "nat on ${_gw} from {${_net24}.0/24} to any -> (${_gw})" >> "${vm_dir}/.config/pf-nat.conf"
-			echo "" >> /usr/local/etc/dnsmasq.conf
-			echo "interface=${_id}" >> /usr/local/etc/dnsmasq.conf
-			echo "dhcp-range=${_net24}.10,${_net24}.254" >> /usr/local/etc/dnsmasq.conf
+			echo "" >> /usr/local/etc/dnsmasq.conf.bhyve
+			echo "interface=${_id}" >> /usr/local/etc/dnsmasq.conf.bhyve
+			echo "dhcp-range=${_net24}.10,${_net24}.254" >> /usr/local/etc/dnsmasq.conf.bhyve
 
 			# make sure interface has an ip
 			# this doesn't get removed when nat disabled but not a major issue
@@ -430,7 +432,6 @@ __switch_nat_init(){
 
 	# restart services regardless
 	# still need to restart if _havenat=0, in case we've just removed last nat switch
-	__restart_service "dnsmasq"
 	__restart_service "pf"
 }
 

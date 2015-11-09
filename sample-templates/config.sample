@@ -144,7 +144,7 @@ disk0_opts=""
 #
 network0_type="virtio-net"
 
-# network_switch
+# network0_switch
 # The name of the virtual switch to connect this interface to. When starting the
 # guest, if this switch cannot be found, or no switch is specified, the interface
 # is still created but will not be connected to anything.
@@ -163,16 +163,17 @@ network0_switch="public"
 network0_device=""
 
 # network0_mac
-# This is the only networking option that is not required for each interface.
+# This allows you to specify a fixed mac address for this interface inside the guest.
 # Without this option, bhyve will automatically assign a mac address to the
-# interface. This allows you to specify a fixed mac address
+# interface.
 #
 network0_mac=""
 
 # passthru0
 # Add a pass-through PCI device to the virtual machine. This allows the guest
 # to access a hardware device no differently than if it was running on bare
-# metal.
+# metal. The value of this option is the B/S/F of the appropriate device.
+# e.g "3/0/0"
 #
 # Please note that in order to stop the bhyve host from attaching to the device,
 # there are some steps required to reserve the device in /boot/loader.conf.

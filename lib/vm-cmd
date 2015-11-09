@@ -129,6 +129,9 @@ __parse_switch_cmd(){
 		destroy)
 			__switch_remove "$@"
 			;;
+		import)
+			__switch_import "$@"
+			;;
 		add)
 			__switch_add_member "$@"
 			;;

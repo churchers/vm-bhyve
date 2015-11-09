@@ -31,7 +31,7 @@
 #
 __switch_init(){
 	local _switchlist _switch _id
-	local _nat _havenat=0
+	local _nat _havenat=0 _bridge
 
 	__config_load "${vm_dir}/.config/switch"
 	__config_get "_switchlist" "switch_list"
@@ -41,15 +41,20 @@ __switch_init(){
 		for _switch in ${_switchlist}; do
 			__switch_get_ident "_id" "${_switch}"
 			__config_get "_nat" "nat_${_switch}"
+			__config_get "_bridge" "bridge_${_switch}"
 
 			# not already loaded?
 			if [ -z "${_id}" ]; then
-				_id=$(ifconfig bridge create)
-				[ $? -ne 0 ] && __err "failed to create bridge interface"
-				ifconfig "${_id}" description "vm-${_switch}" up
+				if [ -n "${_bridge}" ]; then
+					ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1
+				else
+					_id=$(ifconfig bridge create)
+					[ $? -ne 0 ] && __err "failed to create bridge interface"
+					ifconfig "${_id}" description "vm-${_switch}" up
 
-				# add all member interfaces
-				__switch_add_allmembers "${_switch}" "${_id}"
+					# add all member interfaces
+					__switch_add_allmembers "${_switch}" "${_id}"
+				fi
 			fi
 
 			[ -n "${_nat}" ] &&_havenat="1"
@@ -63,13 +68,13 @@ __switch_init(){
 # list switches, currently just from stored configuration
 #
 __switch_list(){
-	local _switchlist _portlist _switch _port _vlan _nat
-	local _id _format="%-15s %-15s %-6s %-9s %s\n"
+	local _switchlist _portlist _switch _port _vlan _nat _bridge _type
+	local _id _format="%-15s %-10s %-11s %-9s %-12s %s\n"
 
 	__config_load "${vm_dir}/.config/switch"
 	__config_get "_switchlist" "switch_list"
 
-	printf "${_format}" "NAME" "IDENT" "VLAN" "NAT" "PORTS"
+	printf "${_format}" "NAME" "TYPE" "IDENT" "VLAN" "NAT" "PORTS"
 
 	for _switch in ${_switchlist}; do
 		__switch_get_ident "_id" "${_switch}"
@@ -78,12 +83,21 @@ __switch_list(){
 		__config_get "_portlist" "ports_${_switch}"
 		__config_get "_vlan" "vlan_${_switch}"
 		__config_get "_nat" "nat_${_switch}"
+		__config_get "_bridge" "bridge_${_switch}"
 
-		: ${_portlist:=-}
-		: ${_vlan:=-}
-		: ${_nat:=-}
+		if [ -z "${_bridge}" ]; then
+			_type="auto"
+			: ${_portlist:=-}
+			: ${_vlan:=-}
+			: ${_nat:=-}
+		else
+			_type="manual"
+			: ${_portlist:=n/a}
+			: ${_vlan:=n/a}
+			: ${_nat:=n/a}
+		fi
 
-		printf "${_format}" "${_switch}" "${_id}" "${_vlan}" "${_nat}" "${_portlist}"
+		printf "${_format}" "${_switch}" "${_type}" "${_id}" "${_vlan}" "${_nat}" "${_portlist}"
 	done
 }
 
@@ -112,6 +126,39 @@ __switch_create(){
 	ifconfig "${_id}" description "vm-${_switch}" up
 }
 
+# 'vm switch import'
+# use an existing manually configured bridge
+#
+# @param string _switch name of the switch to create
+# @param string _bridge name of the bridge interface to import
+#
+__switch_import(){
+	local _switch="$1"
+	local _bridge="$2"
+	local _exists
+
+	[ -z "${_switch}" -o -z "${_bridge}" ] && __usage
+
+        echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9_]{0,14}[a-z0-9]$'
+        [ $? -ne 0 ] && __err "invalid switch name"
+
+        _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+
+        for _curr in $_curr_list; do
+                [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
+        done
+
+	_exists=$(ifconfig | grep "^${_bridge}: ")
+	[ -z "${_exists}" ] && __err "${_bridge} does not appear to be a valid existing bridge"
+
+	__rc_append_string ".config/switch" "switch_list" "${_switch}"
+	sysrc -inqf "${vm_dir}/.config/switch" "bridge_${_switch}"="${_bridge}" >/dev/null 2>&1
+
+	# attach our description to bridge
+	# this will allow vm-bhyve to find it and attach guests
+	ifconfig "${_bridge}" description "vm-${_switch}" up
+}
+
 # 'vm switch destroy'
 # remove a virtual switch
 #
@@ -119,10 +166,21 @@ __switch_create(){
 #
 __switch_remove(){
 	local _switch="$1"
-	local _id _nat
+	local _id _nat _bridge
+
+	__config_load "${vm_dir}/.config/switch"
+	__config_get "_bridge" "bridge_${_switch}"
+	__config_get "_nat" "nat_${_switch}"
+
+	# if manual, leave it there and just remove from our config
+	if [ -n "${_bridge}" ]; then
+		ifconfig "${_bridge}" description "" >/dev/null 2>&1
+		__rc_splice_string ".config/switch" "switch_list" "${_switch}"
+		sysrc -inxqf "${vm_dir}/.config/switch" "bridge_${_switch}"
+		exit 0
+	fi	
 
 	__switch_get_ident "_id" "${_switch}"
-	_nat=$(sysrc -inqf "${vm_dir}/.config/switch" "nat_${_switch}")
 	__switch_remove_allmembers "${_switch}" "${_id}"
 	__rc_splice_string ".config/switch" "switch_list" "${_switch}"
 	sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}" "nat_${_switch}"
@@ -150,6 +208,7 @@ __switch_vlan(){
 	local _vlan="$2"
 
 	[ -z "${_switch}" -o -z "${_vlan}" ] && __usage
+	__switch_auto "${_switch}"
 
 	echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
 	[ $? -ne 0 ] && __err "invalid vlan number"
@@ -267,6 +326,9 @@ __switch_add_member(){
 	local _member="$2"
 	local _id
 
+	[ -z "${_switch}" -o -z "${_member}" ] && __usage
+
+	__switch_auto "${_switch}"
 	__switch_get_ident "_id" "${_switch}"
 	[ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
 
@@ -321,6 +383,9 @@ __switch_remove_member(){
 	local _member="$2"
 	local _id
 
+	[ -z "${_switch}" -o -z "${_member}" ] && __usage
+
+	__switch_auto "${_switch}"
 	__switch_get_ident "_id" "${_switch}"
 	[ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
 
@@ -340,6 +405,7 @@ __switch_nat(){
 	local _nat="$2"
 
 	[ -z "${_switch}" ] && __usage
+	__switch_auto "${_switch}"
 
 	case "${_nat}" in
 		off)
@@ -433,6 +499,20 @@ __switch_nat_init(){
 	# restart services regardless
 	# still need to restart if _havenat=0, in case we've just removed last nat switch
 	__restart_service "pf"
+}
+
+# produce an error if the listed switch is not managed by vm-bhyve.
+# we allow users to import existing bridges which they configure themselves.
+# we don't allow vm-bhyve to mess with these, it's all up to the user
+#
+# @param string _switch the name of the switch
+#
+__switch_auto(){
+	local _switch="$1"
+	local _bridge
+
+	_bridge=$(sysrc -inqf "${vm_dir}/.config/switch" "bridge_${_switch}")
+	[ -n "${_bridge}" ] && __err "this is a manual switch that is managed outside of vm-bhyve"
 }
 
 # get the interface name for a switch

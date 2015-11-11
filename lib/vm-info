@@ -42,8 +42,7 @@ __vm_info(){
 
 	ls -1 "${vm_dir}" | \
 	while read _name; do
-		[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && continue
-		__vm_info_guest "${_name}"
+		[ -e "${vm_dir}/${_name}/${_name}.conf" ] && __vm_info_guest "${_name}"
 	done
 }
 

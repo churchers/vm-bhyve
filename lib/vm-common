@@ -76,6 +76,7 @@ vm: Bhyve virtual machine managament v${VERSION}
 Usage: vm ...
 	init
 	switch list
+        switch info [name]
 	switch create <name>
 	switch import <name> <bridge>
 	switch vlan <name> <vlan|0>
@@ -84,6 +85,7 @@ Usage: vm ...
 	switch remove <name> <interface>
 	switch destroy <name>
 	list
+        info [name]
 	create [-t template] [-s size] <name>
 	install <name> <iso>
 	start <name>

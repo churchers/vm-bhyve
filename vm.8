@@ -11,6 +11,9 @@
 .Nm
 .Cm switch list
 .Nm
+.Cm switch info
+.Op Ar name
+.Nm
 .Cm switch create
 .Ar name
 .Nm
@@ -42,6 +45,9 @@
 .Ar name
 .Nm
 .Cm list
+.Nm
+.Cm info
+.Op Ar name
 .Nm
 .Cm install
 .Ar name iso
@@ -285,6 +291,19 @@ file and displays them. If the virtual switches are loaded, it also tries
 to display the
 .Xr bridge 4
 interface that has been assigned to each one.
+.It Cm switch info Op Ar name
+This command shows detailed information about the specified virtual switch.
+If no switch name is provided, information is output for all configured switches.
+Information displayed includes the following:
+.Pp
+o Basic switch settings
+.br
+o Overall bytes sent and received via this switch
+.br
+o Physical ports connected
+.br
+o Virtual ports, including the associated virtual machine
+.br
 .It Cm switch create Ar name
 Create a new virtual switch. The name must be supplied and may only contain
 letters, numbers and dashes. However, it may not contain a dash at the beginning
@@ -415,6 +434,14 @@ List all the virtual machines in the
 .Pa $vm_dir
 directory. This will show the basic configuration for each virtual machine, and whether
 they are currently running.
+.It Cm info Op Ar name
+Shows detailed information about the specified virtual machine. If no name is given,
+information for all virtual machines is displayed.
+.Pp
+This output includes detailed information about network and disk devices, including
+the space usage for all virtual disks (exluding custom disk devices). If the guest
+is running, the output also shows the amount of host memory curently in use,
+and additional network details including bytes sent/received for each virtual interface.
 .It Cm install Ar name Ar iso
 Start a guest installation for the named virtual machine, using the specified ISO file.
 The

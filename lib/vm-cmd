@@ -48,6 +48,9 @@ __parse_cmd(){
 		list)
 			__vm_list
 			;;
+		info)
+			__vm_info "$@"
+			;;
 		create)
 			__vm_create "$@"
 			;;
@@ -125,6 +128,9 @@ __parse_switch_cmd(){
 			;;
 		list)
 			__switch_list
+			;;
+		info)
+			__vm_info_switch "$@"
 			;;
 		destroy)
 			__switch_remove "$@"

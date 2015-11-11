@@ -1,0 +1,368 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# 'vm info'
+# display a wealth of information about all guests, or one specified
+#
+# @param optional string _name name of the guest to display
+#
+__vm_info(){
+	local _name="$1"
+	local _bridge_list=$(ifconfig | grep ^bridge | cut -d: -f1)
+
+	__vm_running_load
+
+	if [ -n "${_name}" ]; then
+		__vm_info_guest "${_name}"
+		exit
+	fi
+
+	ls -1 "${vm_dir}" | \
+	while read _name; do
+		[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && continue
+		__vm_info_guest "${_name}"
+	done
+}
+
+# 'vm switch info'
+# display config of each virtual switch as well as stats and connected guests
+#
+# @param optional string _switch name of switch to display
+#
+__vm_info_switch(){
+	local _switch="$1"
+	local _conf="${vm_dir}/.config/switch"
+	local _list
+
+	__config_load "${_conf}"
+	__config_get "_list" "switch_list"
+
+	if [ -n "${_switch}" ]; then
+		__vm_info_switch_show "${_switch}"
+		exit
+	fi
+
+	for _switch in ${_list}; do
+		__vm_info_switch_show "${_switch}"
+	done
+}
+
+# display info for one virtual switch
+#
+# @param string _switch the name of the switch
+#
+__vm_info_switch_show(){
+	local _switch="$1"
+	local _bridge
+	local _INDENT="  "
+
+	[ -z "${_switch}" ] && return 1
+
+	__config_get "_bridge" "bridge_${_switch}"
+
+	echo "------------------------"
+	echo "Virtual Switch: ${_switch}"
+	echo "------------------------"
+
+	if [ -n "${_bridge}" ]; then
+		echo "${_INDENT}type: manual"
+	else
+		echo "${_INDENT}type: auto"
+		__switch_get_ident "_bridge" "${_switch}"
+	fi
+
+	echo "${_INDENT}ident: ${_bridge:--}"
+
+	__vm_info_output_config "vlan_${_switch}" "vlan"
+	__vm_info_output_config "nat_${_switch}" "nat"
+	__vm_info_output_config "ports_${_switch}" "physical-ports"
+
+	if [ -n "${_bridge}" ]; then
+		_stats=$(netstat -biI "${_bridge}" |grep '<Link#' | tail -n1 | awk '{print $7,$10}')
+
+		if [ -n "${_stats}" ]; then
+			_b_in=$(__vm_info_bytes_human "${_stats%% *}")
+			_b_out=$(__vm_info_bytes_human "${_stats##* }")
+
+			echo "${_INDENT}bytes-in: ${_stats%% *} (${_b_in})"
+			echo "${_INDENT}bytes-out: ${_stats##* } (${_b_out})"
+		fi
+
+		# show guest ports
+		[ -n "${_bridge}" ] && __vm_info_switch_ports
+	fi
+
+	echo ""
+}
+
+# get all guest ports for current bridge
+#
+__vm_info_switch_ports(){
+	local _port_list=$(ifconfig "${_bridge}" |grep 'member: tap' |awk '{print $2}')
+	local _port _guest
+
+	for _port in ${_port_list}; do
+		_guest=$(ifconfig "${_port}" |grep 'description: vmnet-' |awk '{print $2}' |cut -d'-' -f2)
+
+		echo ""
+		echo "${_INDENT}virtual-port"
+		echo "${_INDENT}${_INDENT}device: ${_port}"
+		echo "${_INDENT}${_INDENT}vm: ${_guest:--}"
+	done
+}
+
+# display the info for one guest
+#
+# @param string _name name of the guest to display
+#
+__vm_info_guest(){
+	local _name="$1"
+	local _conf="${vm_dir}/${_name}/${_name}.conf"
+	local _INDENT="  "
+	local _RUN="0"
+	local _res_mem _b_res_mem _global_run
+
+	[ -z "${_name}" ] && return 1
+	[ ! -f "${_conf}" ] && return 1
+
+	__config_load "${_conf}"
+
+	# check local and global runstate
+	[ -e "/dev/vmm/${_name}" ] && _RUN="1"
+	__vm_running_check "_global_run" "${_name}"
+
+	echo "------------------------"
+	echo "Virtual Machine: ${_name}"
+	echo "------------------------"
+
+	echo "${_INDENT}state: ${_global_run}"
+
+	# basic guest configuration
+	__vm_info_output_config "guest"
+	__vm_info_output_config "uuid" "uuid" "auto"
+	__vm_info_output_config "uefi" "uefi" "no"
+	__vm_info_output_config "cpu"
+	__vm_info_output_config "memory"
+
+	# running system details
+	if [ "${_RUN}" = "1" ]; then
+		_res_mem=$(bhyvectl --get-stats --vm="${_name}" |grep 'Resident memory' |awk '{print $3}')
+
+		if [ -n "${_res_mem}" ]; then
+			_b_res_mem=$(__vm_info_bytes_human "${_res_mem}")
+			echo "${_INDENT}memory-resident: ${_res_mem} (${_b_res_mem})"
+		fi
+	fi
+
+	# network interfaces
+	__vm_info_networking
+
+	# disks
+	__vm_info_disks
+
+	echo ""
+}
+
+# display disks
+#
+__vm_info_disks(){
+	local _num=0
+	local _disk _type _dev _path _size _b_size _used _b_used
+	local _INDENT="    "
+
+	while [ 1 ]; do
+		__config_get "_disk" "disk${_num}_name"
+		__config_get "_type" "disk${_num}_type"
+		__config_get "_dev" "disk${_num}_dev"
+		[ -z "${_disk}" -o -z "${_type}" ] && break
+
+		: ${_dev:=file}
+
+		__vm_get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
+
+		echo ""
+		echo "  virtual-disk"
+		echo "${_INDENT}number: ${_num}"
+
+		__vm_info_output_config "disk${_num}_dev" "device-type" "file"
+		__vm_info_output_config "disk${_num}_type" "emulation"
+		__vm_info_output_config "disk${_num}_opts" "options"
+
+		echo "${_INDENT}system-path: ${_path:--}"
+
+		_size=""
+		_used=""
+
+		if [ -n "${_path}" ]; then
+			case "${_dev}" in
+				file)
+					_size=$(stat "${_path}" | cut -d' ' -f8)
+					_used=$(du "${_path}" | awk '{print $1}')
+					_used=$((_used * 1024))
+					;;
+				zvol|sparse-zvol)
+					_size=$(zfs get -Hp volsize "${_path#/dev/zvol/}" |cut -f3)
+					_used=$(zfs get -Hp refer "${_path#/dev/zvol/}" |cut -f3)
+					;;
+			esac
+
+			if [ -n "${_size}" -a -n "${_used}" ]; then
+				_b_size=$(__vm_info_bytes_human "${_size}")
+				_b_used=$(__vm_info_bytes_human "${_used}")
+				echo "${_INDENT}bytes-size: ${_size} (${_b_size})"
+				echo "${_INDENT}bytes-used: ${_used} (${_b_used})"
+			fi
+		fi
+
+		_num=$((_num + 1))
+	done
+}
+
+# display networking configuration
+#
+__vm_info_networking(){
+	local _num=0
+	local _int _id _tag _switch _stats _b_in _b_out
+	local _INDENT="    "
+
+	while [ 1 ]; do
+		__config_get "_int" "network${_num}_type"
+		[ -z "${_int}" ] && break
+
+		echo ""
+		echo "  network-interface"
+		echo "${_INDENT}number: ${_num}"
+
+		# basic interface config
+		__vm_info_output_config "network${_num}_type" "emulation"
+		__vm_info_output_config "network${_num}_switch" "virtual-switch"
+		__vm_info_output_config "network${_num}_mac" "fixed-mac-address"
+		__vm_info_output_config "network${_num}_device" "fixed-device"
+
+		# if running, try to get some more interface details
+		if [ "${_RUN}" = "1" ]; then
+			__config_get "_switch" "network${_num}_switch"
+
+			_int=$(ifconfig | grep -B1 "vmnet-${_name}-${_num}-" | head -n1 | cut -d' ' -f1,6)
+			_id=${_int%%:*}
+			_tag=$(ifconfig | grep "vmnet-${_name}-${_num}-" | cut -d' ' -f2)
+
+			__vm_info_find_bridge "_bridge" "${_id}"
+
+			echo "${_INDENT}active-device: ${_id:--}"
+			echo "${_INDENT}desc: ${_tag:--}"
+			echo "${_INDENT}mtu: ${_int##* }"
+			echo "${_INDENT}bridge: ${_bridge:--}"
+
+			if [ -n "${_id}" ]; then
+				_stats=$(netstat -biI "${_id}" | tail -n1 | awk '{print $10,$7}')
+				_b_in=$(__vm_info_bytes_human "${_stats%% *}")
+				_b_out=$(__vm_info_bytes_human "${_stats##* }")
+
+				echo "${_INDENT}bytes-in: ${_stats%% *} (${_b_in})"
+				echo "${_INDENT}bytes-out: ${_stats##* } (${_b_out})"
+			fi
+		fi
+
+		_num=$((_num + 1))
+	done
+}
+
+# output a single configuration variable
+# alwasy called once guest configuration has been loaded
+#
+# @param string _option config option to display
+# @param optional string _title title to display instead of using option name
+# @param optional string _default default value to display if not -
+#
+__vm_info_output_config(){
+	local _option="$1"
+	local _title="$2"
+	local _default="$3"
+	local _var
+
+	__config_get "_var" "${_option}"
+	[ -z "${_title}" ] && _title="${_option}"
+	[ -z "${_var}" ] && _var="${_default:--}"
+
+	echo "${_INDENT}${_title}: ${_var}"
+}
+
+# try and find the bridge an interface is a member of.
+# we do this rather than just use __switch_get_ident as
+# this should be able to locate the bridge even for devices
+# that have been bridged manually and have no switch name configured
+#
+# @param string _var variable to put value into
+# @param string _interface interface to look for
+#
+__vm_info_find_bridge(){
+	local _var="$1"
+	local _interface="$2"
+	local _br _found
+
+	for _br in ${_bridge_list}; do
+		_found=$(ifconfig "${_br}" |grep member: |awk '{print $2}' |tr "\n" "," | grep "${_interface},")
+
+		if [ -n "${_found}" ]; then
+			setvar "${_var}" "${_br}"
+			return 0
+		fi
+	done
+
+	setvar "${_var}" ""
+	return 1
+}
+
+# format bytes to human readable
+# convert to k,m,g or t
+# output rounded number
+#
+# @param int _val the value to convert
+#
+__vm_info_bytes_human(){
+	local _val="$1" _int _ext
+	local _num=1
+
+	: ${_val:=0}
+	_int=${_val%%.*}
+
+	while [ ${_int} -ge 1024 -a ${_num} -lt 5 ]; do
+		_val=$(echo "scale=3; ${_val}/1024" | bc)
+		_int=${_val%%.*}
+		_num=$((_num + 1))
+	done
+
+	case "${_num}" in
+		1) _ext="B" ;;
+		2) _ext="K" ;;
+		3) _ext="M" ;;
+		4) _ext="G" ;;
+		5) _ext="T" ;;
+	esac
+
+	printf "%.3f%s" "${_val}" "${_ext}"
+}

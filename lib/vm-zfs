@@ -42,28 +42,28 @@
 # @modifies VM_ZFS VM_ZFS_DATASET vm_dir
 #
 __zfs_init(){
-	local _zfs
+    local _zfs
 
-	# check for zfs storage location
-	# user should specify "zfs:pool/dataset" if they want ZFS support
-	_zfs=$(echo "${vm_dir}" | cut -c -3)
+    # check for zfs storage location
+    # user should specify "zfs:pool/dataset" if they want ZFS support
+    _zfs=$(echo "${vm_dir}" | cut -c -3)
 
-	# are we storing on ZFS?
-	if [ ${_zfs} = 'zfs' ]; then
+    # are we storing on ZFS?
+    if [ ${_zfs} = 'zfs' ]; then
 
-		# check zfs running
-		kldstat -n zfs >/dev/null 2>&1
-		[ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
+        # check zfs running
+        kldstat -n zfs >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
 
-		# global zfs details
-		VM_ZFS="1"
-		VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
+        # global zfs details
+        VM_ZFS="1"
+        VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
 
-		# update vm_dir
-		# this makes sure it exists, confirms it's mounted & gets correct path in one go
-		vm_dir=$(mount | grep "^${VM_ZFS_DATASET} " |cut -d' ' -f3)
-		[ -z "${vm_dir}" ] && __err "unable to locate mountpoint for ZFS dataset ${VM_ZFS_DATASET}"
-	fi
+        # update vm_dir
+        # this makes sure it exists, confirms it's mounted & gets correct path in one go
+        vm_dir=$(mount | grep "^${VM_ZFS_DATASET} " |cut -d' ' -f3)
+        [ -z "${vm_dir}" ] && __err "unable to locate mountpoint for ZFS dataset ${VM_ZFS_DATASET}"
+    fi
 }
 
 # make a new dataset
@@ -72,14 +72,14 @@ __zfs_init(){
 # @param string _name name of the dataset (under VM_ZFS_DATASET) to create
 #
 __zfs_make_dataset(){
-	local _name="$1"
-	local _opts="$2"
+    local _name="$1"
+    local _opts="$2"
 
-	if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
-		__zfs_format_options "_opts" "${_opts}"
-		zfs create ${_opts} "${VM_ZFS_DATASET}/${_name}"
-		[ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
-	fi
+    if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
+        __zfs_format_options "_opts" "${_opts}"
+        zfs create ${_opts} "${VM_ZFS_DATASET}/${_name}"
+        [ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+    fi
 }
 
 # destroy a dataset
@@ -87,12 +87,12 @@ __zfs_make_dataset(){
 # @param string _name name of the dataset to destroy (under VM_ZFS_DATASET)
 #
 __zfs_destroy_dataset(){
-	local _name="$1"
+    local _name="$1"
 
-	if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
-		zfs destroy -rf "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-		[ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
-	fi
+    if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
+        zfs destroy -rf "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+    fi
 }
 
 # rename a dataset
@@ -103,13 +103,13 @@ __zfs_destroy_dataset(){
 # @param string _new the new name
 #
 __zfs_rename_dataset(){
-	local _old="$1"
-	local _new="$2"
+    local _old="$1"
+    local _new="$2"
 
-	if [ -n "${_old}" -a -n "${_new}" -a "${VM_ZFS}" = "1" ]; then
-		zfs rename "${VM_ZFS_DATASET}/${_old}" "${VM_ZFS_DATASET}/${_new}" >/dev/null 2>&1
-		[ $? -ne 0 ] && __err "failed to rename ZFS dataset ${VM_ZFS_DATASET}/${_old}"
-	fi
+    if [ -n "${_old}" -a -n "${_new}" -a "${VM_ZFS}" = "1" ]; then
+        zfs rename "${VM_ZFS_DATASET}/${_old}" "${VM_ZFS_DATASET}/${_new}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "failed to rename ZFS dataset ${VM_ZFS_DATASET}/${_old}"
+    fi
 }
 
 # make a zvol for a guest disk image
@@ -119,18 +119,18 @@ __zfs_rename_dataset(){
 # @param int _sparse=0 set to 1 for a sparse zvol
 #
 __zfs_make_zvol(){
-	local _name="$1"
-	local _size="$2"
-	local _sparse="$3"
-	local _user_opts="$4"
-	local _opt="-V"
+    local _name="$1"
+    local _size="$2"
+    local _sparse="$3"
+    local _user_opts="$4"
+    local _opt="-V"
 
-	[ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
-	[ "${_sparse}" = "1" ] && _opt="-sV"
+    [ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
+    [ "${_sparse}" = "1" ] && _opt="-sV"
 
-	__zfs_format_options "_user_opts" "${_user_opts}"
-	zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${VM_ZFS_DATASET}/${_name}"
-	[ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
+    __zfs_format_options "_user_opts" "${_user_opts}"
+    zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${VM_ZFS_DATASET}/${_name}"
+    [ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
 }
 
 # format options for zfs commands
@@ -140,17 +140,17 @@ __zfs_make_zvol(){
 # @modifies $_val
 #
 __zfs_format_options(){
-	local _val="$1"
-	local _c_opts="$2"
+    local _val="$1"
+    local _c_opts="$2"
 
-	if [ -n "${_c_opts}" ]; then
-		_c_opts=$(echo "${_c_opts}" |sed -e 's/\ / -o /')
-		_c_opts="-o ${_c_opts}"
-		setvar "${_val}" "${_c_opts}"
-		return 0
-	fi
+    if [ -n "${_c_opts}" ]; then
+        _c_opts=$(echo "${_c_opts}" |sed -e 's/\ / -o /')
+        _c_opts="-o ${_c_opts}"
+        setvar "${_val}" "${_c_opts}"
+        return 0
+    fi
 
-	setvar "${_val}" ""
+    setvar "${_val}" ""
 }
 
 # 'vm snapshot'
@@ -162,42 +162,42 @@ __zfs_format_options(){
 # @param string _name the name of the guest to snapshot
 #
 __zfs_snapshot(){
-	local _name _snap _opt _force _snap_exists
+    local _name _snap _opt _force _snap_exists
 
-	while getopts f _opt; do
-		case $_opt in
-			f)
-				_force=1
-				;;
-			*)
-				__usage
-				;;
-		esac
-	done
+    while getopts f _opt; do
+        case $_opt in
+            f)
+                _force=1
+                ;;
+            *)
+                __usage
+                ;;
+        esac
+    done
 
-	shift $((OPTIND - 1))
-	_name="$1"
+    shift $((OPTIND - 1))
+    _name="$1"
 
-	# try to get snapshot name
-	# we support normal zfs syntax for this
-	_snap_exists=$(echo "${_name}" | grep "@")
+    # try to get snapshot name
+    # we support normal zfs syntax for this
+    _snap_exists=$(echo "${_name}" | grep "@")
 
-	if [ -n "${_snap_exists}" ]; then
-		_snap=${_name##*@}
-		_name=${_name%%@*}
-	fi
+    if [ -n "${_snap_exists}" ]; then
+        _snap=${_name##*@}
+        _name=${_name%%@*}
+    fi
 
-	[ -z "${_name}" ] && __usage
-	[ ! "${VM_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
-	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
-	[ -z "${_snap}" ] && _snap=$(date +"%Y-%m-%d-%H:%M:%S")
+    [ -z "${_name}" ] && __usage
+    [ ! "${VM_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
+    [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
+    [ -z "${_snap}" ] && _snap=$(date +"%Y-%m-%d-%H:%M:%S")
 
-	if ! __vm_confirm_stopped "${_name}" >/dev/null; then
-		[ -z "${_force}" ] && __err "${_name} must be powered off first (use -f to override)"
-	fi
+    if ! __vm_confirm_stopped "${_name}" >/dev/null; then
+        [ -z "${_force}" ] && __err "${_name} must be powered off first (use -f to override)"
+    fi
 
-	zfs snapshot -r ${VM_ZFS_DATASET}/${_name}@${_snap}
-	[ $? -ne 0 ] && __err "failed to create recursive snapshot of virtual machine"
+    zfs snapshot -r ${VM_ZFS_DATASET}/${_name}@${_snap}
+    [ $? -ne 0 ] && __err "failed to create recursive snapshot of virtual machine"
 }
 
 # 'vm rollback'
@@ -211,39 +211,39 @@ __zfs_snapshot(){
 # @param string _name name of the guest
 #
 __zfs_rollback(){
-	local _name _snap _opt _force _fs _snap_exists
+    local _name _snap _opt _force _fs _snap_exists
 
-	while getopts r _opt; do
-		case $_opt in
-			r)
-				_force="-r"
-				;;
-			*)
-				__usage
-				;;
-		esac
-	done
+    while getopts r _opt; do
+        case $_opt in
+            r)
+                _force="-r"
+                ;;
+            *)
+                __usage
+                ;;
+        esac
+    done
 
-	shift $((OPTIND - 1))
+    shift $((OPTIND - 1))
 
-	_snap_exists=$(echo "${1}" | grep "@")
-	[ -z "${_snap_exists}" ] && __err "a snapshot name must be provided in guest@snapshot format"
+    _snap_exists=$(echo "${1}" | grep "@")
+    [ -z "${_snap_exists}" ] && __err "a snapshot name must be provided in guest@snapshot format"
 
-	_name="${1%%@*}"
-	_snap="${1##*@}"
+    _name="${1%%@*}"
+    _snap="${1##*@}"
 
-	[ -z "${_name}" -o -z "${_snap}" ] && __usage
-	[ ! "${VM_ZFS}" = "1" ] && __err "cannot rollback guests unless ZFS support is enabled"
-	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
+    [ -z "${_name}" -o -z "${_snap}" ] && __usage
+    [ ! "${VM_ZFS}" = "1" ] && __err "cannot rollback guests unless ZFS support is enabled"
+    [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
 
-	__vm_confirm_stopped "${_name}" || exit 1
+    __vm_confirm_stopped "${_name}" || exit 1
 
-	# list all datasets and zvols under guest
-	zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_name} | \
-	while read _fs; do
-		zfs rollback ${_force} ${_fs}@${_snap}
-		[ $? -ne 0 ] && exit $?
-	done
+    # list all datasets and zvols under guest
+    zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_name} | \
+    while read _fs; do
+        zfs rollback ${_force} ${_fs}@${_snap}
+        [ $? -ne 0 ] && exit $?
+    done
 }
 
 # 'vm clone'
@@ -254,34 +254,34 @@ __zfs_rollback(){
 # @param string _new name of the new guest
 #
 __zfs_clone(){
-	local _old="$1"
-	local _new="$2"
-	local _uuid _uuidpart _fs _newfs
+    local _old="$1"
+    local _new="$2"
+    local _uuid _uuidpart _fs _newfs
 
-	[ -z "${_old}" -o -z "${_new}" ] && __usage
-	[ ! "${VM_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
-	[ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} does not appear to be an existing virtual machine"
-	[ -e "${vm_dir}/${_old}/run.lock" ] && __err "${_old} must be powered off first"
-	[ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
+    [ -z "${_old}" -o -z "${_new}" ] && __usage
+    [ ! "${VM_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
+    [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} does not appear to be an existing virtual machine"
+    [ -e "${vm_dir}/${_old}/run.lock" ] && __err "${_old} must be powered off first"
+    [ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
 
-	_uuid=$(uuidgen)
-	_uuidpart=$(echo "${_uuid}" |awk -F- '{print $1}')
+    _uuid=$(uuidgen)
+    _uuidpart=$(echo "${_uuid}" |awk -F- '{print $1}')
 
-	zfs snapshot -r ${VM_ZFS_DATASET}/${_old}@${_uuidpart}
-	[ $? -ne 0 ] && __err "failed to create snapshot ${VM_ZFS_DATASET}/${_old}@${_uuidpart}"
+    zfs snapshot -r ${VM_ZFS_DATASET}/${_old}@${_uuidpart}
+    [ $? -ne 0 ] && __err "failed to create snapshot ${VM_ZFS_DATASET}/${_old}@${_uuidpart}"
 
-	zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_old} | \
-	while read _fs; do
-		_newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_new}@")
+    zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_old} | \
+    while read _fs; do
+        _newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_new}@")
 
-		zfs clone ${_fs}@${_uuidpart} ${_newfs}
-		[ $? -ne 0 ] && __err "error while cloning datasets"
-	done
+        zfs clone ${_fs}@${_uuidpart} ${_newfs}
+        [ $? -ne 0 ] && __err "error while cloning datasets"
+    done
 
-	# update new guest
-	mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf"
-	sysrc -inqf "${vm_dir}/${_new}/${_new}.conf" "uuid=${_uuid}" >/dev/null 2>&1
-	rm "${vm_dir}/${_new}/vm-bhyve.log" >/dev/null 2>&1
+    # update new guest
+    mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf"
+    sysrc -inqf "${vm_dir}/${_new}/${_new}.conf" "uuid=${_uuid}" >/dev/null 2>&1
+    rm "${vm_dir}/${_new}/vm-bhyve.log" >/dev/null 2>&1
 }
 
 # 'vm image create'
@@ -293,53 +293,53 @@ __zfs_clone(){
 # @param string _name name of guest to take image of
 #
 __zfs_image_create(){
-	local _name
-	local _opt _desc _uuid _date
+    local _name
+    local _opt _desc _uuid _date
 
-	while getopts d: _opt ; do
-		case $_opt in
-			d)
-				_desc=${OPTARG}
-				;;
-			*)
-				__usage
-				;;
-		esac
-	done
+    while getopts d: _opt ; do
+        case $_opt in
+            d)
+                _desc=${OPTARG}
+                ;;
+            *)
+                __usage
+                ;;
+        esac
+    done
 
-	shift $((OPTIND - 1))
-	_name=$1
-	_uuid=$(uuidgen)
-	_date=$(date)
+    shift $((OPTIND - 1))
+    _name=$1
+    _uuid=$(uuidgen)
+    _date=$(date)
 
-	[ -z "${_desc}" ] && _desc="No description provided"
-	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} does not appear to be a valid virtual machine"
+    [ -z "${_desc}" ] && _desc="No description provided"
+    [ ! -e "${vm_dir}/${_name}" ] && __err "${_name} does not appear to be a valid virtual machine"
 
-	# create the image dataset if we don't have it
-	if [ ! -e "${vm_dir}/images" ]; then
-		zfs create "${VM_ZFS_DATASET}/images" >/dev/null 2>&1
-		[ $? -ne 0 ] && __err "failed to create image store ${VM_ZFS_DATASET}/images"
-	fi
+    # create the image dataset if we don't have it
+    if [ ! -e "${vm_dir}/images" ]; then
+        zfs create "${VM_ZFS_DATASET}/images" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "failed to create image store ${VM_ZFS_DATASET}/images"
+    fi
 
-	# try to snapshot
-	zfs snapshot -r "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
-	[ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_uuid}"
+    # try to snapshot
+    zfs snapshot -r "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_uuid}"
 
-	# copy source
-	echo "Creating a compressed image, this may take some time..."
-	zfs send -R "${VM_ZFS_DATASET}/${_name}@${_uuid}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
-	[ $? -ne 0 ] && exit 1
+    # copy source
+    echo "Creating a compressed image, this may take some time..."
+    zfs send -R "${VM_ZFS_DATASET}/${_name}@${_uuid}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
+    [ $? -ne 0 ] && exit 1
 
-	# done with the source snapshot
-	zfs destroy ${VM_ZFS_DATASET}/${_name}@${_uuid}
+    # done with the source snapshot
+    zfs destroy ${VM_ZFS_DATASET}/${_name}@${_uuid}
 
-	# create a description file
-	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "description=${_desc}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "created=${_date}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "name=${_name}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "filename=${_uuid}.zfs.xz" >/dev/null 2>&1
+    # create a description file
+    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "description=${_desc}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "created=${_date}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "name=${_name}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "filename=${_uuid}.zfs.xz" >/dev/null 2>&1
 
-	echo "Image of ${_name} created with UUID ${_uuid}"
+    echo "Image of ${_name} created with UUID ${_uuid}"
 }
 
 # 'vm image provision'
@@ -349,58 +349,58 @@ __zfs_image_create(){
 # @param string _name name of the new guest
 #
 __zfs_image_provision(){
-	local _uuid="$1"
-	local _name="$2"
-	local _file
-	local _oldname
+    local _uuid="$1"
+    local _name="$2"
+    local _file
+    local _oldname
 
-	[ -z "${_uuid}" -o -z "${_name}" ] && __usage
-	[ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
-	[ -e "${vm_dir}/${_name}" ] && __err "directory ${vm_dir}/${_name} already exists"
+    [ -z "${_uuid}" -o -z "${_name}" ] && __usage
+    [ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
+    [ -e "${vm_dir}/${_name}" ] && __err "directory ${vm_dir}/${_name} already exists"
 
-	# get the data filename
-	_file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
-	_oldname=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
-	[ -z "${_file}" -o -z "${_oldname}" ] && __err "unable to locate required details from the specified image manifest"
-	[ ! -e "${vm_dir}/images/${_file}" ] && __err "image data file does not exist: ${vm_dir}/images/${_file}"
+    # get the data filename
+    _file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
+    _oldname=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
+    [ -z "${_file}" -o -z "${_oldname}" ] && __err "unable to locate required details from the specified image manifest"
+    [ ! -e "${vm_dir}/images/${_file}" ] && __err "image data file does not exist: ${vm_dir}/images/${_file}"
 
-	# try to recieve
-	echo "Unpacking compressed image, this may take some time..."
-	cat "${vm_dir}/images/${_file}" | xz -d | zfs recv "${VM_ZFS_DATASET}/${_name}"
-	[ $? -ne 0 ] && __err "errors occured while trying to unpackage the image file"
+    # try to recieve
+    echo "Unpacking compressed image, this may take some time..."
+    cat "${vm_dir}/images/${_file}" | xz -d | zfs recv "${VM_ZFS_DATASET}/${_name}"
+    [ $? -ne 0 ] && __err "errors occured while trying to unpackage the image file"
 
-	# remove the original snapshot
-	zfs destroy "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+    # remove the original snapshot
+    zfs destroy "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
 
-	# rename the guest configuration file
-	mv "${vm_dir}/${_name}/${_oldname}.conf" "${vm_dir}/${_name}/${_name}.conf" >/dev/null 2>&1
-	[ $? -ne 0 ] && __err "unpackaged image but unable to update guest configuration file"
+    # rename the guest configuration file
+    mv "${vm_dir}/${_name}/${_oldname}.conf" "${vm_dir}/${_name}/${_name}.conf" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "unpackaged image but unable to update guest configuration file"
 }
 
 # 'vm image list'
 # list available images
 #
 __zfs_image_list(){
-	local _file _uuid _ext
-	local _format="%-38s %-16s %-30s %s\n"
+    local _file _uuid _ext
+    local _format="%-38s %-16s %-30s %s\n"
 
-	printf "${_format}" "UUID" "NAME" "CREATED" "DESCRIPTION"
+    printf "${_format}" "UUID" "NAME" "CREATED" "DESCRIPTION"
 
-	[ ! -e "${vm_dir}/images" ] && exit
+    [ ! -e "${vm_dir}/images" ] && exit
 
-	ls -1 ${vm_dir}/images/ | \
-	while read _file; do
-		_ext=$(echo "${_file}" | cut -d. -f2)
+    ls -1 ${vm_dir}/images/ | \
+    while read _file; do
+        _ext=$(echo "${_file}" | cut -d. -f2)
 
-		if [ "${_ext}" = "manifest" ]; then
-			_uuid=$(echo "${_file}" | cut -c -36)
-			_desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" description)
-			_created=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" created)
-			_name=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
+        if [ "${_ext}" = "manifest" ]; then
+            _uuid=$(echo "${_file}" | cut -c -36)
+            _desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" description)
+            _created=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" created)
+            _name=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
 
-			printf "${_format}" "${_uuid}" "${_name}" "${_created}" "${_desc}"
-		fi
-	done
+            printf "${_format}" "${_uuid}" "${_name}" "${_created}" "${_desc}"
+        fi
+    done
 }
 
 # 'vm image destroy'
@@ -409,18 +409,18 @@ __zfs_image_list(){
 # @param string _uuid the uuid of the image
 #
 __zfs_image_destroy(){
-	local _uuid="$1"
-	local _file
+    local _uuid="$1"
+    local _file
 
-	[ -z "${_uuid}" ] && __usage
-	[ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
+    [ -z "${_uuid}" ] && __usage
+    [ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
 
-	# get the image filename
-	_file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
-	[ -z "${_file}" ] && __err "unable to locate filename for the specified image"
+    # get the image filename
+    _file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
+    [ -z "${_file}" ] && __err "unable to locate filename for the specified image"
 
-	rm "${vm_dir}/images/${_uuid}.manifest"
-	rm "${vm_dir}/images/${_file}"
+    rm "${vm_dir}/images/${_uuid}.manifest"
+    rm "${vm_dir}/images/${_file}"
 }
 
 # cmd 'vm image ...'
@@ -430,27 +430,17 @@ __zfs_image_destroy(){
 # @param string _cmd the command after 'vm image '
 #
 __zfs_parse_image_cmd(){
-	local _cmd="$1"
-	shift
+    local _cmd="$1"
+    shift
 
-	# we only support these commands on zfs
-	[ ! "${VM_ZFS}" = "1" ] && __err "the image command set is only available with ZFS storage"
+    # we only support these commands on zfs
+    [ ! "${VM_ZFS}" = "1" ] && __err "the image command set is only available with ZFS storage"
 
-	case "${_cmd}" in
-		list)
-			__zfs_image_list
-			;;
-		create)
-			__zfs_image_create "$@"
-			;;
-		provision)
-			__zfs_image_provision "$@"
-			;;
-		destroy)
-			__zfs_image_destroy "$@"
-			;;
-		*)
-			__usage
-			;;
-	esac
+    case "${_cmd}" in
+        list)      __zfs_image_list ;;
+        create)    __zfs_image_create "$@" ;;
+        provision) __zfs_image_provision "$@" ;;
+        destroy)   __zfs_image_destroy "$@" ;;
+        *)         __usage ;;
+    esac
 }

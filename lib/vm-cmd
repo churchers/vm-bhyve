@@ -31,84 +31,36 @@
 # @param string _cmd the command right after 'vm '
 #
 __parse_cmd(){
-	local _cmd="$1"
-	shift
+    local _cmd="$1"
+    shift
 
-	case "${_cmd}" in
-		init)
-			__setup
-			__switch_init
-			;;
-		switch)
-			__parse_switch_cmd "$@"
-			;;
-		image)
-			__zfs_parse_image_cmd "$@"
-			;;
-		list)
-			__vm_list
-			;;
-		info)
-			__vm_info "$@"
-			;;
-		create)
-			__vm_create "$@"
-			;;
-		destroy)
-			__vm_destroy "$@"
-			;;
-		rename)
-			__vm_rename "$@"
-			;;
-		install)
-			__vm_install "$@"
-			;;
-		start)
-			__vm_start "$1"
-			;;
-		stop)
-			__vm_stop "$@"
-			;;
-		add)
-			__vm_add "$@"
-			;;
-		reset)
-			__vm_reset "$@"
-			;;
-		poweroff)
-			__vm_poweroff "$@"
-			;;
-		startall)
-			__vm_startall
-			;;
-		stopall)
-			__vm_stopall
-			;;
-		console)
-			__vm_console "$@"
-			;;
-		_run)
-			__vm_run "$@"
-			;;
-		iso)
-			__vm_iso "$@"
-			;;
-		configure)
-			__vm_configure "$@"
-			;;
-		clone)
-			__zfs_clone "$@"
-			;;
-		snapshot)
-			__zfs_snapshot "$@"
-			;;
-		rollback)
-			__zfs_rollback "$@"
-			;;
-		*)
-			__usage
-			;;
-	esac
+    case "${_cmd}" in
+        init)      __setup
+                   __switch_init ;;
+        switch)    __parse_switch_cmd "$@" ;;
+        image)     __zfs_parse_image_cmd "$@" ;;
+        list)      __vm_list ;;
+        info)      __vm_info "$@" ;;
+        create)    __vm_create "$@" ;;
+        destroy)   __vm_destroy "$@" ;;
+        rename)    __vm_rename "$@" ;;
+        install)   __vm_install "$@" ;;
+        start)     __vm_start "$1" ;;
+        stop)      __vm_stop "$@" ;;
+        add)       __vm_add "$@" ;;
+        reset)     __vm_reset "$@" ;;
+        poweroff)  __vm_poweroff "$@" ;;
+        startall)  __vm_startall ;;
+        stopall)   __vm_stopall ;;
+        console)   __vm_console "$@" ;;
+        _run)      __vm_run "$@" ;;
+        iso)       __vm_iso "$@" ;;
+        configure) __vm_configure "$@" ;;
+        clone)     __zfs_clone "$@" ;;
+        snapshot)  __zfs_snapshot "$@" ;;
+        rollback)  __zfs_rollback "$@" ;;
+        *)         __usage ;;
+    esac
 }
 
 # cmd: vm switch ...
@@ -119,39 +71,19 @@ __parse_cmd(){
 # @param string _cmd the command right after 'vm switch '
 #
 __parse_switch_cmd(){
-	local _cmd="$1"
-	shift
+    local _cmd="$1"
+    shift
 
-	case "${_cmd}" in
-		create)
-			__switch_create "$@"
-			;;
-		list)
-			__switch_list
-			;;
-		info)
-			__vm_info_switch "$@"
-			;;
-		destroy)
-			__switch_remove "$@"
-			;;
-		import)
-			__switch_import "$@"
-			;;
-		add)
-			__switch_add_member "$@"
-			;;
-		remove)
-			__switch_remove_member "$@"
-			;;
-		vlan)
-			__switch_vlan "$@"
-			;;
-		nat)
-			__switch_nat "$@"
-			;;
-		*)
-			__usage
-			;;
-	esac
+    case "${_cmd}" in
+        create)  __switch_create "$@" ;;
+        list)    __switch_list ;;
+        info)    __vm_info_switch "$@" ;;
+        destroy) __switch_remove "$@" ;;
+        import)  __switch_import "$@" ;;
+        add)     __switch_add_member "$@" ;;
+        remove)  __switch_remove_member "$@" ;;
+        vlan)    __switch_vlan "$@" ;;
+        nat)     __switch_nat "$@" ;;
+        *)       __usage ;;
+    esac
 }

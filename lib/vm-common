@@ -27,12 +27,12 @@
 # make sure we have the right environment
 #
 __setup(){
-	__load_module "vmm"
-	__load_module "nmdm"
-	__load_module "if_bridge"
-	__load_module "if_tap"
+    __load_module "vmm"
+    __load_module "nmdm"
+    __load_module "if_bridge"
+    __load_module "if_tap"
 
-	sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
+    sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
 }
 
 # load a kernel module
@@ -40,12 +40,12 @@ __setup(){
 # @param string _mod the module name
 #
 __load_module(){
-	local _mod="$1"
-	kldstat -n ${_mod} >/dev/null 2>&1
-	if [ $? -ne 0 ]; then
-		kldload ${_mod} >/dev/null 2>&1
-		[ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"
-	fi
+    local _mod="$1"
+    kldstat -n ${_mod} >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        kldload ${_mod} >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"
+    fi
 }
 
 # restart a local service
@@ -54,17 +54,17 @@ __load_module(){
 # @param string _serv the name of the service
 #
 __restart_service(){
-	local _serv="$1"
+    local _serv="$1"
 
-	service ${_serv} status >/dev/null 2>&1
+    service ${_serv} status >/dev/null 2>&1
 
-	if [ $? -ne 0 ]; then
-		service ${_serv} start >/dev/null 2>&1
-	else
-		service ${_serv} restart >/dev/null 2>&1
-	fi
+    if [ $? -ne 0 ]; then
+        service ${_serv} start >/dev/null 2>&1
+    else
+        service ${_serv} restart >/dev/null 2>&1
+    fi
 
-	[ $? -ne 0 ] && __warn "failed to start/restart service ${_serv}"
+    [ $? -ne 0 ] && __warn "failed to start/restart service ${_serv}"
 }
 
 # show version & usage information
@@ -74,41 +74,41 @@ __usage(){
 cat << EOT
 vm: Bhyve virtual machine managament v${VERSION}
 Usage: vm ...
-	init
-	switch list
-        switch info [name]
-	switch create <name>
-	switch import <name> <bridge>
-	switch vlan <name> <vlan|0>
-	switch nat <name> <on|off>
-	switch add <name> <interface>
-	switch remove <name> <interface>
-	switch destroy <name>
-	list
-        info [name]
-	create [-t template] [-s size] <name>
-	install <name> <iso>
-	start <name>
-	stop <name>
-	console <name> [com1|com2]
-	rename <name> <new-name>
-	add [-d device] [-t type] [-s size|switch] <name>
-	startall
-	stopall
-	reset <name>
-	poweroff <name>
-	configure <name>
-	destroy <name>
-	clone <name> <new-name>
-	snapshot [-f] <name[@snapshot]>
-	rollback [-r] <name@snapshot>
-	iso [url]
-	image list
-	image create [-d description] <name>
-	image destroy <uuid>
-	image provision <uuid> <newname>
+    init
+    switch list
+    switch info [name]
+    switch create <name>
+    switch import <name> <bridge>
+    switch vlan <name> <vlan|0>
+    switch nat <name> <on|off>
+    switch add <name> <interface>
+    switch remove <name> <interface>
+    switch destroy <name>
+    list
+    info [name]
+    create [-t template] [-s size] <name>
+    install <name> <iso>
+    start <name>
+    stop <name>
+    console <name> [com1|com2]
+    rename <name> <new-name>
+    add [-d device] [-t type] [-s size|switch] <name>
+    startall
+    stopall
+    reset <name>
+    poweroff <name>
+    configure <name>
+    destroy <name>
+    clone <name> <new-name>
+    snapshot [-f] <name[@snapshot]>
+    rollback [-r] <name@snapshot>
+    iso [url]
+    image list
+    image create [-d description] <name>
+    image destroy <uuid>
+    image provision <uuid> <newname>
 EOT
-	exit 1
+    exit 1
 }
 
 # error
@@ -117,8 +117,8 @@ EOT
 # @param string - the message to display
 #
 __err(){
-	echo "${0}: ERROR: $1"
-	exit 1
+    echo "${0}: ERROR: $1"
+    exit 1
 }
 
 # warn
@@ -127,7 +127,7 @@ __err(){
 # @param string - the message to display
 #
 __warn(){
-	echo "${0}: WARNING: $1"
+    echo "${0}: WARNING: $1"
 }
 
 # log to file
@@ -140,24 +140,24 @@ __warn(){
 # @param string _message the message to log
 #
 __log(){
-	local _type="$1"
-	local _lf="vm-bhyve.log"
-	local _guest _message _file _date
+    local _type="$1"
+    local _lf="vm-bhyve.log"
+    local _guest _message _file _date
 
-	case "${_type}" in
-		guest)
-			_guest="$2"
-			_message="$3"
-			_file="${vm_dir}/${_guest}/${_lf}"
-			;;
-		system)
-			_message="$2"
-			_file="${vm_dir}/${_lf}"
-			;;
-	esac
+    case "${_type}" in
+        guest)
+            _guest="$2"
+            _message="$3"
+            _file="${vm_dir}/${_guest}/${_lf}"
+            ;;
+        system)
+            _message="$2"
+            _file="${vm_dir}/${_lf}"
+            ;;
+    esac
 
-	_date=$(date +"%b %d %T")
-	echo "${_date}: ${_message}" >> "${_file}"
+    _date=$(date +"%b %d %T")
+    echo "${_date}: ${_message}" >> "${_file}"
 }
 
 # write content to a file, and log what we
@@ -171,21 +171,21 @@ __log(){
 # @param string _file the file name to write to
 #
 __log_and_write(){
-	local _type="$1"
-	local _guest="$2"
-	local _file="$3"
-	local _message="$4"
+    local _type="$1"
+    local _guest="$2"
+    local _file="$3"
+    local _message="$4"
 
-	_file="${vm_dir}/${_guest}/${_file}"
+    _file="${vm_dir}/${_guest}/${_file}"
 
-	if [ "${_type}" = "write" ]; then
-		__log "guest" "${_guest}" "create file ${_file}"
-		echo "${_message}" > "${_file}"
-	else
-		echo "${_message}" >> "${_file}"
-	fi
+    if [ "${_type}" = "write" ]; then
+        __log "guest" "${_guest}" "create file ${_file}"
+        echo "${_message}" > "${_file}"
+    else
+        echo "${_message}" >> "${_file}"
+    fi
 
-	__log "guest" "${_guest}" " -> ${_message}"
+    __log "guest" "${_guest}" " -> ${_message}"
 }
 
 # confirm yes or no
@@ -194,19 +194,19 @@ __log_and_write(){
 # @return int success if confirmed
 #
 __confirm(){
-	local _msg="$1"
-	local _resp
+    local _msg="$1"
+    local _resp
 
-	while read -p "${_msg} (y/n)? " _resp; do
-		case "${_resp}" in
-			y*)
-				return 0
-				;;
-			n*)
-				return 1
-				;;
-		esac
-	done
+    while read -p "${_msg} (y/n)? " _resp; do
+        case "${_resp}" in
+            y*)
+                return 0
+                ;;
+            n*)
+                return 1
+                ;;
+        esac
+    done
 }
 
 # our own checkyesno copy
@@ -217,14 +217,14 @@ __confirm(){
 # @return int 1 if set to "off/false/no/0", 0 otherwise
 #
 __checkyesno(){
-	local _value="$1"
+    local _value="$1"
 
-	case "$_value" in
-		[Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
-			return 1
-			;;
-		*)
-			return 0
-			;;		
-	esac
+    case "$_value" in
+        [Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
+            return 1
+            ;;
+        *)
+            return 0
+            ;;		
+    esac
 }

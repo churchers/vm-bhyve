@@ -28,39 +28,39 @@
 # list virtual machines
 #
 __vm_list(){
-	local _name _guest _cpu _memory _run _vm _auto _num
-	local _format="%-15s %-15s %-6s %-9s %-12s %-20s\n"
+    local _name _guest _cpu _memory _run _vm _auto _num
+    local _format="%-15s %-15s %-6s %-9s %-12s %-20s\n"
 
-	__vm_running_load
-	printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
+    __vm_running_load
+    printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
 
-	ls -1 "${vm_dir}" | \
-	while read _name; do
-		[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && continue
+    ls -1 "${vm_dir}" | \
+    while read _name; do
+        [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && continue
 
-		__config_load "${vm_dir}/${_name}/${_name}.conf"
-		__config_get "_guest" "guest"
-		__config_get "_cpu" "cpu"
-		__config_get "_memory" "memory"
+        __config_load "${vm_dir}/${_name}/${_name}.conf"
+        __config_get "_guest" "guest"
+        __config_get "_cpu" "cpu"
+        __config_get "_memory" "memory"
 
-		__vm_running_check "_run" "${_name}"
-		_num=1
-		_auto="No"
+        __vm_running_check "_run" "${_name}"
+        _num=1
+        _auto="No"
 
-		# find out if we auto-start this vm, and get sequence number
-		for _vm in ${vm_list}; do
-			[ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
-			_num=$(($_num + 1))
-		done
+        # find out if we auto-start this vm, and get sequence number
+        for _vm in ${vm_list}; do
+            [ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
+            _num=$(($_num + 1))
+        done
 
-		# if stopped, see if it's locked by another host
-		if [ "${_run}" = "Stopped" -a -e "${vm_dir}/${_name}/run.lock" ]; then
-			_run=$(head -n1 "${vm_dir}/${_name}/run.lock")
-			_run="Locked (${_run})"
-		fi
+        # if stopped, see if it's locked by another host
+        if [ "${_run}" = "Stopped" -a -e "${vm_dir}/${_name}/run.lock" ]; then
+            _run=$(head -n1 "${vm_dir}/${_name}/run.lock")
+            _run="Locked (${_run})"
+        fi
 
-		printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
-	done
+        printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
+    done
 }
 
 # 'vm create'
@@ -71,80 +71,80 @@ __vm_list(){
 # @param string _name the name of the guest to create
 #
 __vm_create(){
-	local _name _template _opt _size _vmdir _disk _disk_dev _uuid _newline
-	local _zfs_opts
+    local _name _template _opt _size _vmdir _disk _disk_dev _uuid _newline
+    local _zfs_opts
 
-	while getopts t:s: _opt ; do
-		case $_opt in
-			t)
-				_template=${OPTARG}
-				;;
-			s)
-				_size=${OPTARG}
-				;;
-			*)
-				__usage
-				;;
-		esac
-	done
+    while getopts t:s: _opt ; do
+        case $_opt in
+            t)
+                _template=${OPTARG}
+                ;;
+            s)
+                _size=${OPTARG}
+                ;;
+            *)
+                __usage
+                ;;
+        esac
+    done
 
-	shift $((OPTIND - 1))
-	_name=$1
+    shift $((OPTIND - 1))
+    _name=$1
 
-	[ -z "${_name}" ] && __usage
-	echo "${_name}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
-	[ $? -ne 0 ] && __err "invalid virtual machine name '${_name}'"
+    [ -z "${_name}" ] && __usage
+    echo "${_name}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+    [ $? -ne 0 ] && __err "invalid virtual machine name '${_name}'"
 
-	: ${_size:=20G}
-	: ${_template:=default}
+    : ${_size:=20G}
+    : ${_template:=default}
 
-	[ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
-		__err "unable to find template ${vm_dir}/.templates/${_template}.conf"
+    [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
+        __err "unable to find template ${vm_dir}/.templates/${_template}.conf"
 
-	# we need to get disk0 name and device type from the template
-	__config_load "${vm_dir}/.templates/${_template}.conf"
-	__config_get "_disk" "disk0_name"
-	__config_get "_disk_dev" "disk0_dev"
-	__config_get "_zfs_opts" "zfs_dataset_opts"
+    # we need to get disk0 name and device type from the template
+    __config_load "${vm_dir}/.templates/${_template}.conf"
+    __config_get "_disk" "disk0_name"
+    __config_get "_disk_dev" "disk0_dev"
+    __config_get "_zfs_opts" "zfs_dataset_opts"
 
-	[ -z "${_disk}" ] && __err "template is missing disk0_name specification"
+    [ -z "${_disk}" ] && __err "template is missing disk0_name specification"
 
-	# get the directory to store our vm data in
-	_vmdir="${vm_dir}/${_name}"
-	[ -e "${_vmdir}" ] && __err "directory ${_vmdir} already exists"
+    # get the directory to store our vm data in
+    _vmdir="${vm_dir}/${_name}"
+    [ -e "${_vmdir}" ] && __err "directory ${_vmdir} already exists"
 
-	# if we're on zfs, make a new filesystem
-	__zfs_make_dataset "${_name}" "${_zfs_opts}"
+    # if we're on zfs, make a new filesystem
+    __zfs_make_dataset "${_name}" "${_zfs_opts}"
 
-	[ ! -d "${_vmdir}" ] && mkdir "${_vmdir}" >/dev/null 2>&1
-	[ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"
+    [ ! -d "${_vmdir}" ] && mkdir "${_vmdir}" >/dev/null 2>&1
+    [ ! -d "${_vmdir}" ] && __err "unable to create virtual machine directory ${_vmdir}"
 
-	cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
-	[ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
+    cp "${vm_dir}/.templates/${_template}.conf" "${_vmdir}/${_name}.conf"
+    [ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
 
-	# generate a uuid
-	# jump through some hoops to make sure it gets its own line (but no gap)
-	_uuid=$(uuidgen)
-	_newline=$(tail -1 "${_vmdir}/${_name}.conf" | wc -l | tr -d " ")
-	[ "${_newline}" -eq "0" ] && echo "" >> "${_vmdir}/${_name}.conf" 
-	sysrc -inqf "${_vmdir}/${_name}.conf" "uuid=${_uuid}" >/dev/null 2>&1
+    # generate a uuid
+    # jump through some hoops to make sure it gets its own line (but no gap)
+    _uuid=$(uuidgen)
+    _newline=$(tail -1 "${_vmdir}/${_name}.conf" | wc -l | tr -d " ")
+    [ "${_newline}" -eq "0" ] && echo "" >> "${_vmdir}/${_name}.conf" 
+    sysrc -inqf "${_vmdir}/${_name}.conf" "uuid=${_uuid}" >/dev/null 2>&1
 
-	# get any zvol options
-	__config_get "_zfs_opts" "zfs_zvol_opts"
+    # get any zvol options
+    __config_get "_zfs_opts" "zfs_zvol_opts"
 
-	# create the disk
-	case "${_disk_dev}" in 
-		zvol)
-			__zfs_make_zvol "${_name}/${_disk}" "${_size}" "0" "${_zfs_opts}"
-			;;			
-		sparse-zvol)
-			__zfs_make_zvol "${_name}/${_disk}" "${_size}" "1" "${_zfs_opts}"
-			;;
-		*)
-			truncate -s "${_size}" "${_vmdir}/${_disk}"
-			[ $? -ne 0 ] && __err "failed to create sparse file for disk image"
-			;;
-	esac
+    # create the disk
+    case "${_disk_dev}" in 
+        zvol)
+            __zfs_make_zvol "${_name}/${_disk}" "${_size}" "0" "${_zfs_opts}"
+            ;;			
+        sparse-zvol)
+            __zfs_make_zvol "${_name}/${_disk}" "${_size}" "1" "${_zfs_opts}"
+            ;;
+        *)
+            truncate -s "${_size}" "${_vmdir}/${_disk}"
+            [ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+            ;;
+    esac
 }
 
 # 'vm add'
@@ -156,43 +156,43 @@ __vm_create(){
 # @param string _name name of the guest
 #
 __vm_add(){
-	local _name _device _type _sopt _opt
+    local _name _device _type _sopt _opt
 
-	while getopts d:t:s: _opt; do
-		case $_opt in
-			d)
-				_device=${OPTARG}
-				;;
-			t)
-				_type=${OPTARG}
-				;;
-			s)
-				_sopt=${OPTARG}
-				;;
-			*)
-				__usage
-				;;
-		esac
-	done
+    while getopts d:t:s: _opt; do
+        case $_opt in
+            d)
+                _device=${OPTARG}
+                ;;
+            t)
+                _type=${OPTARG}
+                ;;
+            s)
+                _sopt=${OPTARG}
+                ;;
+            *)
+                __usage
+                ;;
+        esac
+    done
 
-	shift $((OPTIND - 1))
-	_name="$1"
+    shift $((OPTIND - 1))
+    _name="$1"
 
-	# check guest
-	[ -z "${_name}" ] && __usage
-	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be a valid virtual machine"
+    # check guest
+    [ -z "${_name}" ] && __usage
+    [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be a valid virtual machine"
 
-	case "${_device}" in
-		disk)
-			__vm_add_disk "${_name}" "${_type}" "${_sopt}"
-			;;
-		network)
-			__vm_add_network "${_name}" "${_sopt}"
-			;;
-		*)
-			__err "device must be one of the following: disk network"
-			;;
-	esac
+    case "${_device}" in
+        disk)
+            __vm_add_disk "${_name}" "${_type}" "${_sopt}"
+            ;;
+        network)
+            __vm_add_network "${_name}" "${_sopt}"
+            ;;
+        *)
+            __err "device must be one of the following: disk network"
+            ;;
+    esac
 }
 
 # add a disk to guest
@@ -205,58 +205,58 @@ __vm_add(){
 # @param string _size size of the disk to create
 #
 __vm_add_disk(){
-	local _name="$1"
-	local _device="$2"
-	local _size="$3"
-	local _num=0 _curr _diskname _newline _emulation _zfs_opts
+    local _name="$1"
+    local _device="$2"
+    local _size="$3"
+    local _num=0 _curr _diskname _newline _emulation _zfs_opts
 
-	: ${_device:=file}
+    : ${_device:=file}
 
-	[ -z "${_size}" ] && __usage
+    [ -z "${_size}" ] && __usage
 
-	# get the last existing disk
-	__config_load "${vm_dir}/${_name}/${_name}.conf"
-	__config_get "_zfs_opts" "zfs_zvol_opts"
+    # get the last existing disk
+    __config_load "${vm_dir}/${_name}/${_name}.conf"
+    __config_get "_zfs_opts" "zfs_zvol_opts"
 
-	while [ 1 ]; do
-		__config_get "_curr" "disk${_num}_name"
-		[ -z "${_curr}" ] && break
-		__config_get "_emulation" "disk${_num}_type"
-		_num=$((_num + 1))
-	done
+    while [ 1 ]; do
+        __config_get "_curr" "disk${_num}_name"
+        [ -z "${_curr}" ] && break
+        __config_get "_emulation" "disk${_num}_type"
+        _num=$((_num + 1))
+    done
 
-	[ -z "${_emulation}" ] && __err "failed to get emulation type of the existing guest disks"
+    [ -z "${_emulation}" ] && __err "failed to get emulation type of the existing guest disks"
 
-	# create the disk first, then update config if no problems
-	case "${_device}" in
-		zvol)
-			__zfs_make_zvol "${_name}/disk${_num}" "${_size}" "0" "${_zfs_opts}"
-			_diskname="disk${_num}"
-			;;
-		sparse-zvol)
-			__zfs_make_zvol "${_name}/disk${_num}" "${_size}" "1" "${_zfs_opts}"
-			_diskname="disk${_num}"
-			;;
-		file)
-			truncate -s "${_size}" "${vm_dir}/${_name}/disk${_num}.img"
-			[ $? -ne 0 ] && __err "failed to create sparse file for disk image"
-			_diskname="disk${_num}.img"
-			;;
-		*)
-			__err "device type must be one of the following: zvol sparse-zvol file"
-			;;
-	esac
+    # create the disk first, then update config if no problems
+    case "${_device}" in
+        zvol)
+            __zfs_make_zvol "${_name}/disk${_num}" "${_size}" "0" "${_zfs_opts}"
+            _diskname="disk${_num}"
+            ;;
+        sparse-zvol)
+            __zfs_make_zvol "${_name}/disk${_num}" "${_size}" "1" "${_zfs_opts}"
+            _diskname="disk${_num}"
+            ;;
+        file)
+            truncate -s "${_size}" "${vm_dir}/${_name}/disk${_num}.img"
+            [ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+            _diskname="disk${_num}.img"
+            ;;
+        *)
+            __err "device type must be one of the following: zvol sparse-zvol file"
+            ;;
+    esac
 
-	# update configuration
-	# all newer guests should have a newline, but just in case of old guests,
-	# make sure we have a newline at the end
-	_newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
-	[ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
+    # update configuration
+    # all newer guests should have a newline, but just in case of old guests,
+    # make sure we have a newline at the end
+    _newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+    [ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
 
-	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_name=${_diskname}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_type=${_emulation}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_dev=${_device}" >/dev/null 2>&1
-	[ $? -ne 0 ] && __err "disk image created but errors while updating guest configuration"
+    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_name=${_diskname}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_type=${_emulation}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_dev=${_device}" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "disk image created but errors while updating guest configuration"
 }
 
 # add network interface to guest
@@ -266,33 +266,33 @@ __vm_add_disk(){
 # @param string _switch the switch name for this interface
 #
 __vm_add_network(){
-	local _name="$1"
-	local _switch="$2"
-	local _num=0 _curr _emulation
+    local _name="$1"
+    local _switch="$2"
+    local _num=0 _curr _emulation
 
-	[ -z "${_switch}" ] && __usage
+    [ -z "${_switch}" ] && __usage
 
-	__config_load "${vm_dir}/${_name}/${_name}.conf"
+    __config_load "${vm_dir}/${_name}/${_name}.conf"
 
-	while [ 1 ]; do
-		_emulation="${_curr}"
-		__config_get "_curr" "network${_num}_type"
-		[ -z "${_curr}" ] && break
-		_num=$((_num + 1))
-	done
+    while [ 1 ]; do
+        _emulation="${_curr}"
+        __config_get "_curr" "network${_num}_type"
+        [ -z "${_curr}" ] && break
+        _num=$((_num + 1))
+    done
 
-	# handle no existing network
-	: ${_emulation:=virtio-net}
+    # handle no existing network
+    : ${_emulation:=virtio-net}
 
-	# update configuration
-	# all newer guests should have a newline, but just in case of old guests,
-	# make sure we have a newline at the end
-	_newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
-	[ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
+    # update configuration
+    # all newer guests should have a newline, but just in case of old guests,
+    # make sure we have a newline at the end
+    _newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+    [ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
 
-	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_type=${_emulation}" >/dev/null 2>&1
-	sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_switch=${_switch}" >/dev/null 2>&1
-	[ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
+    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_type=${_emulation}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_switch=${_switch}" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
 }
 
 # 'vm install'
@@ -302,39 +302,39 @@ __vm_add_network(){
 # @param string _iso the iso file in $vm_dir/.iso to use
 #
 __vm_install(){
-	local _name="$1"
-	local _iso="$2"
+    local _name="$1"
+    local _iso="$2"
 
-	[ -z "${_name}" -o -z "${_iso}" ] && __usage
+    [ -z "${_name}" -o -z "${_iso}" ] && __usage
 
-	# just run start with an iso
-	__vm_start "$1" "$2"
+    # just run start with an iso
+    __vm_start "$1" "$2"
 }
 
 # 'vm startall'
 # start all virtual machines listed in rc.conf:$vm_list
 #
 __vm_startall(){
-	local _vm _done _conf
+    local _vm _done _conf
 
-	[ -z "${vm_list}" ] && exit
+    [ -z "${vm_list}" ] && exit
 
-	: ${vm_delay:=5}
+    : ${vm_delay:=5}
 
-	for _vm in ${vm_list}; do
-		[ -n "${_done}" ] && sleep ${vm_delay}
+    for _vm in ${vm_list}; do
+        [ -n "${_done}" ] && sleep ${vm_delay}
 
-		# check conf file just to make sure not an obvious typo in rc.conf
-		# if the vm is not configured correctly __vm_start will exit
-		# causing any further vms to not be started
-		_conf="${vm_dir}/${_vm}/${_vm}.conf"
+        # check conf file just to make sure not an obvious typo in rc.conf
+        # if the vm is not configured correctly __vm_start will exit
+        # causing any further vms to not be started
+        _conf="${vm_dir}/${_vm}/${_vm}.conf"
 
-		if [ -f "${_conf}" ]; then
-			echo "Starting ${_vm}..."
-			__vm_start "${_vm}"
-			_done=1
-		fi
-	done
+        if [ -f "${_conf}" ]; then
+            echo "Starting ${_vm}..."
+            __vm_start "${_vm}"
+            _done=1
+        fi
+    done
 }
 
 # 'vm stopall'
@@ -342,11 +342,11 @@ __vm_startall(){
 # note this will also stop instances not started by vm-bhyve
 #
 __vm_stopall(){
-	local _pids=$(pgrep -f 'bhyve:')
+    local _pids=$(pgrep -f 'bhyve:')
 
-	echo "Shutting down all bhyve virtual machines"
-	killall bhyve
-	wait_for_pids ${_pids}
+    echo "Shutting down all bhyve virtual machines"
+    killall bhyve
+    wait_for_pids ${_pids}
 }
 
 # 'vm start'
@@ -356,33 +356,33 @@ __vm_stopall(){
 # @param optional string _iso iso file is this is an install (can only be provided through 'vm install' command)
 #
 __vm_start(){
-	local _name="$1"
-	local _iso="$2"
-	local _conf _host
-	local _memory _guest _disk
+    local _name="$1"
+    local _iso="$2"
+    local _conf _host
+    local _memory _guest _disk
 
-	_conf="${vm_dir}/${_name}/${_name}.conf"
+    _conf="${vm_dir}/${_name}/${_name}.conf"
 
-	[ -z "${_name}" ] && __usage
-	[ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
+    [ -z "${_name}" ] && __usage
+    [ ! -f "${_conf}" ] && __err "${_name} does not seem to be a valid virtual machine"
 
-	# confirm we aren't running
-	__vm_confirm_stopped "${_name}" "1" || return 1
+    # confirm we aren't running
+    __vm_confirm_stopped "${_name}" "1" || return 1
 
-	# check basic settings before going into background mode
-	__config_load "${_conf}"
-	__config_get "_memory" "memory"
-	__config_get "_guest" "guest"
-	__config_get "_disk" "disk0_name"
+    # check basic settings before going into background mode
+    __config_load "${_conf}"
+    __config_get "_memory" "memory"
+    __config_get "_guest" "guest"
+    __config_get "_disk" "disk0_name"
 
-	if [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ]; then
-		__warn "incomplete virtual machine configuration"
-		return 1
-	fi
+    if [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ]; then
+        __warn "incomplete virtual machine configuration"
+        return 1
+    fi
 
-	# run background process to actually start bhyve
-	# this will run as long as vm is running, including restarting bhyve after guest reboot
-	$0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
+    # run background process to actually start bhyve
+    # this will run as long as vm is running, including restarting bhyve after guest reboot
+    $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
 }
 
 # 'vm stop'
@@ -391,24 +391,24 @@ __vm_start(){
 # @param string _name name of the guest to stop
 #
 __vm_stop(){
-	local _name="$1"
-	local _pid _loadpid
+    local _name="$1"
+    local _pid _loadpid
 
-	[ -z "${_name}" ] && __usage
-	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+    [ -z "${_name}" ] && __usage
+    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
-	_pid=$(pgrep -fx "bhyve: ${_name}")
-	_loadpid=$(pgrep -fl "grub-bhyve|bhyveload" | grep " ${_name}\$" |cut -d' ' -f1)
+    _pid=$(pgrep -fx "bhyve: ${_name}")
+    _loadpid=$(pgrep -fl "grub-bhyve|bhyveload" | grep " ${_name}\$" |cut -d' ' -f1)
 
-	if [ -n "${_pid}" ]; then
-		kill "${_pid}"
-	elif [ -n "${_loadpid}" ]; then
-		__confirm "Guest is in bootloader stage, do you wish to force exit" || exit 0
-		kill "${_loadpid}"
-		bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
-	else
-		__err "unable to locate process id for this virtual machine"
-	fi
+    if [ -n "${_pid}" ]; then
+        kill "${_pid}"
+    elif [ -n "${_loadpid}" ]; then
+        __confirm "Guest is in bootloader stage, do you wish to force exit" || exit 0
+        kill "${_loadpid}"
+        bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
+    else
+        __err "unable to locate process id for this virtual machine"
+    fi
 }
 
 # 'vm reset'
@@ -417,13 +417,13 @@ __vm_stop(){
 # @param string _name name of the guest
 #
 __vm_reset(){
-	local _name="$1"
+    local _name="$1"
 
-	[ -z "${_name}" ] && __usage
-	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+    [ -z "${_name}" ] && __usage
+    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
-	__confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
-	bhyvectl --force-reset --vm=${_name}
+    __confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
+    bhyvectl --force-reset --vm=${_name}
 }
 
 # 'vm poweroff'
@@ -432,13 +432,13 @@ __vm_reset(){
 # @param string _name name of the guest
 #
 __vm_poweroff(){
-	local _name="$1"
+    local _name="$1"
 
-	[ -z "${_name}" ] && __usage
-	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+    [ -z "${_name}" ] && __usage
+    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
-	__confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
-	bhyvectl --force-poweroff --vm=${_name}
+    __confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
+    bhyvectl --force-poweroff --vm=${_name}
 }
 
 # 'vm destroy'
@@ -447,17 +447,17 @@ __vm_poweroff(){
 # @param string _name name of the guest
 #
 __vm_destroy(){
-	local _name="$1"
+    local _name="$1"
 
-	[ -z "${_name}" ] && __usage
-	[ ! -e "${vm_dir}/${_name}" ] && __err "${_name} doesn't appear to be a valid virtual machine"
+    [ -z "${_name}" ] && __usage
+    [ ! -e "${vm_dir}/${_name}" ] && __err "${_name} doesn't appear to be a valid virtual machine"
 
-	# make sure it's stopped!
-	__vm_confirm_stopped "${_name}" || exit 1
+    # make sure it's stopped!
+    __vm_confirm_stopped "${_name}" || exit 1
 
-	__confirm "Are you sure you want to completely remove this virtual machine" || exit 0
-	__zfs_destroy_dataset "${_name}"
-	[ -e "${vm_dir}/${_name}" ] && rm -R "${vm_dir}/${_name}"
+    __confirm "Are you sure you want to completely remove this virtual machine" || exit 0
+    __zfs_destroy_dataset "${_name}"
+    [ -e "${vm_dir}/${_name}" ] && rm -R "${vm_dir}/${_name}"
 }
 
 # 'vm rename'
@@ -467,31 +467,31 @@ __vm_destroy(){
 # @param string _new the new guest name
 #
 __vm_rename(){
-	local _old="$1"
-	local _new="$2"
+    local _old="$1"
+    local _new="$2"
 
-	[ -z "${_old}" -o -z "${_new}" ] && __usage
-	[ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} doesn't appear to be a valid virtual machine"
-	[ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
+    [ -z "${_old}" -o -z "${_new}" ] && __usage
+    [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} doesn't appear to be a valid virtual machine"
+    [ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
 
-	echo "${_new}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
-	[ $? -ne 0 ] && __err "invalid virtual machine name '${_new}'"
+    echo "${_new}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+    [ $? -ne 0 ] && __err "invalid virtual machine name '${_new}'"
 
-	# confirm guest stopped
-	__vm_confirm_stopped "${_old}" || exit 1
+    # confirm guest stopped
+    __vm_confirm_stopped "${_old}" || exit 1
 
-	# rename zfs dataset
-	__zfs_rename_dataset "${_old}" "${_new}"
+    # rename zfs dataset
+    __zfs_rename_dataset "${_old}" "${_new}"
 
-	# rename folder if it still exists (shouldn't if zfs mode and rename worked)
-	if [ -d "${vm_dir}/${_old}" ]; then
-		mv "${vm_dir}/${_old}" "${vm_dir}/${_new}" >/dev/null 2>&1
-		[ $? -ne 0 ] && __err "failed to rename guest directory"
-	fi
+    # rename folder if it still exists (shouldn't if zfs mode and rename worked)
+    if [ -d "${vm_dir}/${_old}" ]; then
+        mv "${vm_dir}/${_old}" "${vm_dir}/${_new}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "failed to rename guest directory"
+    fi
 
-	# rename config file
-	mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf" >/dev/null 2>&1
-	[ $? -ne 0 ] && __err "changed guest directory but failed to rename configuration file"
+    # rename config file
+    mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "changed guest directory but failed to rename configuration file"
 }
 
 # 'vm console'
@@ -505,24 +505,24 @@ __vm_rename(){
 # @param string _port the port to connect to (default = first in configuration)
 #
 __vm_console(){
-	local _name="$1"
-	local _port="$2"
-	local _console
+    local _name="$1"
+    local _port="$2"
+    local _console
 
-	[ -z "${_name}" ] && __usage
-	[ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
-	[ ! -e "${vm_dir}/${_name}/console" ] && __err "can't locate console data for ${_name}"
+    [ -z "${_name}" ] && __usage
+    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+    [ ! -e "${vm_dir}/${_name}/console" ] && __err "can't locate console data for ${_name}"
 
-	# did user specify a com port?
-	# if not, get first in the file (the first will also be the console used for loader)
-	if [ -n "${_port}" ]; then
-		_console=$(grep "${_port}=" "${vm_dir}/${_name}/console" | cut -d= -f2)
-	else
-		_console=$(head -n 1 "${vm_dir}/${_name}/console" | cut -d= -f2)
-	fi
+    # did user specify a com port?
+    # if not, get first in the file (the first will also be the console used for loader)
+    if [ -n "${_port}" ]; then
+        _console=$(grep "${_port}=" "${vm_dir}/${_name}/console" | cut -d= -f2)
+    else
+        _console=$(head -n 1 "${vm_dir}/${_name}/console" | cut -d= -f2)
+    fi
 
-	[ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"
-	cu -l "${_console}"
+    [ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"
+    cu -l "${_console}"
 }
 
 # 'vm configure'
@@ -531,14 +531,14 @@ __vm_console(){
 # @param string _name name of the guest
 #
 __vm_configure(){
-	local _name="$1"
+    local _name="$1"
 
-	[ -z "${_name}" ] && __usage
-	[ -z "${EDITOR}" ] && EDITOR=vi
-	[ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && \
-		__err "cannot locate configuration file for virtual machine: ${_name}"
+    [ -z "${_name}" ] && __usage
+    [ -z "${EDITOR}" ] && EDITOR=vi
+    [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && \
+        __err "cannot locate configuration file for virtual machine: ${_name}"
 
-	$EDITOR "${vm_dir}/${_name}/${_name}.conf"
+    $EDITOR "${vm_dir}/${_name}/${_name}.conf"
 }
 
 # 'vm iso'
@@ -547,12 +547,12 @@ __vm_configure(){
 # @param string _url if specified, the url will be fetch'ed into $vm_dir/.iso
 #
 __vm_iso(){
-	local _url="$1"
+    local _url="$1"
 
-	if [ -n "${_url}" ]; then
-		fetch -o "${vm_dir}/.iso" "${_url}"
-	else
-		echo "FILENAME"
-		ls -1 "${vm_dir}/.iso"
-	fi
+    if [ -n "${_url}" ]; then
+        fetch -o "${vm_dir}/.iso" "${_url}"
+    else
+        echo "FILENAME"
+        ls -1 "${vm_dir}/.iso"
+    fi
 }

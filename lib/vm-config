@@ -35,12 +35,12 @@
 # @modifies VM_CONFIG
 #
 __config_load(){
-	local _file="$1"
+    local _file="$1"
 
-	# read config file
-	# we kick out any lines that don't start with a letter,
-	# scrap anything after a # character, and remove double-quotes
-	VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
+    # read config file
+    # we kick out any lines that don't start with a letter,
+    # scrap anything after a # character, and remove double-quotes
+    VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
 }
 
 # get a configuration value from the current config file
@@ -49,19 +49,19 @@ __config_load(){
 # @param string _key the name of the config key to retrieve
 #
 __config_get(){
-	local _c_var="$1"
-	local _c_key="$2"
-	local _c_line
-	local IFS=$'\n'
+    local _c_var="$1"
+    local _c_key="$2"
+    local _c_line
+    local IFS=$'\n'
 
-	for _c_line in ${VM_CONFIG}; do
-		if [ "${_c_key}" = "${_c_line%%=*}" ]; then
-			setvar "${_c_var}" "${_c_line#*=}"
-			return 0
-		fi
-	done
+    for _c_line in ${VM_CONFIG}; do
+        if [ "${_c_key}" = "${_c_line%%=*}" ]; then
+            setvar "${_c_var}" "${_c_line#*=}"
+            return 0
+        fi
+    done
 
-	# not found
-	setvar "${_c_var}" ""
-	return 1
+    # not found
+    setvar "${_c_var}" ""
+    return 1
 }

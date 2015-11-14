@@ -86,7 +86,7 @@
 .Ar name
 .Nm
 .Cm clone
-.Ar name
+.Ar name[@snapshot]
 .Ar new-name
 .Nm
 .Cm snapshot
@@ -564,15 +564,19 @@ The
 command simply opens the virtual machine configuration file in your default editor,
 allowing you to easily make changes. Please note, changes do not take effect until
 the virtual machine is fully shutdown and restarted.
-.It Cm clone Ar name Ar new-name
+.It Cm clone Ar name[@snapshot] Ar new-name
 Create a clone of the virtual machine
 .Pa name ,
 as long as it is currently powered off. The new machine will be called
 .Pa new-name ,
 and will be ready to boot with a newly assigned UUID and empty log file.
 .Pp
-Please note that this function requires ZFS, and a snapshot will be taken of the original
-guest, along with any descendant datasets.
+If no snapshot name is given, a new snapshot will be taken of the guest and any descendent
+datasets or ZVOLs. If you wish to use an existing snapshot as the source for the clone,
+please make sure the snapshot exists for the guest and any child ZVOLs, otherwise the clone
+will fail.
+.Pp
+Please note that this function requires ZFS.
 .It Xo
 .Cm snapshot
 .Op Fl f

@@ -256,7 +256,8 @@ __zfs_rollback(){
 __zfs_clone(){
     local _old="$1"
     local _new="$2"
-    local _uuid _fs _newfs _snap _snap_exists _error=0
+    local _fs _newfs _snap _snap_exists _fs_list _error=0
+    local _uuid=$(uuidgen)
 
     [ -z "${_old}" -o -z "${_new}" ] && __usage
     [ ! "${VM_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
@@ -274,25 +275,28 @@ __zfs_clone(){
     [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} does not appear to be an existing virtual machine"
     __vm_confirm_stopped "${_old}" || exit 1
 
-    _uuid=$(uuidgen)
+    # get list of datasets to copy
+    _fs_list=$(zfs list -rHo name -t filesystem,volume "${VM_ZFS_DATASET}/${_old}")
+    [ $? -ne 0 ] && __err "unable to list datasets for ${VM_ZFS_DATASET}/${_old}"
 
     # generate a short uuid and create snapshot if no custom snap given
     if [ -z "${_snap}" ]; then
         _snap=$(echo "${_uuid}" |awk -F- '{print $1}')
 
-        zfs snapshot -r ${VM_ZFS_DATASET}/${_old}@${_snap}
+        zfs snapshot -r "${VM_ZFS_DATASET}/${_old}@${_snap}"
         [ $? -ne 0 ] && __err "failed to create snapshot ${VM_ZFS_DATASET}/${_old}@${_snap}"
     else
-        # make sure provided snapshot exists on the guest
-        zfs get creation ${VM_ZFS_DATASET}/${_old}@${_snap} >/dev/null 2>&1
-        [ $? -ne 0 ] && __err "snapshot ${VM_ZFS_DATASET}/${_old}@${_snap} doesn't seem to exist"
+        for _fs in ${_fs_list}; do
+            zfs get creation "${_fs}@${_snap}" >/dev/null 2>&1
+            [ $? -ne 0 ] && __err "snapshot ${_fs}@${_snap} doesn't seem to exist"
+        done
     fi
 
-    zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_old} | \
-    while read _fs; do
+    # clone
+    for _fs in ${_fs_list}; do
         _newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_new}@")
 
-        zfs clone ${_fs}@${_snap} ${_newfs}
+        zfs clone "${_fs}@${_snap}" "${_newfs}"
         [ $? -ne 0 ] && __err "error while cloning dataset ${_fs}@${_snap}"
     done
 

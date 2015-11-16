@@ -71,7 +71,7 @@ __vm_list(){
 # @param string _name the name of the guest to create
 #
 __vm_create(){
-    local _name _template _opt _size _vmdir _disk _disk_dev _uuid _newline
+    local _name _template _opt _size _vmdir _disk _disk_dev _uuid
     local _zfs_opts
 
     while getopts t:s: _opt ; do
@@ -125,9 +125,7 @@ __vm_create(){
     # generate a uuid
     # jump through some hoops to make sure it gets its own line (but no gap)
     _uuid=$(uuidgen)
-    _newline=$(tail -1 "${_vmdir}/${_name}.conf" | wc -l | tr -d " ")
-    [ "${_newline}" -eq "0" ] && echo "" >> "${_vmdir}/${_name}.conf" 
-    sysrc -inqf "${_vmdir}/${_name}.conf" "uuid=${_uuid}" >/dev/null 2>&1
+    __vm_config_set "${_name}" "uuid" "${_uuid}"
 
     # get any zvol options
     __config_get "_zfs_opts" "zfs_zvol_opts"
@@ -208,7 +206,7 @@ __vm_add_disk(){
     local _name="$1"
     local _device="$2"
     local _size="$3"
-    local _num=0 _curr _diskname _newline _emulation _zfs_opts
+    local _num=0 _curr _diskname _emulation _zfs_opts
 
     : ${_device:=file}
 
@@ -248,14 +246,9 @@ __vm_add_disk(){
     esac
 
     # update configuration
-    # all newer guests should have a newline, but just in case of old guests,
-    # make sure we have a newline at the end
-    _newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
-    [ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
-
-    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_name=${_diskname}" >/dev/null 2>&1
-    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_type=${_emulation}" >/dev/null 2>&1
-    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "disk${_num}_dev=${_device}" >/dev/null 2>&1
+    __vm_config_set "${_name}" "disk${_num}_name" "${_diskname}"
+    __vm_config_set "${_name}" "disk${_num}_type" "${_emulation}" "1"
+    __vm_config_set "${_name}" "disk${_num}_dev" "${_device}" "1"
     [ $? -ne 0 ] && __err "disk image created but errors while updating guest configuration"
 }
 
@@ -285,13 +278,8 @@ __vm_add_network(){
     : ${_emulation:=virtio-net}
 
     # update configuration
-    # all newer guests should have a newline, but just in case of old guests,
-    # make sure we have a newline at the end
-    _newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
-    [ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
-
-    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_type=${_emulation}" >/dev/null 2>&1
-    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "network${_num}_switch=${_switch}" >/dev/null 2>&1
+    __vm_config_set "${_name}" "network${_num}_type" "${_emulation}"
+    __vm_config_set "${_name}" "network${_num}_switch" "${_switch}"
     [ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
 }
 
@@ -555,4 +543,30 @@ __vm_iso(){
         echo "FILENAME"
         ls -1 "${vm_dir}/.iso"
     fi
+}
+
+# set a value in vm configuration file
+# we check for newline at the end as sysrc won't add it
+# and that will mess up the new key and the existing one
+# from the end of the file
+#
+# @param string _name guest name
+# @param string _key config key to set
+# @param string _value value
+# @param int _skip_newline_check skip the check for newline
+#
+__vm_config_set(){
+    local _name="$1"
+    local _key="$2"
+    local _value="$3"
+    local _skip_newline_check="$4"
+    local _newline
+
+    if [ -z "${_skip_newline_check}" ]; then
+        _newline=$(tail -1 "${vm_dir}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+        [ "${_newline}" -eq "0" ] && echo "" >> "${vm_dir}/${_name}/${_name}.conf"
+    fi
+
+    sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
+    return $?
 }

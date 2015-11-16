@@ -391,6 +391,9 @@ __vm_bhyve_device_networking(){
             __log "guest" "${_name}" "initialising network device ${_tap}"
             ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}"
 
+            # set a static mac if we don't have one
+            [ -z "${_mac}" ] && __vm_generate_static_mac
+
             if [ -n "${_switch}" ]; then
                 __switch_get_ident "_sid" "${_switch}"
 
@@ -632,4 +635,27 @@ __vm_confirm_stopped(){
     fi
 
     return 0
+}
+
+# generate a static mac address for a guest
+# we now make sure all interfaces have a static mac so
+# there's no worry of guest problems due to it changing
+#
+__vm_generate_static_mac(){
+    local _time=$(date +%s)
+    local _key _part="00:00"
+
+    _key="${_name}:${_num}:${_time}"
+
+    # generate the last 4 bytes
+    # make sure we don't get 00:00 (see sys/net/ieee_oui.h)
+    while [ "${_part}" = "00:00" ]; do
+        _part=$(md5 -qs "${_key}" | awk 'BEGIN {FS="";OFS=":"}; {print $1$2,$3$4}')
+    done
+
+    # add base bhyve OUI of 0x589cfc00
+    _mac="58:9c:fc:00:${_part}"
+
+    __log "guest" "${_name}" "generated static mac ${_mac} (based on '${_key}')"
+    __vm_config_set "${_name}" "network${_num}_mac" "${_mac}"
 }

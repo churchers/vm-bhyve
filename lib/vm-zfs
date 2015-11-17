@@ -255,13 +255,14 @@ __zfs_rollback(){
 #
 __zfs_clone(){
     local _old="$1"
-    local _new="$2"
-    local _fs _newfs _snap _snap_exists _fs_list _error=0
+    local _name="$2"
+    local _fs _newfs _snap _snap_exists _fs_list _entry
+    local _num=0 _error=0
     local _uuid=$(uuidgen)
 
-    [ -z "${_old}" -o -z "${_new}" ] && __usage
+    [ -z "${_old}" -o -z "${_name}" ] && __usage
     [ ! "${VM_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
-    [ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
+    [ -d "${vm_dir}/${_name}" ] && __err "directory ${vm_dir}/${_name} already exists"
 
     # try to get snapshot name
     # we support normal zfs syntax for this
@@ -294,16 +295,28 @@ __zfs_clone(){
 
     # clone
     for _fs in ${_fs_list}; do
-        _newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_new}@")
+        _newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_name}@")
 
         zfs clone "${_fs}@${_snap}" "${_newfs}"
         [ $? -ne 0 ] && __err "error while cloning dataset ${_fs}@${_snap}"
     done
 
-    # update new guest
-    mv "${vm_dir}/${_new}/${_old}.conf" "${vm_dir}/${_new}/${_new}.conf"
-    sysrc -inqf "${vm_dir}/${_new}/${_new}.conf" "uuid=${_uuid}" >/dev/null 2>&1
-    rm "${vm_dir}/${_new}/vm-bhyve.log" >/dev/null 2>&1
+    # update new guest files
+    mv "${vm_dir}/${_name}/${_old}.conf" "${vm_dir}/${_name}/${_name}.conf"
+    rm "${vm_dir}/${_name}/vm-bhyve.log" >/dev/null 2>&1
+
+    # update mac addresses and uuid
+    __config_load "${vm_dir}/${_name}/${_name}.conf"
+    __vm_config_set "${_name}" "uuid" "${_uuid}"
+
+    # find all network interfaces and change mac
+    while [ 1 ]; do
+        __config_get "_entry" "network${_num}_type"
+        [ -z "${_entry}" ] && break
+
+        __vm_generate_static_mac
+        _num=$((_num + 1))
+    done
 }
 
 # 'vm image create'

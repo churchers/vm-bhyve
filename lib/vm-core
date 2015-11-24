@@ -92,7 +92,7 @@ __vm_create(){
     _name=$1
 
     [ -z "${_name}" ] && __usage
-    echo "${_name}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+    echo "${_name}" | egrep -qs '^[a-z0-9][a-z0-9\-\.]{0,14}[a-z0-9]$'
     [ $? -ne 0 ] && __err "invalid virtual machine name '${_name}'"
 
     : ${_size:=20G}
@@ -462,7 +462,7 @@ __vm_rename(){
     [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} doesn't appear to be a valid virtual machine"
     [ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
 
-    echo "${_new}" | egrep -qs '^[a-z0-9][a-z0-9\-]{0,14}[a-z0-9]$'
+    echo "${_new}" | egrep -qs '^[a-z0-9][a-z0-9\-\.]{0,14}[a-z0-9]$'
     [ $? -ne 0 ] && __err "invalid virtual machine name '${_new}'"
 
     # confirm guest stopped

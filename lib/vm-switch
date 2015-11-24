@@ -109,7 +109,7 @@ __switch_create(){
     local _switch="$1"
     local _id _curr_list _curr
 
-    echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9_]{0,14}[a-z0-9]$'
+    echo "${_switch}" | egrep -qs '^[a-z0-9][a-z0-9\_\-\.]{0,14}[a-z0-9]$'
     [ $? -ne 0 ] && __err "invalid switch name"
 
     _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)

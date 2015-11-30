@@ -274,7 +274,6 @@ __zfs_clone(){
     fi
 
     [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} does not appear to be an existing virtual machine"
-    __vm_confirm_stopped "${_old}" || exit 1
 
     # get list of datasets to copy
     _fs_list=$(zfs list -rHo name -t filesystem,volume "${VM_ZFS_DATASET}/${_old}")
@@ -282,6 +281,7 @@ __zfs_clone(){
 
     # generate a short uuid and create snapshot if no custom snap given
     if [ -z "${_snap}" ]; then
+        __vm_confirm_stopped "${_old}" || exit 1
         _snap=$(echo "${_uuid}" |awk -F- '{print $1}')
 
         zfs snapshot -r "${VM_ZFS_DATASET}/${_old}@${_snap}"

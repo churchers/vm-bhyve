@@ -8,6 +8,8 @@
 
 . /etc/rc.subr
 
+: ${vm_enable="NO"}
+
 name=vm
 desc="Start and stop vm-bhyve guests on boot/shutdown"
 rcvar=vm_enable

@@ -213,7 +213,29 @@ __guest_centos-cloud(){
     _exit=$?
 }
 
-# OpenSUSE Leap cloud image
+# OpenSuSE Leap from ISO
+__guest_opensuse(){
+    if [ "$1" = "install" ]; then
+	__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+        __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+        __log_and_write "write" "${_name}" "boot.cmd" "linux (cd0)/boot/x86_64/loader/linux"
+        __log_and_write "appnd" "${_name}" "boot.cmd" "initrd (cd0)/boot/x86_64/loader/initrd"
+        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+        __log "guest" "${_name}" "grub-bhyve -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+        env -i TERM=xterm /usr/local/sbin/grub-bhyve -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+    else
+	__log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+        __guestpri_custom_grub && return 0
+        __log_and_write "write" "${_name}" "boot.cmd" "linux (hd0,msdos2)/boot/vmlinuz root=/dev/vda2"
+        __log_and_write "appnd" "${_name}" "boot.cmd" "initrd (hd0,msdos2)/boot/initrd"
+        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+        __log "guest" "${_name}" "grub-bhyve -r hd0,msdos2 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+        env -i TERM=xterm /usr/local/sbin/grub-bhyve -r hd0,msdos2 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+    fi
+    _exit=$?
+}
+
+# OpenSuSE Leap cloud image
 __guest_opensuse-cloud(){
     __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
     __log_and_write "write" "${_name}" "boot.cmd" "linux (hd0,msdos1)/boot/vmlinuz root=/dev/vda1 rdshell"

@@ -28,9 +28,13 @@ If you want to run guests other than FreeBSD, you will need the grub2-bhyve pack
 
     # pkg install grub2-bhyve
 
-If you want to run cloud images (e.g. OpenStack) and inject information into them at startup, you will need the cdrtools package:
+If you want to run cloud images (e.g. OpenStack) and inject information into them at startup, you will need mkisofs from the cdrtools package:
 
     # pkg install cdrtools
+
+If you obtain your cloud images in a format other than raw -- most likely qcow2 if you intend to run Linux -- you will need qemu-img from the qemu package:
+
+    # pkg install qemu
 
 Additionally, while not specifically required, dnsmasq can be used to provid DHCP services
 when vm-bhyve is configured to run NAT.

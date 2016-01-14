@@ -114,6 +114,11 @@
 .Nm
 .Cm image destroy
 .Ar uuid
+.Nm
+.Cm image import
+.Op Fl d Ar description
+.Op Fl t Ar template
+.Ar imgfile
 .\" ============ DESCRIPTION =============
 .Sh DESCRIPTION
 The
@@ -652,6 +657,26 @@ Create a new virtual machine, named
 from the specified image UUID.
 .It Cm image destroy Ar uuid
 Destroy the specified image.
+.It Xo
+.Cm image import
+.Op Fl d Ar description
+.Op Fl t Ar template
+.Ar imgfile
+.Xc
+Create a new image from the named
+.Pa imgfile
+which should be in raw format.
+The resulting image will contain the image file as the first disk,
+and an empty OpenStack config drive ISO image as the first CD drive.
+.Pp
+Depends on having
+.Xr mkisofs 1
+available.  It can be found in the
+.Pa cdrtools
+package.
+.Pp
+Once complete, it will display the UUID which has been assigned to this image.
+
 .El
 .\" ============ CONFIGURATION FORMAT ===========
 .Sh CONFIGURATION FORMAT

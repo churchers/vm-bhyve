@@ -458,6 +458,68 @@ __zfs_image_destroy(){
     rm "${vm_dir}/images/${_file}"
 }
 
+# 'vm image import'
+# import a cloud image for later use with 'vm provision'
+# image must be in raw format to work with bhyve
+#
+# @param string _imgfile filename of the cloud image
+# @param optional string (-d) description of the image
+# @param optional string (-t) template to use (default = default)
+#
+
+__zfs_image_import(){
+    local _imgfile
+    local _opt _desc _template _name _vmdir _mkisofs _isodir
+    local _disk _configdrive _uuid
+
+    while getopts d:t: _opt ; do
+	case $_opt in
+	    d)
+		_desc=${OPTARG}
+		;;
+	    t)
+		_template=${OPTARG}
+		;;
+	    *)
+		__usage
+		;;
+	esac
+    done
+
+    shift $((OPTIND - 1))
+    _imgfile="$1"
+    [ -z "${_desc}" ] && _desc="No description provided"
+    [ -z "${_template}" ] && _template="default"
+    [ ! -r "${_imgfile}" ] && __err "${_imgfile} is not readable or does not exist"
+    _mkisofs=$(which mkisofs)
+    [ -z "${_mkisofs}" ] && __err "mkisofs is not installed"
+
+    _name=$(mktemp -d "${vm_dir}/importXXXXXXXX")
+    rmdir "${_name}"
+    _name=${_name##*/}
+    _vmdir="${vm_dir}/${_name}"
+    _uuid=$(uuidgen)
+
+    __vm_create -t "${_template}" "${_name}"
+    __vm_config_set "${_name}" "uuid" "${_uuid}"
+    __config_load "${_vmdir}/${_name}.conf"
+    __config_get "_disk" "disk0_name"
+    echo "Importing raw image, this may take some time..."
+    # Many images are sparse files, but FreeBSD cp command
+    # does not preserve sparseness.  Thus dd.
+    dd if="${_imgfile}" of="${_vmdir}/${_disk}" conv=sparse bs=100k
+
+
+    # Convert to image
+    __zfs_image_create -d "${_desc}" "${_name}"
+
+    # Clean up
+    __vm_confirm_stopped "${_name}" || __err "Someone started temporary VM?!"
+    __zfs_destroy_dataset "${_name}"
+    [ -e "${_vmdir}" ] && rm -R "${_vmdir}"
+    echo "Successfully imported ${_imgfile##*/}"
+}
+
 # cmd 'vm image ...'
 # parse the image command set
 # these all rely on ZFS snapshots, so kept with zfs functions
@@ -476,6 +538,7 @@ __zfs_parse_image_cmd(){
         create)    __zfs_image_create "$@" ;;
         provision) __zfs_image_provision "$@" ;;
         destroy)   __zfs_image_destroy "$@" ;;
+	import)    __zfs_image_import "$@" ;;
         *)         __usage ;;
     esac
 }

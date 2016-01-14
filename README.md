@@ -32,7 +32,7 @@ If you want to run cloud images (e.g. OpenStack) and inject information into the
 
     # pkg install cdrtools
 
-If you obtain your cloud images in a format other than raw -- most likely qcow2 if you intend to run Linux -- you will need qemu-img from the qemu package:
+If you obtain your cloud images in a format other than raw -- most likely qcow2 if you intend to run Linux -- you will need qemu-img from the qemu package.  It is not specifically required for running the cloud images, but may be useful in preparing them to run.
 
     # pkg install qemu
 

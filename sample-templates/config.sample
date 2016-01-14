@@ -16,8 +16,9 @@
 # virtual machine, or specific bhyve options. The generic option
 # does no specific loading and can be used for standard uefi guests.
 #
-# Valid Options: freebsd,netbsd,openbsd,centos,centos-grub,centos-cloud,alpine
-#                ubuntu,debian,windows,generic
+# Valid Options: freebsd,netbsd,openbsd,centos,centos-grub,centos-cloud
+#                alpine,ubuntu,ubuntu-cloud,debian,debian-cloud
+#                windows,generic
 guest=""
 
 # uefi

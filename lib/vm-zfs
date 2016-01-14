@@ -519,11 +519,13 @@ __zfs_image_import(){
     # does not preserve sparseness.  Thus dd.
     dd if="${_imgfile}" of="${_vmdir}/${_disk}" conv=sparse bs=100k
 
-    # Why does CentOS have to be so difficult?
     case "${_template}" in
 	centos)
-	    __vm_config_set "${_name}" "guest" centos-cloud
+	    __vm_config_set "${_name}" "guest" "${_template}-cloud"
 	    __vm_config_set "${_name}" "linux_kernel" "${_kernel}"
+	    ;;
+	debian|ubuntu)
+	    __vm_config_set "${_name}" "guest" "${_template}-cloud"
 	    ;;
     esac
     

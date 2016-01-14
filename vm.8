@@ -660,22 +660,32 @@ Destroy the specified image.
 .It Xo
 .Cm image import
 .Op Fl d Ar description
+.Op Fl k Ar kernel
 .Op Fl t Ar template
 .Ar imgfile
 .Xc
 Create a new image from the named
 .Pa imgfile
 which should be in raw format.
+If
+.Ar template
+is
+.Pa centos
+then
+.Ar kernel
+must be supplied.
+.Pp
 The resulting image will contain the image file as the first disk,
 and an empty OpenStack config drive ISO image as the first CD drive.
 .Pp
-Depends on having
+Once the import is complete, it will display the UUID which has been
+assigned to this image.
+.Pp
+This command expects to have
 .Xr mkisofs 1
 available.  It can be found in the
 .Pa cdrtools
 package.
-.Pp
-Once complete, it will display the UUID which has been assigned to this image.
 .El
 .\" ============ CONFIGURATION FORMAT ===========
 .Sh CONFIGURATION FORMAT

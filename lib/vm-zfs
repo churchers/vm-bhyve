@@ -465,17 +465,21 @@ __zfs_image_destroy(){
 # @param string _imgfile filename of the cloud image
 # @param optional string (-d) description of the image
 # @param optional string (-t) template to use (default = default)
+# @param optional string (-k) CentOS kernel version when template is "centos"
 #
 
 __zfs_image_import(){
     local _imgfile
     local _opt _desc _template _name _vmdir _mkisofs _isodir
-    local _disk _configdrive _uuid
+    local _disk _configdrive _uuid _kernel
 
-    while getopts d:t: _opt ; do
+    while getopts d:k:t: _opt ; do
 	case $_opt in
 	    d)
 		_desc=${OPTARG}
+		;;
+	    k)
+		_kernel=${OPTARG}
 		;;
 	    t)
 		_template=${OPTARG}
@@ -500,6 +504,12 @@ __zfs_image_import(){
     _vmdir="${vm_dir}/${_name}"
     _uuid=$(uuidgen)
 
+    case "${_template}" in
+	centos)
+	    [ -z "${_kernel}" ] && __err "CentOS images must choose kernel version"
+	    ;;
+    esac
+
     __vm_create -t "${_template}" "${_name}"
     __vm_config_set "${_name}" "uuid" "${_uuid}"
     __config_load "${_vmdir}/${_name}.conf"
@@ -508,6 +518,14 @@ __zfs_image_import(){
     # Many images are sparse files, but FreeBSD cp command
     # does not preserve sparseness.  Thus dd.
     dd if="${_imgfile}" of="${_vmdir}/${_disk}" conv=sparse bs=100k
+
+    # Why does CentOS have to be so difficult?
+    case "${_template}" in
+	centos)
+	    __vm_config_set "${_name}" "guest" centos-cloud
+	    __vm_config_set "${_name}" "linux_kernel" "${_kernel}"
+	    ;;
+    esac
     
     # Add config drive iso
     __vm_add -d disk -t file -s 1M "${_name}"

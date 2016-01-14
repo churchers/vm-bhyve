@@ -107,6 +107,7 @@ Usage: vm ...
     image create [-d description] <name>
     image destroy <uuid>
     image provision <uuid> <newname>
+    image import [-d description] [-k kernel] [-t template] <raw-image-file>
 EOT
     exit 1
 }

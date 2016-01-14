@@ -193,6 +193,26 @@ __guest_centos-grub(){
     _exit=$?
 }
 
+# CentOS from official cloud image
+__guest_centos-cloud(){
+    local _kernel=
+
+    __config_get "_kernel" "linux_kernel"
+
+    if [ -z "${_kernel}" ]; then
+        __log "guest" "${_name}" "centos machines require \"linux_kernel\" value in configuration"
+	_exit=15
+	return
+    fi
+    __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+    __log_and_write "write" "${_name}" "boot.cmd" "linux (hd0,msdos1)/boot/vmlinuz-${_kernel} root=/dev/vda1 rdshell"
+    __log_and_write "appnd" "${_name}" "boot.cmd" "initrd (hd0,msdos1)/boot/initramfs-${_kernel}.img"
+    __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+    __log "guest" "${_name}" "grub-bhyve -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+    env -i TERM=xterm /usr/local/sbin/grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+    _exit=$?
+}
+
 # Debian
 __guest_debian(){
     __guest_linux "$1"

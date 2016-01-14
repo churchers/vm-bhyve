@@ -666,9 +666,16 @@ Destroy the specified image.
 Create a new image from the named
 .Pa imgfile
 which should be in raw format.
+The resulting image will contain the image file as the first disk,
+and an empty OpenStack config drive ISO image as the first CD drive.
+.Pp
+Depends on having
+.Xr mkisofs 1
+available.  It can be found in the
+.Pa cdrtools
+package.
 .Pp
 Once complete, it will display the UUID which has been assigned to this image.
-
 .El
 .\" ============ CONFIGURATION FORMAT ===========
 .Sh CONFIGURATION FORMAT

@@ -508,7 +508,17 @@ __zfs_image_import(){
     # Many images are sparse files, but FreeBSD cp command
     # does not preserve sparseness.  Thus dd.
     dd if="${_imgfile}" of="${_vmdir}/${_disk}" conv=sparse bs=100k
-
+    
+    # Add config drive iso
+    __vm_add -d disk -t file -s 1M "${_name}"
+    __vm_config_set "${_name}" "disk1_type" ahci-cd
+    __config_load "${_vmdir}/${_name}.conf"
+    __config_get "_configdrive" "disk1_name"
+    _isodir=$(mktemp -d)
+    mkdir -p ${_isodir}/openstack/content
+    mkdir ${_isodir}/openstack/latest
+    "${_mkisofs}" -J -r -R -o "${_vmdir}/${_configdrive}" "${_isodir}"
+    rm -R "${_isodir}"
 
     # Convert to image
     __zfs_image_create -d "${_desc}" "${_name}"

@@ -213,6 +213,16 @@ __guest_centos-cloud(){
     _exit=$?
 }
 
+# OpenSUSE Leap cloud image
+__guest_opensuse-cloud(){
+    __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+    __log_and_write "write" "${_name}" "boot.cmd" "linux (hd0,msdos1)/boot/vmlinuz root=/dev/vda1 rdshell"
+    __log_and_write "appnd" "${_name}" "boot.cmd" "initrd (hd0,msdos1)/boot/initrd.vmx"
+    __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
+    __log "guest" "${_name}" "grub-bhyve -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
+    env -i TERM=xterm /usr/local/sbin/grub-bhyve -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
+    _exit=$?
+}
 
 # Debian
 __guest_debian(){

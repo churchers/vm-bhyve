@@ -52,7 +52,7 @@ __zfs_init(){
     if [ ${_zfs} = 'zfs' ]; then
 
         # check zfs running
-        kldstat -n zfs >/dev/null 2>&1
+        kldstat -qm zfs >/dev/null 2>&1
         [ $? -ne 0 ] && __err "ZFS support requested but ZFS not available"
 
         # global zfs details

@@ -72,7 +72,7 @@ __restart_service(){
 #
 __usage(){
 cat << EOT
-vm: Bhyve virtual machine managament v${VERSION}
+vm: Bhyve virtual machine management v${VERSION}
 Usage: vm ...
     init
     switch list

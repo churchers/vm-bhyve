@@ -58,7 +58,8 @@ fi
 [ ${BSD_VERSION} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
 
 # we should be enabled in rc.conf
-if ! checkyesno vm_enable; then
+# or call it using forcestart
+if [ -z "$rc_force" ] && ! checkyesno vm_enable; then
     __err "\$vm_enable is not enabled in /etc/rc.conf!"
 fi
 

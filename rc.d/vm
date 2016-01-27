@@ -22,8 +22,8 @@ stop_cmd="${command} stopall"
 
 vm_start()
 {
-    ${command} init
-    ${command} startall >/dev/null &
+    env rc_force="$rc_force" ${command} init
+    env rc_force="$rc_force" ${command} startall >/dev/null &
 }
 
 run_rc_command "$1"

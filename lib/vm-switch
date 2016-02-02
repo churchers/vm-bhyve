@@ -448,7 +448,7 @@ __switch_nat_init(){
     local _gw _bnum
 
     # get default gateway
-    _gw=$(netstat -rn | grep default | awk '{print $4}')
+    _gw=$(netstat -4rn | grep default | awk '{print $4}')
 
     # basic dnsmasq settings
     echo "# vm-bhyve dhcp" > /usr/local/etc/dnsmasq.conf.bhyve

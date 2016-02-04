@@ -41,7 +41,7 @@ __setup(){
 #
 __load_module(){
     local _mod="$1"
-    kldstat -n ${_mod} >/dev/null 2>&1
+    kldstat -qm ${_mod} >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         kldload ${_mod} >/dev/null 2>&1
         [ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"

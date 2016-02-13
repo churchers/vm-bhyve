@@ -363,5 +363,6 @@ __vm_info_bytes_human(){
         5) _ext="T" ;;
     esac
 
+    export LC_NUMERIC="C"
     printf "%.3f%s" "${_val}" "${_ext}"
 }

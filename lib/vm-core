@@ -469,7 +469,7 @@ __vm_rename(){
     [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} doesn't appear to be a valid virtual machine"
     [ -d "${vm_dir}/${_new}" ] && __err "directory ${vm_dir}/${_new} already exists"
 
-    __vm_check_name "${_name}"
+    __vm_check_name "${_new}"
 
     # confirm guest stopped
     __vm_confirm_stopped "${_old}" || exit 1

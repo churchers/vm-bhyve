@@ -1,0 +1,55 @@
+#!/bin/sh
+# 'vm _rctl'
+# set limits to virtual machine
+# this is the background process
+#
+# @param string _name the name of the guest to enable limits
+#
+__vm_set_rctl_limits(){
+    local _name="$1"
+    local _conf="${vm_dir}/${_name}/${_name}.conf"
+
+    __config_load "${_conf}"
+    __config_get "_pcpu" "pcpu"
+
+    # it be available in FreeBSD 11.0
+#    __config_get "_rbps" "readbps"
+#    __config_get "_wbps" "writebps"
+#    __config_get "_riops" "readiops"
+#    __config_get "_wiops" "writeiops"
+
+    # wait a few seconds until the bhyve starts
+    sleep 1;
+    _pid=$(pgrep -fx "bhyve: ${_name}")
+
+    if [ -n "${_pid}" ]; then
+        if [ ! -z "${_pcpu}" -o ! -z "${_ior}" -o ! -z "${_iow}" ]; then
+            /usr/bin/rctl > /dev/null 2>&1
+            _exit=$?
+            [ ${_exit} -ne 0 ] && __err "RCTL support requested but RCTL not available"
+
+            if [ ! -z "${_pcpu}" ]; then
+                /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
+                __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
+            fi
+
+            # it be available in FreeBSD 11.0
+            if [ ! -z ${_rbps} ]; then
+                /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
+                __log "guest" "limit rctl readbps resource to ${_rbps}"
+            fi
+            if [ ! -z ${_wbps} ]; then
+                /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
+                __log "guest" "limit rctl writebps resource to ${_wbps}"
+            fi
+            if [ ! -z ${_riops} ]; then
+                /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
+                __log "guest" "limit rctl readiops resource to ${_riops}"
+            fi
+            if [ ! -z ${_wiops} ]; then
+                /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
+                __log "guest" "limit rctl writeiops resource to ${_wiops}"
+            fi
+        fi
+    fi
+}

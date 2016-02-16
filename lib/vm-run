@@ -195,6 +195,8 @@ __vm_run(){
         [ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
         __log "guest" "${_name}" "starting bhyve"
 
+        __vm_set_rctl_limits ${_name} &
+
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
         bhyve ${_opts} \

@@ -35,7 +35,7 @@
 __vm_run(){
     local _name="$1"
     local _iso="$2" _iso_dev
-    local _cpu _memory _bootdisk _bootdisk_dev _guest
+    local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge
     local _opts _devices _slot=4 _func=0 _taplist _exit
     local _com _comports _comstring _logpath
@@ -448,7 +448,7 @@ __vm_bhyve_device_rand(){
 # FreeBSD 11 needs wired memory so update _opts in that case if
 # we have any pass through devices
 #
-# @modifies _devices _slot _opts
+# @modifies _devices _slot _opts _wiredmem
 #
 __vm_bhyve_device_passthru(){
     local _dev _orig_slot _orig_func
@@ -482,7 +482,7 @@ __vm_bhyve_device_passthru(){
         _slot=$((_slot + 1))
 
         # add wired memory for 11+
-        [ ${BSD_VERSION} -ge 1100000 ] && _opts="${_opts} -S"
+        [ ${BSD_VERSION} -ge 1100000 ] && _opts="${_opts} -S" && _wiredmem="1"
     fi
 }
 

@@ -386,9 +386,7 @@ __zfs_image_create(){
 __zfs_image_provision(){
     local _uuid="$1"
     local _name="$2"
-    local _file
-    local _oldname
-    local _num=0
+    local _file _oldname _entry _num=0
 
     [ -z "${_uuid}" -o -z "${_name}" ] && __usage
     [ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"

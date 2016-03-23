@@ -100,7 +100,7 @@ __vm_info_switch_show(){
     __vm_info_output_config "ports_${_switch}" "physical-ports"
 
     if [ -n "${_bridge}" ]; then
-        _stats=$(netstat -biI "${_bridge}" |grep '<Link#' | tail -n1 | awk '{print $7,$10}')
+        _stats=$(netstat -biI "${_bridge}" |grep '<Link#' | tail -n1 | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | awk '{print $5,$2}')
 
         if [ -n "${_stats}" ]; then
             _b_in=$(__vm_info_bytes_human "${_stats%% *}")
@@ -277,7 +277,7 @@ __vm_info_networking(){
             echo "${_INDENT}bridge: ${_bridge:--}"
 
             if [ -n "${_id}" ]; then
-                _stats=$(netstat -biI "${_id}" | tail -n1 | awk '{print $10,$7}')
+                _stats=$(netstat -biI "${_id}" | tail -n1 | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | awk '{print $2,$5}')
                 _b_in=$(__vm_info_bytes_human "${_stats%% *}")
                 _b_out=$(__vm_info_bytes_human "${_stats##* }")
 

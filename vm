@@ -24,7 +24,7 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.9.20
+VERSION=0.9.21
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 BSD_VERSION=$(uname -K)
 
@@ -63,6 +63,9 @@ if [ -z "$rc_force" ] && ! checkyesno vm_enable; then
     __err "\$vm_enable is not enabled in /etc/rc.conf!"
 fi
 
+# check for any global arguments
+__parse_cmd_args "$@"
+
 # init for zfs
 __zfs_init
 
@@ -73,4 +76,4 @@ __zfs_init
 [ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
 
-__parse_cmd "$@"
+__parse_cmd "${VM_COMMAND}"

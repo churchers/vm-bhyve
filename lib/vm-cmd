@@ -87,3 +87,24 @@ __parse_switch_cmd(){
         *)       __usage ;;
     esac
 }
+
+# look for any arguments to the vm command
+# -d /dir: change the global vm_dir to specified value
+#
+# the argument string without any options is put into 
+# VM_COMMAND for the main command parser to handle
+#
+# modifies VM_COMMAND vm_dir
+#
+__parse_cmd_args(){
+    local _opt
+
+    while getopts d: _opt; do
+        case ${_opt} in
+            d) vm_dir="${OPTARG}"
+        esac
+    done
+
+    shift $((OPTIND - 1))
+    VM_COMMAND="$@"
+}

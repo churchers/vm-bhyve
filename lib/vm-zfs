@@ -388,6 +388,7 @@ __zfs_image_provision(){
     local _name="$2"
     local _file
     local _oldname
+    local _num=0
 
     [ -z "${_uuid}" -o -z "${_name}" ] && __usage
     [ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
@@ -410,6 +411,22 @@ __zfs_image_provision(){
     # rename the guest configuration file
     mv "${vm_dir}/${_name}/${_oldname}.conf" "${vm_dir}/${_name}/${_name}.conf" >/dev/null 2>&1
     [ $? -ne 0 ] && __err "unpackaged image but unable to update guest configuration file"
+
+    # update mac addresses and uuid
+    __config_load "${vm_dir}/${_name}/${_name}.conf"
+    __vm_config_set "${_name}" "uuid" "${_uuid}"
+
+    # find all network interfaces and change mac
+    while [ 1 ]; do
+        __config_get "_entry" "network${_num}_type"
+        [ -z "${_entry}" ] && break
+
+        __vm_generate_static_mac
+        _num=$((_num + 1))
+    done
+
+    # vm may be started, when 'vm image create' are executed
+    rm -f "${vm_dir}/${_name}/run.lock"
 }
 
 # 'vm image list'

@@ -90,7 +90,7 @@ __vm_run(){
 
     # if uefi, make sure we have bootrom, then update options for uefi support
     if __checkyesno "${_uefi}"; then
-        if [ ${BSD_VERSION} -lt 1003000 ]; then
+        if [ ${BSD_VERSION} -lt 1002509 ]; then
             __log "guest" "${_name}" "uefi guests can only be run on FreeBSD 10.3 or newer"
             exit 15
         fi

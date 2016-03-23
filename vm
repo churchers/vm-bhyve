@@ -64,7 +64,7 @@ if [ -z "$rc_force" ] && ! checkyesno vm_enable; then
 fi
 
 # check for any global arguments
-__parse_cmd_args "$@"
+__parse_cmd_args $@
 
 # init for zfs
 __zfs_init
@@ -76,4 +76,4 @@ __zfs_init
 [ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
 
-__parse_cmd "${VM_COMMAND}"
+__parse_cmd ${VM_COMMAND}

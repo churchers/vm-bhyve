@@ -56,6 +56,7 @@ __parse_cmd(){
         _run)      __vm_run "$@" ;;
         iso)       __vm_iso "$@" ;;
         configure) __vm_configure "$@" ;;
+        passthru)  __vm_passthru ;;
         clone)     __zfs_clone "$@" ;;
         snapshot)  __zfs_snapshot "$@" ;;
         rollback)  __zfs_rollback "$@" ;;

@@ -85,6 +85,8 @@
 .Cm configure
 .Ar name
 .Nm
+.Cm passthru
+.Nm
 .Cm clone
 .Ar name[@snapshot]
 .Ar new-name
@@ -564,6 +566,23 @@ The
 command simply opens the virtual machine configuration file in your default editor,
 allowing you to easily make changes. Please note, changes do not take effect until
 the virtual machine is fully shutdown and restarted.
+.It Cm passthru
+The
+.Cm passthru
+command lists all PCI devices in the system, the device ID required for bhyve, and
+whether the device is currently ready to be used by a guest. In order to make a 
+device ready, it needs to be reserved on boot by adding the device ID to the
+.Sy pptdevs
+variable in
+.Pa /boot/loader.conf .
+.Pp
+Once a device is ready, it can be assigned to a guest by adding
+.Sy passthruX="{ID}"
+to the guest's configuration file.
+.Sy X
+should be an integer starting at 0 for the first passthrough device.
+.Pp
+More details can be found in the bhyve wiki.
 .It Cm clone Ar name[@snapshot] Ar new-name
 Create a clone of the virtual machine
 .Pa name ,

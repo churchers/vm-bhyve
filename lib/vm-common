@@ -99,6 +99,7 @@ Usage: vm ...
     poweroff <name>
     configure <name>
     destroy <name>
+    passthru
     clone <name[@snapshot]> <new-name>
     snapshot [-f] <name[@snapshot]>
     rollback [-r] <name@snapshot>

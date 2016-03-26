@@ -551,6 +551,27 @@ __vm_iso(){
     fi
 }
 
+# 'vm passthru'
+# show a list of available passthrough devices
+# and their device number
+#
+__vm_passthru(){
+    local _dev _sbf _desc _ready
+    local _format="%-10s %-12s %-12s %s\n"
+
+    printf "${_format}" "DEVICE" "BHYVE ID" "READY" "DESCRIPTION"
+
+    pciconf -l | awk -F'[@:]' '{ print $1,$3 ":" $4 ":" $5}' | \
+    while read _dev _sbf; do
+
+        _ready=$(echo "${_dev}" | grep ^ppt)
+        [ -n "${_ready}" ] && _ready="Yes"
+
+        _desc=$(pciconf -lv | grep -A2 "^${_dev}@" | tail -n1 | grep device | cut -d\' -f2)
+        printf "${_format}" "${_dev}" "${_sbf}" "${_ready:-No}" "${_desc:--}"
+    done
+}
+
 # set a value in vm configuration file
 # we check for newline at the end as sysrc won't add it
 # and that will mess up the new key and the existing one

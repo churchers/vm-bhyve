@@ -644,13 +644,16 @@ __vm_confirm_stopped(){
 __vm_generate_static_mac(){
     local _time=$(date +%s)
     local _key _part="00:00"
+    local _base _num=0
 
-    _key="${_name}:${_num}:${_time}"
+    _base="${_name}:${_num}:${_time}"
 
     # generate the last 4 bytes
     # make sure we don't get 00:00 (see sys/net/ieee_oui.h)
     while [ "${_part}" = "00:00" ]; do
+        _key="${_base}:${_num}"
         _part=$(md5 -qs "${_key}" | awk 'BEGIN {FS="";OFS=":"}; {print $1$2,$3$4}')
+        _num=$((_num + 1))
     done
 
     # add base bhyve OUI of 0x589cfc00

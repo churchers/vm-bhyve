@@ -188,6 +188,20 @@ a full shutdown and restart of the guest
 See the man page for a full description of all available commands.
 
     # man vm
+    
+## Adding custom disks
+
+Create a sparse-zvol of 50G in size.
+
+    # zfs create -sV 50G -o volmode=dev "zpool/vm/yourvm/disk1"
+
+Manually add it to your vms config file.
+
+    disk1_name="/dev/zvol/zpool/vm/yourvm/disk1"
+    disk1_type="virtio-blk"
+    disk1_dev="custom"
+    
+Restart your vm.
 
 ## Windows Support
 

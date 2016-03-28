@@ -55,12 +55,15 @@
 
 # FreeBSD
 __guest_freebsd(){
+    local _wired=""
+    [ "${_wiredmem}" = "1" ] && _wired=" -S"
+
     if [ "$1" = "install" ]; then
-        __log "guest" "${_name}" "bhyveload -c ${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
-        bhyveload -c "${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+        __log "guest" "${_name}" "bhyveload${_wired} -c ${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
+        bhyveload${_wired} -c "${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
     else
-        __log "guest" "${_name}" "bhyveload -c ${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
-        bhyveload -c "${_com}" -m "${_memory}" -d "${_bootdisk}" "${_name}"
+        __log "guest" "${_name}" "bhyveload${_wired} -c ${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
+        bhyveload${_wired} -c "${_com}" -m "${_memory}" -d "${_bootdisk}" "${_name}"
     fi
 
     _exit=$?

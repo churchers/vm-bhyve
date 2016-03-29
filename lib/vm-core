@@ -561,7 +561,7 @@ __vm_passthru(){
 
     printf "${_format}" "DEVICE" "BHYVE ID" "READY" "DESCRIPTION"
 
-    pciconf -l | awk -F'[@:]' '{ print $1,$3 ":" $4 ":" $5}' | \
+    pciconf -l | awk -F'[@:]' '{ print $1,$3 "/" $4 "/" $5}' | \
     while read _dev _sbf; do
 
         _ready=$(echo "${_dev}" | grep ^ppt)

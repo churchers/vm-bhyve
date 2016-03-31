@@ -116,6 +116,11 @@
 .Nm
 .Cm image destroy
 .Ar uuid
+.Nm
+.Cm image import
+.Op Fl d Ar description
+.Op Fl t Ar template
+.Ar imgfile
 .\" ============ DESCRIPTION =============
 .Sh DESCRIPTION
 The
@@ -671,6 +676,35 @@ Create a new virtual machine, named
 from the specified image UUID.
 .It Cm image destroy Ar uuid
 Destroy the specified image.
+.It Xo
+.Cm image import
+.Op Fl d Ar description
+.Op Fl k Ar kernel
+.Op Fl t Ar template
+.Ar imgfile
+.Xc
+Create a new image from the named
+.Pa imgfile
+which should be in raw format.
+If
+.Ar template
+is
+.Pa centos
+then
+.Ar kernel
+must be supplied.
+.Pp
+The resulting image will contain the image file as the first disk,
+and an empty OpenStack config drive ISO image as the first CD drive.
+.Pp
+Once the import is complete, it will display the UUID which has been
+assigned to this image.
+.Pp
+This command expects to have
+.Xr mkisofs 1
+available.  It can be found in the
+.Pa cdrtools
+package.
 .El
 .\" ============ CONFIGURATION FORMAT ===========
 .Sh CONFIGURATION FORMAT
@@ -683,7 +717,7 @@ An overview of the available configuration options is listed below.
 .Bl -tag -width 17n
 .It guest
 Specify the type of guest to be installed in this virtual machine. Current valid options
-for this are generic, freebsd, netbsd, openbsd, windows, centos, ubuntu, debian & alpine linux.
+for this are generic, freebsd, netbsd, openbsd, windows, centos, ubuntu, debian, opensuse, & alpine linux.
 .It uefi
 Set this (any non-empty value) for guests that need UEFI firmware.
 .It cpu

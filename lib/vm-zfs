@@ -473,6 +473,98 @@ __zfs_image_destroy(){
     rm "${vm_dir}/images/${_file}"
 }
 
+# 'vm image import'
+# import a cloud image for later use with 'vm provision'
+# image must be in raw format to work with bhyve
+#
+# @param string _imgfile filename of the cloud image
+# @param optional string (-d) description of the image
+# @param optional string (-t) template to use (default = default)
+# @param optional string (-k) CentOS kernel version when template is "centos"
+#
+
+__zfs_image_import(){
+    local _imgfile
+    local _opt _desc _template _name _vmdir _mkisofs _isodir
+    local _disk _configdrive _uuid _kernel
+
+    while getopts d:k:t: _opt ; do
+	case $_opt in
+	    d)
+		_desc=${OPTARG}
+		;;
+	    k)
+		_kernel=${OPTARG}
+		;;
+	    t)
+		_template=${OPTARG}
+		;;
+	    *)
+		__usage
+		;;
+	esac
+    done
+
+    shift $((OPTIND - 1))
+    _imgfile="$1"
+    [ -z "${_desc}" ] && _desc="No description provided"
+    [ -z "${_template}" ] && _template="default"
+    [ ! -r "${_imgfile}" ] && __err "${_imgfile} is not readable or does not exist"
+    _mkisofs=$(which mkisofs)
+    [ -z "${_mkisofs}" ] && __err "mkisofs is not installed"
+
+    _name=$(mktemp -d "${vm_dir}/importXXXXXXXX")
+    rmdir "${_name}"
+    _name=${_name##*/}
+    _vmdir="${vm_dir}/${_name}"
+    _uuid=$(uuidgen)
+
+    case "${_template}" in
+	centos)
+	    [ -z "${_kernel}" ] && __err "CentOS images must choose kernel version"
+	    ;;
+    esac
+
+    __vm_create -t "${_template}" "${_name}"
+    __vm_config_set "${_name}" "uuid" "${_uuid}"
+    __config_load "${_vmdir}/${_name}.conf"
+    __config_get "_disk" "disk0_name"
+    echo "Importing raw image, this may take some time..."
+    # Many images are sparse files, but FreeBSD cp command
+    # does not preserve sparseness.  Thus dd.
+    dd if="${_imgfile}" of="${_vmdir}/${_disk}" conv=sparse bs=100k
+
+    case "${_template}" in
+	centos)
+	    __vm_config_set "${_name}" "guest" "${_template}-cloud"
+	    __vm_config_set "${_name}" "linux_kernel" "${_kernel}"
+	    ;;
+	debian|ubuntu)
+	    __vm_config_set "${_name}" "guest" "${_template}-cloud"
+	    ;;
+    esac
+    
+    # Add config drive iso
+    __vm_add -d disk -t file -s 1M "${_name}"
+    __vm_config_set "${_name}" "disk1_type" ahci-cd
+    __config_load "${_vmdir}/${_name}.conf"
+    __config_get "_configdrive" "disk1_name"
+    _isodir=$(mktemp -d)
+    mkdir -p ${_isodir}/openstack/content
+    mkdir ${_isodir}/openstack/latest
+    "${_mkisofs}" -J -r -R -o "${_vmdir}/${_configdrive}" "${_isodir}"
+    rm -R "${_isodir}"
+
+    # Convert to image
+    __zfs_image_create -d "${_desc}" "${_name}"
+
+    # Clean up
+    __vm_confirm_stopped "${_name}" || __err "Someone started temporary VM?!"
+    __zfs_destroy_dataset "${_name}"
+    [ -e "${_vmdir}" ] && rm -R "${_vmdir}"
+    echo "Successfully imported ${_imgfile##*/}"
+}
+
 # cmd 'vm image ...'
 # parse the image command set
 # these all rely on ZFS snapshots, so kept with zfs functions
@@ -491,6 +583,7 @@ __zfs_parse_image_cmd(){
         create)    __zfs_image_create "$@" ;;
         provision) __zfs_image_provision "$@" ;;
         destroy)   __zfs_image_destroy "$@" ;;
+	import)    __zfs_image_import "$@" ;;
         *)         __usage ;;
     esac
 }

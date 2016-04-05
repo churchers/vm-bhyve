@@ -225,6 +225,24 @@ a full shutdown and restart of the guest
 See the man page for a full description of all available commands.
 
     # man vm
+    
+## Adding custom disks
+
+Scenario: If you have a vm on one zpool and would like to add a new virtual disk to it that resides on a different zpool.
+
+Manually create a sparse-zvol (in this case 50G in size).
+
+    # zfs create -sV 50G -o volmode=dev "zpool2/vm/yourvm/disk1"
+
+Add it to your vm config file.
+
+    # vm configure yourvm
+
+    disk1_name="/dev/zvol/zpool2/vm/yourvm/disk1"
+    disk1_type="virtio-blk"
+    disk1_dev="custom"
+
+Restart your vm.
 
 ## Windows Support
 

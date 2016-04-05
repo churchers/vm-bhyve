@@ -235,6 +235,7 @@ Manually create a sparse-zvol (in this case 50G in size).
     # zfs create -sV 50G -o volmode=dev "zpool2/vm/yourvm/disk1"
 
 Add it to your vm config file.
+Please note, for Windows guests the type will need to be `ahci-hd`, as it does not have virtio-blk drivers.
 
     # vm configure yourvm
 

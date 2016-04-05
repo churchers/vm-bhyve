@@ -28,7 +28,7 @@ guest=""
 # loader
 # If the guest you are using requires either bhyveload or grub-bhyve,
 # specify the loader to use here. If the guest is freebsd or linux,
-# this is not required as the correct loader used by default.
+# this is not required as the correct loader is used by default.
 #
 # If using guests such as netbsd, you can either set the guest to
 # linux, or set to generic and specify the grub loader here

@@ -89,7 +89,7 @@ Usage: vm ...
     create [-t template] [-s size] <name>
     install <name> <iso>
     start <name>
-    stop <name>
+    stop <name> <...>
     console <name> [com1|com2]
     rename <name> <new-name>
     add [-d device] [-t type] [-s size|switch] <name>
@@ -113,7 +113,7 @@ EOT
 }
 
 # error
-# display an error message an exit immediately
+# display an error message and exit immediately
 #
 # @param string - the message to display
 #

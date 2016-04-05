@@ -868,6 +868,19 @@ will be run on the guests console, so you can use the standard
 command to access the bootloader if needed.
 .Pp
 The sample templates contain examples of how the grub configuration variables can be used.
+.It grub_run_dir
+By default
+.Sy grub-bhyve
+will look in the dircetory
+.Sy /boot/grub
+for the grub configuration file. This option allows you to specify an alternate path
+to use when starting a guest.
+.It grub_run_file
+Allows you to specify the grub configuration file that
+.Sy grub-bhyve
+will look for inside the guest, rather than the
+default of
+.Sy grub.cfg .
 .It passthruX
 Specify a device to pass through to the guest. You will need to reserve the device first
 so that is it claimed by the ppt driver on boot.

@@ -10,15 +10,32 @@
 # The '#' character signifies the start of a comment, even within
 # double-quotes, and so cannot be used inside any values.
 
-# guest (required)
+# guest
 # The type of operating system this virtual machine will use.
 # Different systems often require specific steps to load the
 # virtual machine, or specific bhyve options. The generic option
 # does no specific loading and can be used for standard uefi guests.
 #
-# Valid Options: freebsd,netbsd,openbsd,centos,centos-grub,alpine
-#                ubuntu,debian,windows,generic
+# This is no longer a required option and will default to 'generic'
+# if not specified. If set to freebsd, the bhyveload loader is 
+# automatically used, and if set to linux, grub-bhyve will be used.
+#
+# Default: generic
+# Valid Options: freebsd,linux,windows,generic
+#
 guest=""
+
+# loader
+# If the guest you are using requires either bhyveload or grub-bhyve,
+# specify the loader to use here. If the guest is freebsd or linux,
+# this is not required as the correct loader used by default.
+#
+# If using guests such as netbsd, you can either set the guest to
+# linux, or set to generic and specify the grub loader here
+#
+# Valid Options: bhyveload,grub
+#
+loader=""
 
 # uefi
 # Tells bhyve that it should load the UEFI firmware. To use UEFI
@@ -188,43 +205,56 @@ passthru0=""
 #
 virt_random=""
 
-# grub_commands
-# If you need to use custom grub loader commands that are different to
-# the defaults used by vm-bhyve, you can use this setting.
-# Create a text file in the guest directory ($vm_dir/guest/) containing
-# the grub commands, then enter the filename (just the filename not the path)
-# into this setting. Usually the last entry in the file should be 'boot',
-# followed by a newline
+# grub_install0
+# use this to specify grub commands that should be run inside the
+# guest when installing.
 #
-grub_commands=""
+# If more than one command is needed, you can specify this option
+# multiple times, incrementing the number on the end each time
+#
+# Please note that in most cases you will need to specify 'boot'
+# as the last commands to actually initiate the guest boot
+#
+grub_install0="..."
+grub_install1="..."
 
-# linux_kernel
-# This option is only used for CentOS guests, when booted using the standard
-# grub-bhyve loader. It should contain a value similar to '3.10.0-229.el7.x86_64'
-# which allows vm-bhyve to pass the correct kernel & initrd commands to the
-# CentOS loader.
+# grub_run0
+# use this to specify grub commands to run when starting the guest
+# normally
 #
-linux_kernel=""
+# As with the install commands, 'boot' needs to be specified if it
+# is required. (I'm not aware of any situation where it isn't, but
+# have decided to require it rather than hardcode it in the vm-bhyve
+# source, just in case there are any exceptions)
+#
+grub_run0="linux ..."
+grub_run1="initrd ..."
+grub_run2="boot"
 
-# guest_version
-# The version of the guest operating system. This is only really used for
-# OpenBSD guests. For OpenBSD the path to the kernel includes the release
-# version, so we need to know the version in advance to be able to send
-# the correct commands to grub-bhyve.
+# grub_run_partition
+# by default 'hd0' is specified as the root when running grub-bhyve.
+# to force 'hd0,msdos1' instead, set this to 'msdos1'.
+# with some guests (such as ubuntu) this is enough for grub-byve
+# to be able to find the guests grub configuration file and boot
+# without requiring and additional grub commands.
 #
-guest_version=""
+grub_run_partition="msdos1"
 
-# arch
-# Again this is only used for OpenBSD guests. As well as containing the OS
-# release version, the loader path also includes the CPU architecture. In 
-# order to allow both i386 and amd64 versions of OpenBSD to be booted, this
-# allows you to specify the architecture of the guest operating system
-# that you are installing
+# grub_run_dir
+# by default grub-bhyve will look in /boot/grub for the guests
+# grub config file. use this to specify an alterate path
 #
-# Default: amd64
-# Valid Options: amd64,i386
+# Default: /boot/grub (set by grub-bhyve)
 #
-arch=""
+grub_run_dir="/grub"
+
+# grub_run_file
+# by default grub-bhyve will look for a file called grub.cfg containing
+# the guests grub configuration. use this to specify an alternate filename
+#
+# Default: grub.cfg (set by grub-bhyve)
+#
+grub_run_file="grub.conf"
 
 # zfs_dataset_opts
 # A list of ZFS properties to set on any new dataset created for this

@@ -78,20 +78,22 @@ __guest_windows(){
 #
 __guest_generic(){
     local _type="$1"
-    local _wired _partition
+    local _partition _args _grub_opt
     local _root="hd0"
     local _bcmd="${vm_dir}/${_name}/grub.cmd"
 
     __config_get "_partition" "grub_run_partition"
 
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
+    [ "${_wiredmem}" = "1" ] && _args=" -S"
     [ -n "${_partition}" ] && _root="hd0,${_partition}"
 
     if [ "${_type}" = "install" ]; then 
         if [ "${_loader}" = "bhyveload" ]; then
 
-            __log "guest" "${_name}" "bhyveload${_wired} -c ${_com}A -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
-            bhyveload${_wired} -c "${_com}A" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+            _args="${_args} -c ${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
+
+            __log "guest" "${_name}" "bhyveload${_args}"
+            bhyveload ${_args}
 
             _exit=$?
         elif [ "${_loader}" = "grub" ]; then
@@ -101,11 +103,15 @@ __guest_generic(){
             __guest_get_commands "install"
 
             if [ -e "${_bcmd}" ]; then 
-                __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${_bcmd}"
-                env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${_bcmd}"
+                _args="${_args} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+
+                __log "guest" "${_name}" "grub-bhyve${_args} < ${_bcmd}"
+                env -i TERM=xterm /usr/local/sbin/grub-bhyve ${_args} < "${_bcmd}"
             else
-                __log "guest" "${_name}" "grub-bhyve${_wired} -c ${_com}A -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-                /usr/local/sbin/grub-bhyve${_wired} -c "${_com}A" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+                _args="${_args} -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+
+                __log "guest" "${_name}" "grub-bhyve${_args}"
+                /usr/local/sbin/grub-bhyve ${_args}
             fi
 
             _exit=$?
@@ -113,21 +119,32 @@ __guest_generic(){
     else
         if [ "${_loader}" = "bhyveload" ]; then
 
-            __log "guest" "${_name}" "bhyveload${_wired} -c ${_com}A -m ${_memory} -d ${_bootdisk} ${_name}"
-            bhyveload${_wired} -c "${_com}A" -m "${_memory}" -d "${_bootdisk}" "${_name}"
+            _args="${_args} -c ${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
+
+            __log "guest" "${_name}" "bhyveload${_args}"
+            bhyveload ${_args}
 
             _exit=$?
         elif [ "${_loader}" = "grub" ]; then
+
+            __config_get "_grub_opt" "grub_run_dir"
+            [ -n "${_grub_opt}" ] && _args="${_args} -d ${_grub_opt}"
+            __config_get "_grub_opt" "grub_run_file"
+            [ -n "${_grub_opt}" ] && _args="${_args} -g ${_grub_opt}"
 
             __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
             __guest_get_commands "run"
 
             if [ -e "${_bcmd}" ]; then
-                __log "guest" "${_name}" "grub-bhyve${_wired} -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${_bcmd}"
-                env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r ${_root} -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${_bcmd}"
+                _args="${_args} -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+
+                __log "guest" "${_name}" "grub-bhyve${_args} < ${_bcmd}"
+                env -i TERM=xterm /usr/local/sbin/grub-bhyve ${_args} < "${_bcmd}"
             else
-                __log "guest" "${_name}" "grub-bhyve${_wired} -c ${_com}A -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-                /usr/local/sbin/grub-bhyve${_wired} -c "${_com}A" -r ${_root} -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+                _args="${_args} -c ${_com} -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+
+                __log "guest" "${_name}" "grub-bhyve${_args}"
+                /usr/local/sbin/grub-bhyve ${_args}
             fi
 
             _exit=$?

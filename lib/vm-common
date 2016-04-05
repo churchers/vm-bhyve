@@ -220,6 +220,8 @@ __confirm(){
 __checkyesno(){
     local _value="$1"
 
+    [ -z "${_value}" ] && return 1
+
     case "$_value" in
         [Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
             return 1

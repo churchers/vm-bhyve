@@ -375,6 +375,8 @@ __vm_start(){
         return 1
     fi
 
+    __vm_tmp_upgrade_check
+
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
     $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
@@ -390,20 +392,29 @@ __vm_stop(){
     local _pid _loadpid
 
     [ -z "${_name}" ] && __usage
-    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
-    _pid=$(pgrep -fx "bhyve: ${_name}")
-    _loadpid=$(pgrep -fl "grub-bhyve|bhyveload" | grep " ${_name}\$" |cut -d' ' -f1)
+    while [ -n "${_name}" ]; do
+        [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
 
-    if [ -n "${_pid}" ]; then
-        kill "${_pid}"
-    elif [ -n "${_loadpid}" ]; then
-        __confirm "Guest is in bootloader stage, do you wish to force exit" || exit 0
-        kill "${_loadpid}"
-        bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
-    else
-        __err "unable to locate process id for this virtual machine"
-    fi
+        _pid=$(pgrep -fx "bhyve: ${_name}")
+        _loadpid=$(pgrep -fl "grub-bhyve|bhyveload" | grep " ${_name}\$" |cut -d' ' -f1)
+
+        if [ -n "${_pid}" ]; then
+            echo "Sending poweroff to ${_name}"
+            kill "${_pid}"
+        elif [ -n "${_loadpid}" ]; then
+            if __confirm "Guest is in bootloader stage, do you wish to force exit"; then
+                echo "Killing ${_name}"
+                kill "${_loadpid}"
+                bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
+            fi
+        else
+            __warn "unable to locate process id for this virtual machine"
+        fi
+
+        shift
+        _name="$1"
+    done
 }
 
 # 'vm reset'
@@ -596,4 +607,23 @@ __vm_config_set(){
 
     sysrc -inqf "${vm_dir}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
     return $?
+}
+
+# temporary check for guests that need reconfiguring
+#
+__vm_tmp_upgrade_check(){
+
+    case "${_guest}" in
+        freebsd) ;&
+        linux) ;&
+        generic) ;&
+        windows) ;;
+        *)
+            echo "******"
+            echo "  This guest needs to be updated to use newer grub-bhyve support"
+            echo "  Please see the GitHub readme for more information"
+            echo "******"
+            exit 1
+            ;;
+    esac
 }

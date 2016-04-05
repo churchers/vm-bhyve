@@ -500,6 +500,47 @@ __switch_nat_init(){
     __restart_service "pf"
 }
 
+# check if a switch is a vale switch
+# if so, we don't need to actually create anything.
+# interfaces are created on demand when starting guests,
+# and vale switches are dynamic
+#
+__switch_is_vale(){
+    local _switch="$1"
+    local _is_vale=$(sysrc -inqf "${vm_dir}/.config/switch" "vale_${_switch}")
+
+    [ -z "${_is_vale}" ] && return 1
+
+    if __checkyesno "${_is_vale}"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# gets a unique port name for a vale interface
+# we need to make sure vale switch name is the same
+# for all interfaces on the same switch, but port is 
+# different
+# 
+# @param string _var name of variable to put port name into
+# @param string _switch the name of the switch
+# @param string _port unique port identifier (usually mac address)
+#
+__switch_vale_port(){
+    local _var="$1"
+    local _switch="$1"
+    local _port="$2"
+    local _id_s _id_p
+
+    # get a switch id and port id
+    _id_s=$(md5 -qs "${_switch}" | awk '{print substr($0,0,5)}')
+    _id_p=$(md5 -qs "${_port}" | awk '{print substr($0,0,5)}')
+
+    # build full vale id
+    setvar "${_var}" "vale${_id_s}:${_id_p}"
+}
+
 # produce an error if the listed switch is not managed by vm-bhyve.
 # we allow users to import existing bridges which they configure themselves.
 # we don't allow vm-bhyve to mess with these, it's all up to the user

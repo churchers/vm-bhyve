@@ -36,7 +36,7 @@ __vm_run(){
     local _name="$1"
     local _iso="$2" _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
-    local _guest_support _uefi _uuid _utc _debug _hostbridge
+    local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit
     local _com _comports _comstring _logpath
     local _conf="${vm_dir}/${_name}/${_name}.conf"
@@ -49,6 +49,7 @@ __vm_run(){
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
     __config_get "_guest" "guest"
+    __config_get "_loader" "loader"
     __config_get "_bootdisk" "disk0_name"
     __config_get "_bootdisk_dev" "disk0_dev"
     __config_get "_uefi" "uefi"
@@ -59,6 +60,7 @@ __vm_run(){
     __config_get "_debug" "debug"
 
     # set defaults
+    : ${_guest:=generic}
     : ${_bootdisk_dev:=file}
     : ${_comports:=com1}
     : ${_uefi:=no}
@@ -68,6 +70,7 @@ __vm_run(){
 
     __log "guest" "${_name}" "initialising"
     __log "guest" "${_name}" " [guest: ${_guest}]"
+    __log "guest" "${_name}" " [loader: ${_loader:-default}]"
     __log "guest" "${_name}" " [uefi: ${_uefi}]"
     __log "guest" "${_name}" " [cpu: ${_cpu}]"
     __log "guest" "${_name}" " [memory: ${_memory}]"
@@ -245,7 +248,7 @@ __vm_lock(){
 # @param string - the name of the guest to unlock
 #
 __vm_unlock(){
-    rm "${vm_dir}/$1/run.lock" >/dev/null 2>&1
+    unlink "${vm_dir}/$1/run.lock" >/dev/null 2>&1
 }
 
 # create string for guest com ports
@@ -260,13 +263,13 @@ __vm_unlock(){
 __vm_bhyve_device_comports(){
     local _port _num=1 _nmdm=""
 
-    rm "${vm_dir}/${_name}/console" >/dev/null 2>&1
+    unlink "${vm_dir}/${_name}/console" >/dev/null 2>&1
 
     for _port in ${_comports}; do
         __vm_find_console "_nmdm" "${_nmdm}"
 
         # use first com port for the loader
-        [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
+        [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}"
 
         echo "${_port}=/dev/nmdm${_nmdm}B" >> "${vm_dir}/${_name}/console"
         _comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
@@ -374,50 +377,61 @@ __vm_bhyve_device_networking(){
         # we need at least a type
         [ -z "${_type}" ] && break
 
-        # create interface
-        if [ -n "${_custom_tap}" ]; then
-            _tap="${_custom_tap}"
-        else
-            _tap=$(ifconfig tap create)
-        fi
+        # set a static mac if we don't have one
+        [ -z "${_mac}" ] && __vm_generate_static_mac
 
-        if [ -n "${_tap}" ]; then
-            # move slot if we've hit function 8
-            if [ ${_func} -ge 8 ]; then
-                _func=0
-                _slot=$((_slot + 1))
-            fi
+        if __switch_is_vale "${_switch}"; then
+            # create a vale port id
+            __switch_vale_port "_tap" "${_switch}" "${_mac}"
 
-            __log "guest" "${_name}" "initialising network device ${_tap}"
-            ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}" >/dev/null 2>&1
-
-            # set a static mac if we don't have one
-            [ -z "${_mac}" ] && __vm_generate_static_mac
-
-            if [ -n "${_switch}" ]; then
-                __switch_get_ident "_sid" "${_switch}"
-
-                if [ -n "${_sid}" ]; then
-                    _mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
-
-                    if [ "${_mtu}" != "1500" ]; then
-                    	__log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
-                    	ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
-                    fi
-
-                    __log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch})"
-                    ifconfig "${_sid}" addm "${_tap}" >/dev/null 2>&1
-                    [ $? -ne 0 ] && __log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
-                else
-                    __log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
-                fi
-            fi
-
+            __log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
             _devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
             [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
             _func=$((_func + 1))
-            [ -z "${_custom_tap}" ] && _taplist="${_taplist}${_taplist:+ }${_tap}"
+        else
+            # create interface
+            if [ -n "${_custom_tap}" ]; then
+                _tap="${_custom_tap}"
+            else
+                _tap=$(ifconfig tap create)
+            fi
+
+            if [ -n "${_tap}" ]; then
+                # move slot if we've hit function 8
+                if [ ${_func} -ge 8 ]; then
+                    _func=0
+                    _slot=$((_slot + 1))
+                fi
+
+                __log "guest" "${_name}" "initialising network device ${_tap}"
+                ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}" >/dev/null 2>&1
+
+                if [ -n "${_switch}" ]; then
+                    __switch_get_ident "_sid" "${_switch}"
+
+                    if [ -n "${_sid}" ]; then
+                        _mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
+
+                        if [ "${_mtu}" != "1500" ]; then
+                            __log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
+                    	    ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
+                        fi
+
+                        __log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch})"
+                        ifconfig "${_sid}" addm "${_tap}" >/dev/null 2>&1
+                        [ $? -ne 0 ] && __log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+                    else
+                        __log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
+                    fi
+                fi
+
+                _devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
+                [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+                _func=$((_func + 1))
+                [ -z "${_custom_tap}" ] && _taplist="${_taplist}${_taplist:+ }${_tap}"
+            fi
         fi
 
         _num=$((_num + 1))
@@ -637,27 +651,32 @@ __vm_confirm_stopped(){
     return 0
 }
 
-# generate a static mac address for a guest
+# generate a static mac address for a guest.
 # we now make sure all interfaces have a static mac so
-# there's no worry of guest problems due to it changing
+# there's no worry of guest problems due to it changing.
+# bhyve is allocated 58:9c:fc:0x:xx:xx, so we try and
+# randomise the last 20 bits (5 hex digits).
+# using guest name, interface number and time as seed,
+# with an incrementing integer just in case we happen to
+# get 5 zeros.
 #
 __vm_generate_static_mac(){
     local _time=$(date +%s)
-    local _key _part="00:00"
+    local _key _part="0:00:00"
     local _base _int=0
 
     _base="${_name}:${_num}:${_time}"
 
     # generate the last 4 bytes
-    # make sure we don't get 00:00 (see sys/net/ieee_oui.h)
-    while [ "${_part}" = "00:00" ]; do
+    # make sure we don't get 0:00:00 (see sys/net/ieee_oui.h)
+    while [ "${_part}" = "0:00:00" ]; do
         _key="${_base}:${_int}"
-        _part=$(md5 -qs "${_key}" | awk 'BEGIN {FS="";OFS=":"}; {print $1$2,$3$4}')
+        _part=$(md5 -qs "${_key}" | awk 'BEGIN {FS="";OFS=":"}; {print $1,$2$3,$4$5}')
         _int=$((_int + 1))
     done
 
-    # add base bhyve OUI of 0x589cfc00
-    _mac="58:9c:fc:00:${_part}"
+    # add base bhyve OUI
+    _mac="58:9c:fc:0${_part}"
 
     __log "guest" "${_name}" "generated static mac ${_mac} (based on '${_key}')"
     __vm_config_set "${_name}" "network${_num}_mac" "${_mac}"

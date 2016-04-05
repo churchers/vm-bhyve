@@ -134,7 +134,7 @@ __zfs_make_zvol(){
 }
 
 # format options for zfs commands
-# options are stored in configuration separated by |
+# options are stored in configuration separated by a space
 # we need to replace that with -o
 #
 # @modifies $_val
@@ -303,7 +303,7 @@ __zfs_clone(){
 
     # update new guest files
     mv "${vm_dir}/${_name}/${_old}.conf" "${vm_dir}/${_name}/${_name}.conf"
-    rm "${vm_dir}/${_name}/vm-bhyve.log" >/dev/null 2>&1
+    unlink "${vm_dir}/${_name}/vm-bhyve.log" >/dev/null 2>&1
 
     # update mac addresses and uuid
     __config_load "${vm_dir}/${_name}/${_name}.conf"
@@ -469,8 +469,8 @@ __zfs_image_destroy(){
     _file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
     [ -z "${_file}" ] && __err "unable to locate filename for the specified image"
 
-    rm "${vm_dir}/images/${_uuid}.manifest"
-    rm "${vm_dir}/images/${_file}"
+    unlink "${vm_dir}/images/${_uuid}.manifest"
+    unlink "${vm_dir}/images/${_file}"
 }
 
 # cmd 'vm image ...'

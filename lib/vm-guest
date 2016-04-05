@@ -51,241 +51,111 @@
 # @param string _type=install|run whether this is an install or normal run
 #
 
-# BSDs
-
 # FreeBSD
 __guest_freebsd(){
-    local _wired=""
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
 
-    if [ "$1" = "install" ]; then
-        __log "guest" "${_name}" "bhyveload${_wired} -c ${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
-        bhyveload${_wired} -c "${_com}" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
-    else
-        __log "guest" "${_name}" "bhyveload${_wired} -c ${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
-        bhyveload${_wired} -c "${_com}" -m "${_memory}" -d "${_bootdisk}" "${_name}"
-    fi
-
-    _exit=$?
+    _loader="bhyveload"
+    __guest_generic "$1"
 }
 
-# NetBSD
-__guest_netbsd(){
-    local _wired=""
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    if [ "$1" = "install" ]; then
-        __log_and_write "write" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-        __log_and_write "appnd" "${_name}" "device.map" "(hd1) ${_bootdisk}"
-        __log_and_write "write" "${_name}" "boot.cmd" "knetbsd -h -r cd0a (cd0)/netbsd"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-    else
-        __log_and_write "write" "${_name}" "device.map" "(hd1) ${_bootdisk}"
-        __guestpri_custom_grub && return 0
-        __log_and_write "write" "${_name}" "boot.cmd" "knetbsd -h -r ld0a (hd1,msdos1)/netbsd"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-    fi
-
-    _exit=$?
-}
-
-# OpenBSD
-# requires guest kernel version in config file
-# one of the awkward guests that have version in kernel load path
-__guest_openbsd(){
-    local _gver _arch _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    __config_get "_gver" "guest_version"
-    __config_get "_arch" "arch"
-
-    if [ -z "${_gver}" ]; then
-        __log "guest" "${_name}" "openbsd machines require \"guest_version\" value in configuration"
-        _exit=15
-    else
-        if [ "$1" = "install" ]; then
-            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-            __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-            __log_and_write "write" "${_name}" "boot.cmd" "kopenbsd -h com0 /${_gver}/${_arch:-amd64}/bsd.rd"
-            __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-            __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-            env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-        else
-            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-            __guestpri_custom_grub && return 0
-            __log_and_write "write" "${_name}" "boot.cmd" "kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd"
-            __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-            __log "guest" "${_name}" "grub-bhyve${_wired} -r hd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-            env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r hd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-        fi
-
-        _exit=$?
-    fi
-}
-
-# LINUXes
-
-# Alpine
-__guest_alpine(){
-    local _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    if [ "$1" = "install" ]; then
-        __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-        __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-        __log_and_write "write" "${_name}" "boot.cmd" "linux /boot/grsec initrd=/boot/initramfs-grsec alpine_dev=cdrom:iso9660 modules=loop,squashfs,sd-mod,usb-storage,sr-mod"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "initrd /boot/initramfs-grsec"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-    else
-        __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-        __guestpri_custom_grub && return 0
-        __log_and_write "write" "${_name}" "boot.cmd" "linux /boot/vmlinuz-grsec root=/dev/vda3 modules=ext4"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "initrd /boot/initramfs-grsec"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-    fi
-
-    _exit=$?
-}
-
-# CentOS
-__guest_centos(){
-    local _kernel="" _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    __config_get "_kernel" "linux_kernel"
-
-    if [ -z "${_kernel}" ]; then
-        __log "guest" "${_name}" "centos machines require \"linux_kernel\" value in configuration"
-        _exit=15
-    else
-        if [ "$1" = "install" ]; then
-            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-            __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-            __log_and_write "write" "${_name}" "boot.cmd" "linux /isolinux/vmlinuz"
-            __log_and_write "appnd" "${_name}" "boot.cmd" "initrd /isolinux/initrd.img"
-            __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-            __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-            env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-        else
-            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-            __guestpri_custom_grub && return 0
-            __log_and_write "write" "${_name}" "boot.cmd" "linux /vmlinuz-${_kernel} root=/dev/mapper/centos-root"
-            __log_and_write "appnd" "${_name}" "boot.cmd" "initrd /initramfs-${_kernel}.img"
-            __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-            __log "guest" "${_name}" "grub-bhyve${_wired} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-            env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-        fi
-
-        _exit=$?
-    fi
-}
-
-# CentOS - using grub bootloader inside guest
-__guest_centos-grub(){
-    local _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    if [ "$1" = "install" ]; then
-        __guest_centos "$1"
-        return
-    else
-        __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-        __guestpri_custom_grub && return 0
-        __log_and_write "write" "${_name}" "boot.cmd" ""
-        __log "guest" "${_name}" "grub-bhyve${_wired} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -d /grub -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -d "/grub" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-    fi
-
-    _exit=$?
-}
-
-# Debian
-__guest_debian(){
-    __guest_linux "$1"
-}
-
-# Ubuntu
-__guest_ubuntu(){
-    __guest_linux "$1"
-}
-
-# Arch Linux
-__guest_arch(){
-    local _date=$(date +%Y%m)
-    local _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    if [ "$1" = "install" ]; then
-        __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-        __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-        __log_and_write "write" "${_name}" "boot.cmd" "linux (cd0)/arch/boot/x86_64/vmlinuz archisobasedir=arch archisolabel=ARCH_${_date} ro"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "initrd (cd0)/arch/boot/x86_64/archiso.img"
-        __log_and_write "appnd" "${_name}" "boot.cmd" "boot"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/boot.cmd"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/boot.cmd"
-    else
-        __guest_linux "$1"
-        return
-    fi
-
-    _exit=$?
-}
-
-# Basic Linux
+# Linux
 __guest_linux(){
-    local _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
 
-    if [ "$1" = "install" ]; then
-        __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-        __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-        /usr/local/sbin/grub-bhyve${_wired} -c "${_com}" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
-    else
-        __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-        __guestpri_custom_grub && return 0
-        __log "guest" "${_name}" "grub-bhyve${_wired} -c ${_com} -r hd0,msdos1 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-        /usr/local/sbin/grub-bhyve${_wired} -c "${_com}" -r hd0,msdos1 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
-    fi	
-
-    _exit=$?
-}
-
-# Run custom grub commands if available
-__guestpri_custom_grub(){
-    local _grub _wired
-    [ "${_wiredmem}" = "1" ] && _wired=" -S"
-
-    __config_get "_grub" "grub_commands"
-
-    if [ -n "${_grub}" ]; then
-        __log "guest" "${_name}" "using grub commands from ${vm_dir}/${_name}/${_grub}"
-        __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${vm_dir}/${_name}/${_grub}"
-        env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${vm_dir}/${_name}/${_grub}"
-        _exit=$?
-        return 0
-    fi
-
-    return 1
+    _loader="grub"
+    __guest_generic "$1"
 }
 
 # Windows
-
-# No loader needed for any Win version
 __guest_windows(){
     _exit=0
 }
 
 # Generic guest
-# With uefi, many guests may not need any special handling
+#
+# this now handles most guest types.
+# we have config variable "loader" to set whether bhyveload or grub should be used.
+# all grub commands are specified in guest config file
+#
 __guest_generic(){
-    _exit=0
+    local _type="$1"
+    local _wired _partition
+    local _root="hd0"
+    local _bcmd="${vm_dir}/${_name}/grub.cmd"
+
+    __config_get "_partition" "grub_run_partition"
+
+    [ "${_wiredmem}" = "1" ] && _wired=" -S"
+    [ -n "${_partition}" ] && _root="hd0,${_partition}"
+
+    if [ "${_type}" = "install" ]; then 
+        if [ "${_loader}" = "bhyveload" ]; then
+
+            __log "guest" "${_name}" "bhyveload${_wired} -c ${_com}A -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
+            bhyveload${_wired} -c "${_com}A" -m "${_memory}" -d "${vm_dir}/.iso/${_iso}" "${_name}"
+
+            _exit=$?
+        elif [ "${_loader}" = "grub" ]; then
+            
+            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+            __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+            __guest_get_commands "install"
+
+            if [ -e "${_bcmd}" ]; then 
+                __log "guest" "${_name}" "grub-bhyve${_wired} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${_bcmd}"
+                env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${_bcmd}"
+            else
+                __log "guest" "${_name}" "grub-bhyve${_wired} -c ${_com}A -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+                /usr/local/sbin/grub-bhyve${_wired} -c "${_com}A" -r cd0 -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+            fi
+
+            _exit=$?
+        fi
+    else
+        if [ "${_loader}" = "bhyveload" ]; then
+
+            __log "guest" "${_name}" "bhyveload${_wired} -c ${_com}A -m ${_memory} -d ${_bootdisk} ${_name}"
+            bhyveload${_wired} -c "${_com}A" -m "${_memory}" -d "${_bootdisk}" "${_name}"
+
+            _exit=$?
+        elif [ "${_loader}" = "grub" ]; then
+
+            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+            __guest_get_commands "run"
+
+            if [ -e "${_bcmd}" ]; then
+                __log "guest" "${_name}" "grub-bhyve${_wired} -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name} < ${_bcmd}"
+                env -i TERM=xterm /usr/local/sbin/grub-bhyve${_wired} -r ${_root} -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}" < "${_bcmd}"
+            else
+                __log "guest" "${_name}" "grub-bhyve${_wired} -c ${_com}A -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+                /usr/local/sbin/grub-bhyve${_wired} -c "${_com}A" -r ${_root} -m "${vm_dir}/${_name}/device.map" -M "${_memory}" "${_name}"
+            fi
+
+            _exit=$?
+        fi
+    fi
+}
+
+# Gets any grub-bhyve commands for this guest
+# Not pretty but the best we can find that works.
+# If there are no commands, grub-bhyve will run
+# directly on the guests nmdm console. If there are
+# we run grub-bhyve on stdout, and pipe commands in.
+#
+__guest_get_commands(){
+    local _type="$1"
+    local _command _num=0
+
+    unlink "${_bcmd}" >/dev/null 2>&1
+
+    __config_get "_command" "grub_${_type}${_num}"
+    [ -z "${_command}" ] && return 1
+
+    while [ -n "${_command}" ]; do
+        echo "${_command}" >> "${_bcmd}"
+
+        _num=$((_num + 1))
+        __config_get "_command" "grub_${_type}${_num}"
+    done
+
+    return 0
 }

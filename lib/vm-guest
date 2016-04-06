@@ -168,7 +168,11 @@ __guest_get_commands(){
     [ -z "${_command}" ] && return 1
 
     while [ -n "${_command}" ]; do
-        echo "${_command}" >> "${_bcmd}"
+        if [ "${_num}" = "0" ]; then
+            __log_and_write "write" "${_name}" "grub.cmd" "${_command}"
+        else
+            __log_and_write "appnd" "${_name}" "grub.cmd" "${_command}"
+        fi
 
         _num=$((_num + 1))
         __config_get "_command" "grub_${_type}${_num}"

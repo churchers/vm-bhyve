@@ -381,6 +381,15 @@ __vm_bhyve_device_networking(){
         [ -z "${_mac}" ] && __vm_generate_static_mac
 
         if __switch_is_vale "${_switch}"; then
+            # move slot if we've hit function 8
+            # unfortunately we have this code twice, but in normal tap code,
+            # we don't add guest device if tap create fails, and we don't
+            # want to increment slot number if that happens
+            if [ ${_func} -ge 8 ]; then
+                _func=0
+                _slot=$((_slot + 1))
+            fi
+
             # create a vale port id
             __switch_vale_port "_tap" "${_switch}" "${_mac}"
 

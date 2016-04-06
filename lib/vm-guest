@@ -24,11 +24,11 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# __guest_*
-# these functions are responsible for doing any pre-load tasks for a guest
-# for non uefi guests this normally means running bhyveload or grub-bhyve
+# __guest_load
+# this function is responsible for doing any pre-load tasks for a guest.
+# for non uefi guests this normally means running bhyveload or grub-bhyve.
 # these functions should update _exit to a non-zero value if there's a problem
-# or 0 on success
+# or 0 on success.
 # As these functions are called from within the scope of __vm_run,
 # the following variables are already set (among others)
 #
@@ -41,42 +41,13 @@
 # _guest: guest type
 # _bootdisk: full path to primary disk
 #
-# we have every bhyveload/grub-bhyve call entered twice, once to log and
-# once to actually run. bit of a pain but makes for useful logs.
-#
 # I've written append wrong as it just needs to be something other than 'write',
 # and is much more readable when all the __log* calls line up
 #
 # @modifies _exit
 # @param string _type=install|run whether this is an install or normal run
 #
-
-# FreeBSD
-__guest_freebsd(){
-
-    _loader="bhyveload"
-    __guest_generic "$1"
-}
-
-# Linux
-__guest_linux(){
-
-    _loader="grub"
-    __guest_generic "$1"
-}
-
-# Windows
-__guest_windows(){
-    _exit=0
-}
-
-# Generic guest
-#
-# this now handles most guest types.
-# we have config variable "loader" to set whether bhyveload or grub should be used.
-# all grub commands are specified in guest config file
-#
-__guest_generic(){
+__guest_load(){
     local _type="$1"
     local _partition _args _grub_opt
     local _root="hd0"

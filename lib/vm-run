@@ -68,9 +68,15 @@ __vm_run(){
     : ${_debug:=no}
     : ${_hostbridge:=standard}
 
+    # force the correct loader for freebsd/linux
+    # in the future we may get rid of the guest setting completely
+    # and rely on loader
+    [ "${_guest}" = "freebsd" ] && _loader="bhyveload"
+    [ "${_guest}" = "linux" ] && _loader="grub"
+
     __log "guest" "${_name}" "initialising"
     __log "guest" "${_name}" " [guest: ${_guest}]"
-    __log "guest" "${_name}" " [loader: ${_loader:-default}]"
+    __log "guest" "${_name}" " [loader: ${_loader:-none}]"
     __log "guest" "${_name}" " [uefi: ${_uefi}]"
     __log "guest" "${_name}" " [cpu: ${_cpu}]"
     __log "guest" "${_name}" " [memory: ${_memory}]"
@@ -115,14 +121,6 @@ __vm_run(){
         fi
     else
         _uefi=""
-    fi
-
-    # try to find guest support
-    _guest_support=$(type "__guest_${_guest}" 2>&1 | grep "shell function")
-
-    if [ -z "${_guest_support}" ]; then
-        __log "guest" "${_name}" "unsupported guest type: ${_guest}"
-        exit 15
     fi
 
     # set uuid in opts
@@ -176,20 +174,25 @@ __vm_run(){
             fi
         fi
 
-        # load guest
-        if [ -n "${_iso}" ]; then
-            _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
-            eval "__guest_${_guest}" "install"
-        else
-            # always provide a cd for non-csm UEFI guests at the moment
-            [ -n "${_uefi}" -a "${_uefi}" != "csm" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
-            eval "__guest_${_guest}" "run"
-        fi
+        # set full iso path
+        # use null.iso if not an install and uefi firmware
+        [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
+        [ -z "${_iso}" -a -n "${_uefi}" -a "${_uefi}" != "csm" ] && \
+            _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
 
-        # check no errors
-        if [ ${_exit} -ne 0 ]; then
-            __log "guest" "${_name}" "loader returned error ${_exit}"
-            break
+        # load guest
+        if [ -n "${_loader}" ]; then
+            if [ -n "${_iso}" ]; then
+                __guest_load "install"
+            else
+                __guest_load "run"
+            fi
+
+            # check no errors
+            if [ ${_exit} -ne 0 ]; then
+                __log "guest" "${_name}" "loader returned error ${_exit}"
+                break
+            fi
         fi
 
         __log "guest" "${_name}" " [bhyve options: ${_opts}]"

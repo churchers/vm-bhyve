@@ -28,11 +28,11 @@
 # list virtual machines
 #
 __vm_list(){
-    local _name _guest _cpu _memory _run _vm _auto _num
-    local _format="%-15s %-15s %-6s %-9s %-12s %-20s\n"
+    local _name _guest _loader _cpu _memory _run _vm _auto _num
+    local _format="%-15s %-10s %-11s %-6s %-9s %-12s %s\n"
 
     __vm_running_load
-    printf "${_format}" "NAME" "GUEST" "CPU" "MEMORY" "AUTOSTART" "STATE"
+    printf "${_format}" "NAME" "GUEST" "LOADER" "CPU" "MEMORY" "AUTOSTART" "STATE"
 
     ls -1 "${vm_dir}" | \
     while read _name; do
@@ -40,6 +40,7 @@ __vm_list(){
 
         __config_load "${vm_dir}/${_name}/${_name}.conf"
         __config_get "_guest" "guest"
+        __config_get "_loader" "loader"
         __config_get "_cpu" "cpu"
         __config_get "_memory" "memory"
 
@@ -59,7 +60,7 @@ __vm_list(){
             _run="Locked (${_run})"
         fi
 
-        printf "${_format}" "${_name}" "${_guest}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
+        printf "${_format}" "${_name}" "${_guest}" "${_loader:-default}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
     done
 }
 

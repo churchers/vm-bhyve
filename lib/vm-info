@@ -161,6 +161,7 @@ __vm_info_guest(){
 
     # basic guest configuration
     __vm_info_output_config "guest"
+    __vm_info_output_config "loader" "" "default"
     __vm_info_output_config "uuid" "" "auto"
     __vm_info_output_config "uefi" "" "no"
     __vm_info_output_config "cpu"

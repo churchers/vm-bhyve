@@ -116,6 +116,7 @@ for your web servers, or freebsd-large.conf for large FreeBSD guests, and so on.
 the default template:
 
     guest="freebsd"
+    loader="bhyveload"
     cpu=1
     memory=256M
     disk0_type="virtio-blk"

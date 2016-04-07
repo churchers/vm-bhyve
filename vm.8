@@ -932,6 +932,22 @@ Multiple properties can be specified, separated by a space. For example, the fol
 will configure the ZVOL block size to 128k, and turn compression off.
 .Pp
 zfs_zvol_opts="volblocksize=128k compress=off"
+.It limit_pcpu
+Limit the bhyve process to the specified cpu percentage.
+.Pp
+Please note this, as with all 
+.Sy limit
+settings, requires
+.Xr rctl 8
+to be enabled in your kernel.
+.It limit_rbps
+Limit guest disk read throughput to the specified bits per second.
+.It limit_wbps
+Limit guest disk write throughput to the specified bits per second.
+.It limit_riops
+Limit guest disk read iops to the specified number of operations per second.
+.It limit_wiops
+Limit guest disk write iops to the specified number of operations per second.
 .El
 .\" ============ SEE ALSO =============
 .Sh SEE ALSO
@@ -944,7 +960,8 @@ zfs_zvol_opts="volblocksize=128k compress=off"
 .Xr cu 1 ,
 .Xr fetch 1 ,
 .Xr truncate 1 ,
-.Xr zfs 8
+.Xr zfs 8 ,
+.Xy rctl 8
 .\" ============ BUGS =============
 .Sh BUGS
 Please report all bugs/issues/feature requests to the github project at

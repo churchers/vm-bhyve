@@ -56,9 +56,11 @@ __vm_set_rctl_limits(){
     [ ${_exit} -ne 0 ] && \
         __log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
 
+    __log "guest" "${_name}" "applying rctl limits"
+
     if [ -n "${_pcpu}" ]; then
         /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
-        __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
+        __log "guest" "${_name}" " pcpu=${_pcpu}"
     fi
 
     # at this point we can return if < FreeBSD 11
@@ -66,21 +68,21 @@ __vm_set_rctl_limits(){
 
     if [ -n "${_rbps}" ]; then
         /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
-        __log "guest" "limit rctl readbps resource to ${_rbps}"
+        __log "guest" " readbps=${_rbps}"
     fi
 
     if [ -n "${_wbps}" ]; then
         /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
-        __log "guest" "limit rctl writebps resource to ${_wbps}"
+        __log "guest" " writebps=${_wbps}"
     fi
 
     if [ -n "${_riops}" ]; then
         /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
-        __log "guest" "limit rctl readiops resource to ${_riops}"
+        __log "guest" " readiops=${_riops}"
     fi
 
     if [ -n "${_wiops}" ]; then
         /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
-        __log "guest" "limit rctl writeiops resource to ${_wiops}"
+        __log "guest" " writeiops=${_wiops}"
     fi
 }

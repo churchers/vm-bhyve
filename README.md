@@ -199,10 +199,17 @@ The following commands start and stop virtual machines:
 The basic configuration of each machine and state can be viewed using the list command:
 
     # vm list
-    NAME            GUEST      CPU    MEMORY    AUTOSTART    STATE
-    alpine          alpine     1      512M      Yes [1]      Stopped
-    centos          centos     1      512M      No           Stopped
-    deb             debian     1      512M      Yes [2]      Running (23903)
+    NAME            GUEST      LOADER      CPU    MEMORY    AUTOSTART    STATE
+    alpine          linux      default     1      512M      No           Stopped
+    c7              linux      default     1      512M      Yes [2]      Stopped
+    centos          linux      default     1      512M      No           Stopped
+    debian          linux      default     1      512M      No           Stopped
+    fbsd            freebsd    default     1      256M      No           Stopped
+    netbsd          generic    grub        1      256M      No           Stopped
+    openbsd         generic    grub        1      256M      No           Stopped
+    pf              freebsd    default     1      256M      Yes [1]      Stopped
+    ubuntu          linux      default     1      512M      No           Stopped
+    wintest         windows    default     2      2G        No           Running (2796)
 
 All running machines can be stopped using the stopall command
 

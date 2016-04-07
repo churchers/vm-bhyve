@@ -1,4 +1,4 @@
-.Dd Oct 27, 2015
+.Dd Apr 07, 2015
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -236,8 +236,8 @@ to load the guest kernel into memory.
 Windows guests are supported on versions of FreeBSD that have UEFI
 support in
 .Xr bhyve 8 .
-As of October 2015, this is only FreeBSD-CURRENT, so you will first need
-to build and install the head FreeBSD branch manually.
+As of April 2016, UEFI support should be available in FreeBSD 10.3+ and
+11-CURRENT.
 .Pp
 You will also need a copy of the UEFI firmware (see URL below), which needs to be placed in
 .Pa $vm_dir/.config/BHYVE_UEFI.fd .

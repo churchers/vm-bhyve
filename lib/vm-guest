@@ -33,6 +33,7 @@
 # the following variables are already set (among others)
 #
 # _name: guest name
+# _loader: boot loader to use (grub|bhyveload)
 # _com: com port - /dev/nmdmXA
 # _iso: iso file (if an install)
 # _conf: full path to guest config file

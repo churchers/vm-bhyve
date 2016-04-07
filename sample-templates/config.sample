@@ -278,3 +278,17 @@ zfs_dataset_opts=""
 # disk has been created.
 #
 zfs_zvol_opts=""
+
+# limit_pcpu
+# use rctl to limit guest to the specified cpu percentage
+#
+limit_pcpu=""
+
+# limit_rbps, limit_wbps, limit_riops, limit_wiops
+# Configure additional rctl limits available on 11+
+# These limit read/write throughput and iops
+#
+limit_rbps=""
+limit_wbps=""
+limit_riops=""
+limit_wiops=""

@@ -1,4 +1,30 @@
 #!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2016 ramdaron (https://github.com/ramdaron)
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
 # 'vm _rctl'
 # set limits to virtual machine
 # this is the background process
@@ -6,55 +32,53 @@
 # @param string _name the name of the guest to enable limits
 #
 __vm_set_rctl_limits(){
-    local _name="$1"
-    local _conf="${vm_dir}/${_name}/${_name}.conf"
+    local _pcpu _rbps _wbps _riops _wiops
+    local _pid _exit
 
-    __config_load "${_conf}"
+    # get limit settings
     __config_get "_pcpu" "limit_pcpu"
     __config_get "_rbps" "limit_rbps"
     __config_get "_wbps" "limit_wbps"
     __config_get "_riops" "limit_riops"
     __config_get "_wiops" "limit_wiops"
 
-    # set defaults: no limits
-    : ${_pcpu:=-1}
-    : ${_rbps:=-1}
-    : ${_wbps:=-1}
-    : ${_riops:=-1}
-    : ${_wiops:=-1}
+    # return if there are no limits
+    [ -z "${_pcpu}${_rbps}${_wbps}${_riops}${_wiops}" ] && return 1
 
-    # wait a few seconds until the bhyve starts
-    sleep 1;
+    # wait till bhyve starts and get pid
+    sleep 1
     _pid=$(pgrep -fx "bhyve: ${_name}")
 
     if [ -n "${_pid}" ]; then
-        if [ "${_pcpu}" -ne -1 -o ${_rbps} -ne -1 -o ${_wbps} -ne -1 -o ${_riops} -ne -1 -o ${_wiops} -ne -1 ]; then
-            /usr/bin/rctl > /dev/null 2>&1
-            _exit=$?
-            [ ${_exit} -ne 0 ] && __log "guest" "${_name}" "RCTL support requested but RCTL not available"
+        /usr/bin/rctl >/dev/null 2>&1
+        _exit=$?
+        [ ${_exit} -ne 0 ] && \
+            __log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
 
-            if [ ! -z "${_pcpu}" ]; then
-                /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
-                __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
+        if [ -n "${_pcpu}" ]; then
+            /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
+            __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
+        fi
+
+        if [ ${BSD_VERSION} -ge 1100000 ]; then
+            if [ -n ${_rbps} ]; then
+                /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
+                __log "guest" "limit rctl readbps resource to ${_rbps}"
             fi
 
-            if [ ${BSD_VERSION} -ge 1100000 ]; then
-                if [ ! -z ${_rbps} ]; then
-                    /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
-                    __log "guest" "limit rctl readbps resource to ${_rbps}"
-                fi
-                if [ ! -z ${_wbps} ]; then
-                    /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
-                    __log "guest" "limit rctl writebps resource to ${_wbps}"
-                fi
-                if [ ! -z ${_riops} ]; then
-                    /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
-                    __log "guest" "limit rctl readiops resource to ${_riops}"
-                fi
-                if [ ! -z ${_wiops} ]; then
-                    /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
-                    __log "guest" "limit rctl writeiops resource to ${_wiops}"
-                fi
+            if [ -n ${_wbps} ]; then
+                /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
+                __log "guest" "limit rctl writebps resource to ${_wbps}"
+            fi
+
+            if [ -n ${_riops} ]; then
+                /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
+                __log "guest" "limit rctl readiops resource to ${_riops}"
+            fi
+
+            if [ -n ${_wiops} ]; then
+                /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
+                __log "guest" "limit rctl writeiops resource to ${_wiops}"
             fi
         fi
     fi

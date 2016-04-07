@@ -52,6 +52,7 @@ fi
 . "${LIB}/vm-switch"
 . "${LIB}/vm-sysrc"
 . "${LIB}/vm-zfs"
+. "${LIB}/vm-rctl"
 
 # check environment
 [ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"

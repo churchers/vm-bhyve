@@ -1,0 +1,61 @@
+#!/bin/sh
+# 'vm _rctl'
+# set limits to virtual machine
+# this is the background process
+#
+# @param string _name the name of the guest to enable limits
+#
+__vm_set_rctl_limits(){
+    local _name="$1"
+    local _conf="${vm_dir}/${_name}/${_name}.conf"
+
+    __config_load "${_conf}"
+    __config_get "_pcpu" "limit_pcpu"
+    __config_get "_rbps" "limit_rbps"
+    __config_get "_wbps" "limit_wbps"
+    __config_get "_riops" "limit_riops"
+    __config_get "_wiops" "limit_wiops"
+
+    # set defaults: no limits
+    : ${_pcpu:=-1}
+    : ${_rbps:=-1}
+    : ${_wbps:=-1}
+    : ${_riops:=-1}
+    : ${_wiops:=-1}
+
+    # wait a few seconds until the bhyve starts
+    sleep 1;
+    _pid=$(pgrep -fx "bhyve: ${_name}")
+
+    if [ -n "${_pid}" ]; then
+        if [ "${_pcpu}" -ne -1 -o ${_rbps} -ne -1 -o ${_wbps} -ne -1 -o ${_riops} -ne -1 -o ${_wiops} -ne -1 ]; then
+            /usr/bin/rctl > /dev/null 2>&1
+            _exit=$?
+            [ ${_exit} -ne 0 ] && __log "guest" "${_name}" "RCTL support requested but RCTL not available"
+
+            if [ ! -z "${_pcpu}" ]; then
+                /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
+                __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
+            fi
+
+            if [ ${BSD_VERSION} -ge 1100000 ]; then
+                if [ ! -z ${_rbps} ]; then
+                    /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
+                    __log "guest" "limit rctl readbps resource to ${_rbps}"
+                fi
+                if [ ! -z ${_wbps} ]; then
+                    /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
+                    __log "guest" "limit rctl writebps resource to ${_wbps}"
+                fi
+                if [ ! -z ${_riops} ]; then
+                    /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
+                    __log "guest" "limit rctl readiops resource to ${_riops}"
+                fi
+                if [ ! -z ${_wiops} ]; then
+                    /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
+                    __log "guest" "limit rctl writeiops resource to ${_wiops}"
+                fi
+            fi
+        fi
+    fi
+}

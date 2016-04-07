@@ -15,7 +15,7 @@ Some of the main features include:
 * Guest reboot handling
 * Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
 
-## IMPORTANT - Note for Linux/NetBSD & OpenBSD users moving from 0.9 to 0.10
+## IMPORTANT - Note for Linux/NetBSD & OpenBSD users moving from 0.9 to 0.10+
 
 The method of supporting these guests has been heavily changed in 0.10 to
 allow more flexibility. These guests will no longer boot without making changes
@@ -29,19 +29,16 @@ For NetBSD & OpenBSD, the following configuration options should be set.
     loader="grub"
 
 Additionally, any grub commands needed to boot the guest (or the guest installer) need to also
-be added to the configuration file. Please look at the sample templates in 0.10 for examples
+be added to the configuration file. Please look at the sample templates in 0.10+ for examples
 on how these variables are set. This is what the configuration for OpenBSD 5.9 looks like:
 
     grub_install0="kopenbsd -h com0 /5.9/amd64/bsd.rd"
-    grub_install1="boot"
     grub_run_partition="openbsd1"
     grub_run0="kopenbsd -h com0 -r sd0a /bsd"
-    grub_run1="boot"
 
 The partition option is not required, the following is also functional:
 
     grub_run0="kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd"
-    grub_run1="boot"
 
 (However some guests such as Ubuntu will boot automatically, without any boot commands specified,
 if the correct partition is provided)
@@ -49,9 +46,10 @@ if the correct partition is provided)
 This of course means that it is now trivial to adjust these commands if needed, whereas in
 previous versions of vm-bhyve, they were hard-coded.
 
-If boot commands are specified, `grub-bhyve` is run in the background and commands are piped
-in automatically by `vm-bhyve`. If no commands are specified, `grub-bhyve` is run on the guests
-console, and so the bootloader can be accessed using `vm console guest` if required.
+`grub-bhyve` is always run on the guest console now, so is accessible via the `vm console guest`
+command. If boot commands are provided, we create a grub.cfg file in the guest directory and
+point `grub-bhyve` at it. (Please note this file is re-written on each boot and so if changes to
+the commands are required, it should be done in the main guest configuration file)
 
 ## Install
 

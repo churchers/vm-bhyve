@@ -140,7 +140,7 @@ __warn(){
 __log_rotate(){
     local _type="$1"
     local _lf="vm-bhyve.log"
-    local _file _size
+    local _file _size _guest
 
     case "${_type}" in
         guest)

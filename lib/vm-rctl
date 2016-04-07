@@ -59,30 +59,30 @@ __vm_set_rctl_limits(){
     __log "guest" "${_name}" "applying rctl limits"
 
     if [ -n "${_pcpu}" ]; then
-        /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
-        __log "guest" "${_name}" " pcpu=${_pcpu}"
+        /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu} >/dev/null 2>&1
+        [ $? -eq 0 ] && __log "guest" "${_name}" " pcpu=${_pcpu}"
     fi
 
     # at this point we can return if < FreeBSD 11
     [ ${BSD_VERSION} -lt 1100000 ] && return 0
 
     if [ -n "${_rbps}" ]; then
-        /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
-        __log "guest" " readbps=${_rbps}"
+        /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps} >/dev/null 2>&1
+        [ $? -eq 0 ] && __log "guest" " readbps=${_rbps}"
     fi
 
     if [ -n "${_wbps}" ]; then
-        /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
-        __log "guest" " writebps=${_wbps}"
+        /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps} >/dev/null 2>&1
+        [ $? -eq 0 ] && __log "guest" " writebps=${_wbps}"
     fi
 
     if [ -n "${_riops}" ]; then
-        /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
-        __log "guest" " readiops=${_riops}"
+        /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops} >/dev/null 2>&1
+        [ $? -eq 0 ] && __log "guest" " readiops=${_riops}"
     fi
 
     if [ -n "${_wiops}" ]; then
-        /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
-        __log "guest" " writeiops=${_wiops}"
+        /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops} >/dev/null 2>&1
+        [ $? -eq 0 ] && __log "guest" " writeiops=${_wiops}"
     fi
 }

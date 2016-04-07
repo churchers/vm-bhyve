@@ -74,6 +74,7 @@ __vm_run(){
     [ "${_guest}" = "freebsd" ] && _loader="bhyveload"
     [ "${_guest}" = "linux" ] && _loader="grub"
 
+    __log_rotate "guest" "${_name}"
     __log "guest" "${_name}" "initialising"
     __log "guest" "${_name}" " [guest: ${_guest}]"
     __log "guest" "${_name}" " [loader: ${_loader:-none}]"
@@ -391,7 +392,7 @@ __vm_bhyve_device_networking(){
 
         if __switch_is_vale "${_switch}"; then
             # create a vale port id
-            __switch_vale_port "_tap" "${_switch}" "${_mac}"
+            __switch_vale_id "_tap" "${_switch}" "${_mac}"
 
             __log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
             _devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"

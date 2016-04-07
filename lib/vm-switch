@@ -31,7 +31,7 @@
 #
 __switch_init(){
     local _switchlist _switch _id
-    local _nat _havenat=0 _bridge
+    local _nat _havenat=0 _bridge _vale
 
     __config_load "${vm_dir}/.config/switch"
     __config_get "_switchlist" "switch_list"
@@ -44,6 +44,10 @@ __switch_init(){
 
             __config_get "_nat" "nat_${_switch}"
             __config_get "_bridge" "bridge_${_switch}"
+
+            # do nothing if it's a vale switch
+            __config_get "_vale" "vale_${_switch}"
+            __checkyesno "${_vale}" && continue
 
             if [ -n "${_bridge}" ]; then
                 ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1
@@ -67,7 +71,8 @@ __switch_init(){
 # list switches, currently just from stored configuration
 #
 __switch_list(){
-    local _switchlist _portlist _switch _port _vlan _nat _bridge _type
+    local _switchlist _portlist _switch _port
+    local _vlan _nat _bridge _type _vale
     local _id _format="%-15s %-10s %-11s %-9s %-12s %s\n"
 
     __config_load "${vm_dir}/.config/switch"
@@ -83,8 +88,15 @@ __switch_list(){
         __config_get "_vlan" "vlan_${_switch}"
         __config_get "_nat" "nat_${_switch}"
         __config_get "_bridge" "bridge_${_switch}"
+        __config_get "_vale" "vale_${_switch}"
 
-        if [ -z "${_bridge}" ]; then
+        if __checkyesno "${_vale}"; then
+            _type="vale"
+            __switch_vale_id "_id" "${_switch}"
+            : ${_portlist:=n/a}
+            : ${_vlan:=n/a}
+            : ${_nat:=n/a}
+        elif [ -z "${_bridge}" ]; then
             _type="auto"
             : ${_portlist:=-}
             : ${_vlan:=-}
@@ -165,11 +177,12 @@ __switch_import(){
 #
 __switch_remove(){
     local _switch="$1"
-    local _id _nat _bridge
+    local _id _nat _bridge _vale
 
     __config_load "${vm_dir}/.config/switch"
     __config_get "_bridge" "bridge_${_switch}"
     __config_get "_nat" "nat_${_switch}"
+    __config_get "_vale" "vale_${_switch}"
 
     # if manual, leave it there and just remove from our config
     if [ -n "${_bridge}" ]; then
@@ -179,20 +192,26 @@ __switch_remove(){
         exit 0
     fi	
 
-    __switch_get_ident "_id" "${_switch}"
-    __switch_remove_allmembers "${_switch}" "${_id}"
-    __rc_splice_string ".config/switch" "switch_list" "${_switch}"
-    sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}" "nat_${_switch}"
-
-    if [ -n "${_id}" ]; then
-        ifconfig "${_id}" destroy >/dev/null 2>&1
-        [ $? -ne 0 ] && __warn "removed configuration but failed to remove bridge"
-    else
-        __warn "removed configuration but failed to remove bridge"
+    if [ -z "${_vale}" ]; then
+        __switch_get_ident "_id" "${_switch}"
+        __switch_remove_allmembers "${_switch}" "${_id}"
     fi
 
-    # reset nat if this switch had nat
-    [ -n "${_nat}" ] && __switch_nat_init
+    __rc_splice_string ".config/switch" "switch_list" "${_switch}"
+    sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}" \
+        "nat_${_switch}" "vale_${_switch}" >/dev/null 2>&1
+
+    if [ -z "${_vale}" ]; then
+        if [ -n "${_id}" ]; then
+            ifconfig "${_id}" destroy >/dev/null 2>&1
+            [ $? -ne 0 ] && __warn "removed configuration but failed to remove bridge"
+        else
+            __warn "removed configuration but failed to remove bridge"
+        fi
+
+        # reset nat if this switch had nat
+        [ -n "${_nat}" ] && __switch_nat_init
+    fi
 }
 
 # 'vm switch vlan'
@@ -527,32 +546,39 @@ __switch_is_vale(){
 # @param string _switch the name of the switch
 # @param string _port unique port identifier (usually mac address)
 #
-__switch_vale_port(){
+__switch_vale_id(){
     local _var="$1"
-    local _switch="$1"
-    local _port="$2"
+    local _switch="$2"
+    local _port="$3"
     local _id_s _id_p
 
-    # get a switch id and port id
+    # get a switch id
     _id_s=$(md5 -qs "${_switch}" | awk '{print substr($0,0,5)}')
-    _id_p=$(md5 -qs "${_port}" | awk '{print substr($0,0,5)}')
 
-    # build full vale id
-    setvar "${_var}" "vale${_id_s}:${_id_p}"
+    # given port?
+    if [ -n "${_port}" ]; then
+        _id_p=$(md5 -qs "${_port}" | awk '{print substr($0,0,5)}')
+        setvar "${_var}" "vale${_id_s}:${_id_p}"
+    else
+        setvar "${_var}" "vale${_id_s}"
+    fi
 }
 
 # produce an error if the listed switch is not managed by vm-bhyve.
 # we allow users to import existing bridges which they configure themselves.
 # we don't allow vm-bhyve to mess with these, it's all up to the user
+# also don't mess with vale switches
 #
 # @param string _switch the name of the switch
 #
 __switch_auto(){
     local _switch="$1"
-    local _bridge
+    local _bridge _vale
 
     _bridge=$(sysrc -inqf "${vm_dir}/.config/switch" "bridge_${_switch}")
+    _vale=$(sysrc -inqf "${vm_dir}/.config/switch" "vale_${_switch}")
     [ -n "${_bridge}" ] && __err "this is a manual switch that is managed outside of vm-bhyve"
+    [ -n "${_vale}" ] && __err "this command is not currently supported on vale switches"
 }
 
 # get the interface name for a switch

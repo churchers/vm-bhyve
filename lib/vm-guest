@@ -27,9 +27,9 @@
 # __guest_load
 # this function is responsible for doing any pre-load tasks for a guest.
 # for non uefi guests this normally means running bhyveload or grub-bhyve.
-# these functions should update _exit to a non-zero value if there's a problem
+# this function should update _exit to a non-zero value if there's a problem
 # or 0 on success.
-# As these functions are called from within the scope of __vm_run,
+# As this is called from within the scope of __vm_run,
 # the following variables are already set (among others)
 #
 # _name: guest name
@@ -49,105 +49,107 @@
 #
 __guest_load(){
     local _type="$1"
-    local _partition _args _grub_opt
-    local _root="hd0"
-    local _bcmd="${vm_dir}/${_name}/grub.cmd"
+    local _args _command _timeout
 
-    __config_get "_partition" "grub_run_partition"
+    # all loaders have same console and wired memory options
+    _args="-c ${_com}"
+    [ "${_wiredmem}" = "1" ] && _args="${_args} -S"
 
-    [ "${_wiredmem}" = "1" ] && _args=" -S"
-    [ -n "${_partition}" ] && _root="hd0,${_partition}"
+    # get timeout
+    __config_get "_timeout" "loader_timeout"
+    : ${_timeout:=3}
 
-    if [ "${_type}" = "install" ]; then 
-        if [ "${_loader}" = "bhyveload" ]; then
+    case "${_loader}" in
+        bhyveload)
+            _command="bhyveload"
+            _args="${_args} -m ${_memory} -e autoboot_delay=${_timeout}"
 
-            _args="${_args} -c ${_com} -m ${_memory} -d ${vm_dir}/.iso/${_iso} ${_name}"
-
-            __log "guest" "${_name}" "bhyveload${_args}"
-            bhyveload ${_args}
-
-            _exit=$?
-        elif [ "${_loader}" = "grub" ]; then
-            
-            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-            __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
-            __guest_get_commands "install"
-
-            if [ -e "${_bcmd}" ]; then 
-                _args="${_args} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-
-                __log "guest" "${_name}" "grub-bhyve${_args} < ${_bcmd}"
-                env -i TERM=xterm /usr/local/sbin/grub-bhyve ${_args} < "${_bcmd}"
+            if [ "${_type}" = "install" ]; then
+                _args="${_args} -d ${vm_dir}/.iso/${_iso}"
             else
-                _args="${_args} -c ${_com} -r cd0 -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-
-                __log "guest" "${_name}" "grub-bhyve${_args}"
-                /usr/local/sbin/grub-bhyve ${_args}
+                _args="${_args} -d ${_bootdisk}"
             fi
+            ;;
+        grub)
+            _command="/usr/local/sbin/grub-bhyve"
+            _args="${_args} -m ${vm_dir}/${_name}/device.map -M ${_memory}"
 
-            _exit=$?
-        fi
-    else
-        if [ "${_loader}" = "bhyveload" ]; then
+            if [ "${_type}" = "install" ]; then
+                _root="cd0"
+                __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+                __log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
 
-            _args="${_args} -c ${_com} -m ${_memory} -d ${_bootdisk} ${_name}"
-
-            __log "guest" "${_name}" "bhyveload${_args}"
-            bhyveload ${_args}
-
-            _exit=$?
-        elif [ "${_loader}" = "grub" ]; then
-
-            __config_get "_grub_opt" "grub_run_dir"
-            [ -n "${_grub_opt}" ] && _args="${_args} -d ${_grub_opt}"
-            __config_get "_grub_opt" "grub_run_file"
-            [ -n "${_grub_opt}" ] && _args="${_args} -g ${_grub_opt}"
-
-            __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-            __guest_get_commands "run"
-
-            if [ -e "${_bcmd}" ]; then
-                _args="${_args} -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
-
-                __log "guest" "${_name}" "grub-bhyve${_args} < ${_bcmd}"
-                env -i TERM=xterm /usr/local/sbin/grub-bhyve ${_args} < "${_bcmd}"
+                # if we have local grub config, we need to point grub-bhyve at the host.
+                # if not, just use defaults
+                if __guest_write_config "install"; then
+                    _args="${_args} -r host -d ${vm_dir}/${_name}"
+                else
+                    _args="${_args} -r ${_root}"
+                fi
             else
-                _args="${_args} -c ${_com} -r ${_root} -m ${vm_dir}/${_name}/device.map -M ${_memory} ${_name}"
+                _root="hd0"
+                __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 
-                __log "guest" "${_name}" "grub-bhyve${_args}"
-                /usr/local/sbin/grub-bhyve ${_args}
+                __config_get "_grub_opt" "grub_run_partition"
+                [ -n "${_grub_opt}" ] && _root="${_root},${_grub_opt}"
+
+                # if we have local config, point grub-bhyve at it
+                # otherwise we use defaults, or directory and file specified by user
+                if __guest_write_config "run"; then
+                    _args="${_args} -r host -d ${vm_dir}/${_name}"
+                else
+                    _args="${_args} -r ${_root}"
+
+                    __config_get "_grub_opt" "grub_run_dir"
+                    [ -n "${_grub_opt}" ] && _args="${_args} -d ${_grub_opt}"
+                    __config_get "_grub_opt" "grub_run_file"
+                    [ -n "${_grub_opt}" ] && _args="${_args} -g ${_grub_opt}"
+                fi
             fi
+            ;;
+        *)
+            __log "guest" "${_name}" "unsupported loader - '${_loader}'"
+            _exit=15
+            return 1
+            ;;
+    esac
 
-            _exit=$?
-        fi
-    fi
+    # run the command
+    __log "guest" "${_name}" "${_command} ${_args} ${_name}"
+    ${_command} ${_args} ${_name}
+    _exit=$?
 }
 
-# Gets any grub-bhyve commands for this guest
-# Not pretty but the best we can find that works.
-# If there are no commands, grub-bhyve will run
-# directly on the guests nmdm console. If there are
-# we run grub-bhyve on stdout, and pipe commands in.
+# See if the user has configured grub commands.
+# If so we write them to a grub.cfg file and
+# tell grub-bhyve to use it via (host) device
 #
-__guest_get_commands(){
+__guest_write_config(){
     local _type="$1"
     local _command _num=0
 
-    unlink "${_bcmd}" >/dev/null 2>&1
+    # make sure original boot command file is gone
+    # we've switched to grub.cfg now as this is the 
+    # default for grub-bhyve and makes one less option needed
+    unlink "${vm_dir}/${_name}/grub.cmd" >/dev/null 2>&1
+    unlink "${vm_dir}/${_name}/grub.cfg" >/dev/null 2>&1
 
     __config_get "_command" "grub_${_type}${_num}"
     [ -z "${_command}" ] && return 1
 
+    __log_and_write "write" "${_name}" "grub.cfg" "timeout=${_timeout}"
+    __log_and_write "appnd" "${_name}" "grub.cfg" "menuentry '${_name} (bhyve ${_type})' {"
+    __log_and_write "appnd" "${_name}" "grub.cfg" "    root=${_root}"
+
     while [ -n "${_command}" ]; do
-        if [ "${_num}" = "0" ]; then
-            __log_and_write "write" "${_name}" "grub.cmd" "${_command}"
-        else
-            __log_and_write "appnd" "${_name}" "grub.cmd" "${_command}"
-        fi
+        # we don't need boot command anymore
+        [ "${_command}" != "boot" ] && __log_and_write "appnd" "${_name}" "grub.cfg" "    ${_command}"
 
         _num=$((_num + 1))
         __config_get "_command" "grub_${_type}${_num}"
     done
+
+    __log_and_write "appnd" "${_name}" "grub.cfg" "}"
 
     return 0
 }

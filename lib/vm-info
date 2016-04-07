@@ -75,25 +75,31 @@ __vm_info_switch(){
 #
 __vm_info_switch_show(){
     local _switch="$1"
-    local _bridge
+    local _bridge _vale _id
     local _INDENT="  "
 
     [ -z "${_switch}" ] && return 1
 
     __config_get "_bridge" "bridge_${_switch}"
+    __config_get "_vale" "vale_${_switch}"
 
     echo "------------------------"
     echo "Virtual Switch: ${_switch}"
     echo "------------------------"
 
-    if [ -n "${_bridge}" ]; then
+    if __checkyesno "${_vale}"; then
+        echo "${_INDENT}type: vale"
+        __switch_vale_id "_id" "${_switch}"
+    elif [ -n "${_bridge}" ]; then
         echo "${_INDENT}type: manual"
+        _id="${_bridge}"
     else
         echo "${_INDENT}type: auto"
         __switch_get_ident "_bridge" "${_switch}"
+        _id="${_bridge}"
     fi
 
-    echo "${_INDENT}ident: ${_bridge:--}"
+    echo "${_INDENT}ident: ${_id:--}"
 
     __vm_info_output_config "vlan_${_switch}" "vlan"
     __vm_info_output_config "nat_${_switch}" "nat"
@@ -111,7 +117,7 @@ __vm_info_switch_show(){
         fi
 
         # show guest ports
-        [ -n "${_bridge}" ] && __vm_info_switch_ports
+        __vm_info_switch_ports
     fi
 
     echo ""

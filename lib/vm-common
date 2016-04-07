@@ -131,6 +131,38 @@ __warn(){
     echo "${0}: WARNING: $1"
 }
 
+# log_rotate
+# simple rotation of log files
+# if we hit 1MB, which should cover a fair amount of history,
+# we move existing log and and create a new one.
+# one keep 1 previous file, as that should be enough
+#
+__log_rotate(){
+    local _type="$1"
+    local _lf="vm-bhyve.log"
+    local _file _size
+
+    case "${_type}" in
+        guest)
+            _guest="$2"
+            _file="${vm_dir}/${_guest}/${_lf}"
+            ;;
+        system)
+            _file="${vm_dir}/${_lf}"
+            ;;
+    esac
+
+    if [ -e "${_file}" ]; then
+        _size=$(stat "${_file}" | cut -d' ' -f8)
+
+        if [ -n "${_size}" -a "${_size}" -ge 1048576 ]; then
+            unlink "${_file}.0" >/dev/null 2>&1
+            mv "${_file}" "${_file}.0"
+            gzip "${_file}.0"
+        fi
+    fi
+}
+
 # log to file
 # writes the date and a message to the specified log
 # the global log is in $vm_dir/vm-bhyve.log

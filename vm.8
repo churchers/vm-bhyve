@@ -701,6 +701,15 @@ As an example, NetBSD & OpenBSD can be supported by using the
 guest type, and specifying the
 .Sy grub
 loader.
+.It loader_timeout
+By default the 
+.Sy bhyveload
+and
+.Sy grub
+loaders will wait for 3 seconds before booting the default option. If access
+to the grub console is needed, this can be increased to give more time to connect
+to the console. If access to the grub console is not required, it can also be
+reduced to speed up overall boot.
 .It uefi
 Set this (any non-empty value) for guests that need UEFI firmware. If set to
 .Sy csm ,

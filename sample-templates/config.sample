@@ -37,6 +37,14 @@ guest=""
 #
 loader=""
 
+# loader_timeout
+# By default grub-bhyve will wait 3 seconds before booting the default
+# option. This setting allows you to either reduce the timeout to
+# make boot faster, or increase it so that it's easier to access
+# the grub console before it starts booting
+#
+loader_timeout="3"
+
 # uefi
 # Tells bhyve that it should load the UEFI firmware. To use UEFI
 # this can be any value other than [empty]/off/false/no/0. If
@@ -212,9 +220,6 @@ virt_random=""
 # If more than one command is needed, you can specify this option
 # multiple times, incrementing the number on the end each time
 #
-# Please note that in most cases you will need to specify 'boot'
-# as the last commands to actually initiate the guest boot
-#
 grub_install0="..."
 grub_install1="..."
 
@@ -229,7 +234,6 @@ grub_install1="..."
 #
 grub_run0="linux ..."
 grub_run1="initrd ..."
-grub_run2="boot"
 
 # grub_run_partition
 # by default 'hd0' is specified as the root when running grub-bhyve.

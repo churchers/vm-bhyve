@@ -33,15 +33,20 @@ be added to the configuration file. Please look at the sample templates in 0.10+
 on how these variables are set. This is what the configuration for OpenBSD 5.9 looks like:
 
     grub_install0="kopenbsd -h com0 /5.9/amd64/bsd.rd"
+    grub_install1="boot"
     grub_run_partition="openbsd1"
     grub_run0="kopenbsd -h com0 -r sd0a /bsd"
+    grub_run1="boot"
 
 The partition option is not required, the following is also functional:
 
     grub_run0="kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd"
+    grub_run1="boot"
 
 (However some guests such as Ubuntu will boot automatically, without any boot commands specified,
 if the correct partition is provided)
+
+The `boot` command does not need to be specified if you are running vm-bhyve-0.11 or newer.
 
 This of course means that it is now trivial to adjust these commands if needed, whereas in
 previous versions of vm-bhyve, they were hard-coded.

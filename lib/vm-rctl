@@ -48,38 +48,39 @@ __vm_set_rctl_limits(){
     # wait till bhyve starts and get pid
     sleep 1
     _pid=$(pgrep -fx "bhyve: ${_name}")
+    [ -z "${_pid}" ] && return 1
 
-    if [ -n "${_pid}" ]; then
-        /usr/bin/rctl >/dev/null 2>&1
-        _exit=$?
-        [ ${_exit} -ne 0 ] && \
-            __log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
+    # see if rctl works
+    /usr/bin/rctl >/dev/null 2>&1
+    _exit=$?
+    [ ${_exit} -ne 0 ] && \
+        __log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
 
-        if [ -n "${_pcpu}" ]; then
-            /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
-            __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
-        fi
+    if [ -n "${_pcpu}" ]; then
+        /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu}
+        __log "guest" "${_name}" "limit rctl pcpu resource to ${_pcpu}"
+    fi
 
-        if [ ${BSD_VERSION} -ge 1100000 ]; then
-            if [ -n ${_rbps} ]; then
-                /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
-                __log "guest" "limit rctl readbps resource to ${_rbps}"
-            fi
+    # at this point we can return if < FreeBSD 11
+    [ ${BSD_VERSION} -lt 1100000 ] && return 0
 
-            if [ -n ${_wbps} ]; then
-                /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
-                __log "guest" "limit rctl writebps resource to ${_wbps}"
-            fi
+    if [ -n "${_rbps}" ]; then
+        /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps}
+        __log "guest" "limit rctl readbps resource to ${_rbps}"
+    fi
 
-            if [ -n ${_riops} ]; then
-                /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
-                __log "guest" "limit rctl readiops resource to ${_riops}"
-            fi
+    if [ -n "${_wbps}" ]; then
+        /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps}
+        __log "guest" "limit rctl writebps resource to ${_wbps}"
+    fi
 
-            if [ -n ${_wiops} ]; then
-                /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
-                __log "guest" "limit rctl writeiops resource to ${_wiops}"
-            fi
-        fi
+    if [ -n "${_riops}" ]; then
+        /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops}
+        __log "guest" "limit rctl readiops resource to ${_riops}"
+    fi
+
+    if [ -n "${_wiops}" ]; then
+        /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops}
+        __log "guest" "limit rctl writeiops resource to ${_wiops}"
     fi
 }

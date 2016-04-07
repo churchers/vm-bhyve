@@ -158,6 +158,7 @@ __vm_info_guest(){
     # check local and global runstate
     [ -e "/dev/vmm/${_name}" ] && _RUN="1"
     __vm_running_check "_global_run" "${_name}"
+    _global_run=$(echo "${_global_run}" | tr '[:upper:]' '[:lower:]')
 
     echo "------------------------"
     echo "Virtual Machine: ${_name}"

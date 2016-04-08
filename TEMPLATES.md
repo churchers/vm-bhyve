@@ -29,8 +29,6 @@ This configuration file should support all verions of FreeBSD.
 
     guest="freebsd"
     loader="bhyveload"
-    cpu=1
-    memory=256M
 
 ### Windows
 

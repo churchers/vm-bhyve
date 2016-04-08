@@ -316,6 +316,7 @@ __vm_startall(){
     [ -z "${vm_list}" ] && exit
 
     : ${vm_delay:=5}
+    VM_FOREGROUND=""
 
     for _vm in ${vm_list}; do
         [ -n "${_done}" ] && sleep ${vm_delay}
@@ -380,7 +381,11 @@ __vm_start(){
 
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
-    $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
+    if [ -n "${VM_FOREGROUND}" ]; then
+        $0 -f _run "${_name}" "${_iso}"
+    else
+        $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
+    fi
 }
 
 # 'vm stop'

@@ -53,8 +53,8 @@ __guest_load(){
     local _args _command _timeout _grub_opt
 
     # all loaders have same console and wired memory options
-    _args="-c ${_com}"
-    [ "${_wiredmem}" = "1" ] && _args="${_args} -S"
+    [ -z "${VM_FOREGROUND}" ] && _args="-c ${_com}"
+    [ "${_wiredmem}" = "1" ] && _args="${_args}${_args:+ }-S"
 
     # get timeout
     __config_get "_timeout" "loader_timeout"
@@ -63,7 +63,7 @@ __guest_load(){
     case "${_loader}" in
         bhyveload)
             _command="bhyveload"
-            _args="${_args} -m ${_memory} -e autoboot_delay=${_timeout}"
+            _args="${_args}${_args:+ }-m ${_memory} -e autoboot_delay=${_timeout}"
 
             if [ "${_type}" = "install" ]; then
                 _args="${_args} -d ${vm_dir}/.iso/${_iso}"
@@ -73,7 +73,7 @@ __guest_load(){
             ;;
         grub)
             _command="/usr/local/sbin/grub-bhyve"
-            _args="${_args} -m ${vm_dir}/${_name}/device.map -M ${_memory}"
+            _args="${_args}${_args:+ }-m ${vm_dir}/${_name}/device.map -M ${_memory}"
 
             if [ "${_type}" = "install" ]; then
                 _root="cd0"

@@ -274,6 +274,28 @@ should make RDP available, using Administrator and Test123 as the default login 
 The UEFI firmware (BHYVE_UEFI_20151002.fd), as well as instructions for creating an
 unattended installation ISO can currently be obtained from
 .Pa https://people.freebsd.org/~grehan/bhyve_uefi/
+.\" ============ GLOBAL OPTIONS =============
+.Sh GLOBAL OPTIONS
+There are some options that can be specified after 
+.Sy vm ,
+but before any subcommand. These are global options that affect the way
+.Nm
+functions.
+.Bl -tag -width 12n
+.It Fl d Ar directory
+This allows you to run
+.Nm
+using a directory other than that specified in
+.Pa /etc/rc.conf .
+Please note that this alternate directory is used for everything, including
+switch configuration data and templates.
+.It Fl f
+Run 
+.Nm
+in the foreground. This option is primarily useful with the
+.Nm Cm start
+command and runs the guest on stdio.
+.El
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS
 .Bl -tag -width indent

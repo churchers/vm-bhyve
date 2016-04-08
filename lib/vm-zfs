@@ -325,7 +325,7 @@ __zfs_clone(){
 # @param string _name name of guest to take image of
 #
 __zfs_image_create(){
-    local _name _opt _des
+    local _name _opt _desc
     local _uuid _snap _date
 
     while getopts d: _opt ; do

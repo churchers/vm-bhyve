@@ -345,7 +345,7 @@ __zfs_image_create(){
     shift $((OPTIND - 1))
     _name=$1
     _uuid=$(uuidgen)
-    _snap=$(echo "${_uuid}" | cut -d'-' -f1)
+    _snap=${_uuid%%-*}
     _date=$(date)
 
     [ -z "${_desc}" ] && _desc="No description provided"

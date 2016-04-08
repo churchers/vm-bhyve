@@ -74,7 +74,7 @@ should work fine as long as the install grub command is updated as required.
     grub_run1="initrd /boot/initramfs-grsec"
     grub_run2="boot"
 
-### CentOS 6
+### CentOS 6 (LVM)
 
     guest="linux"
     loader="grub"

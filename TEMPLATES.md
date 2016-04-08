@@ -2,7 +2,8 @@
 
 This file lists guests that have been tested and shows the configuration options
 used to allow the installer and guest to boot. The goal is to build up a list
-of configurations that people can use in their own templates.
+of configurations that people can use in their own templates. In the majority
+of cases, guests have been tested using their default install options.
 
 If you have successfully used a guest operating system not already listed here, 
 please let me know so the list can be updated.
@@ -23,9 +24,10 @@ configuration file for both install & run.
 For a full list of the available configuration options, along with a description
 of each, please see the man page or `config.sample` in the sample-templates directory.
 
-### FreeBSD / PFsense
+### FreeBSD / pfSense
 
 This configuration file should support all verions of FreeBSD.
+For pfSense I used the embedded kernel option which seems to work perfectly.
 
     guest="freebsd"
     loader="bhyveload"

@@ -111,7 +111,7 @@ Below are some examples of possible disk configurations.
 These examples all use `virtio-blk` as the emulation type, but most guests
 also support `ahci-hd`. For Windows guests the type should always be `ahci-hd`.
 
-Note that additional disks can be added to any guest by adding addition disk
+Note that additional disks can be added to any guest by adding additional disk
 options to the configuration file, but changing `0` to `1` and so on.
 
 ### Simple Sparse File

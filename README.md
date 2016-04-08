@@ -56,6 +56,53 @@ command. If boot commands are provided, we create a grub.cfg file in the guest d
 point `grub-bhyve` at it. (Please note this file is re-written on each boot and so if changes to
 the commands are required, it should be done in the main guest configuration file)
 
+## Quick-Start
+
+A simple overview of the commands needed to install vm-bhyve and start a freebsd guest.
+See the sections below for more in-depth details.
+
+    1. pkg install vm-bhyve
+    2. zfs create pool/vm
+    3. echo 'vm_enable="YES"' >> /etc/rc.conf
+    4. echo 'vm_dir="zfs:pool/vm"' >> /etc/rc.conf
+    5. vm init
+    6. cp /usr/local/share/examples/vm-bhyve/* /mountpoint/for/pool/vm/.templates/
+    7. vm switch create public
+    8. vm switch add public em0
+    9. vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.3/FreeBSD-10.3-RELEASE-amd64-bootonly.iso
+    10. vm create myguest
+    11. vm install myguest FreeBSD-10.3-RELEASE-amd64-bootonly.iso
+    12. vm console myguest
+
+- [ ] Line 1
+Install vm-bhvye
+
+- [ ] Line 2
+Create a dataset for your virtual machines.
+If you're not using ZFS, just create a normal directory
+
+- [ ] Lines 3-4
+Enable vm-bhyve in /etc/rc.conf and set the dataset to use
+If not using ZFS, just set `$vm_dir="/my/vm/folder"`
+
+- [ ] Line 5
+Run the `vm init` command to create the required directories under $vm_dir and load kernel modules
+
+- [ ] Line 6
+Install the sample templates that come with vm-bhyve
+
+- [ ] Lines 7-8
+Create a virtual switch called 'public' and attach your network interface to it
+Replace `em0` with whatever interface connects your machine to the network
+
+- [ ] Line 9
+Download a copy of FreeBSD from the ftp site
+
+- [ ] Lines 10-12
+Create a new guest using the `default.conf` template, run the installer and
+then connect to its console. At this point proceed through the installation 
+as normal.
+
 ## Install
 
 Download the latest release from Github, or install `sysutils/vm-bhyve`

@@ -421,8 +421,9 @@ __zfs_image_provision(){
         _num=$((_num + 1))
     done
 
-    # vm may be started, when 'vm image create' are executed
-    rm -f "${vm_dir}/${_name}/run.lock"
+    # vm may be started when 'vm image create' is executed
+    rm -f "${vm_dir}/${_name}/run.lock" >/dev/null 2>&1
+    rm -f "${vm_dir}/${_name}/vm-bhyve.log*" >/dev/null 2>&1
 }
 
 # 'vm image list'

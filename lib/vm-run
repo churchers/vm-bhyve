@@ -90,7 +90,7 @@ __vm_run(){
     __log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 
     # check basic settings
-    if [ -z "${_guest}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+    if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
         __log "guest" "${_name}" "unable to start - missing required configuration"
         exit 15
     fi
@@ -323,11 +323,10 @@ __vm_bhyve_device_disks(){
     while [ 1 ]; do
         __config_get "_disk" "disk${_num}_name"
         __config_get "_type" "disk${_num}_type"
+        [ -z "${_disk}" -o -z "${_type}" ] && break
+
         __config_get "_dev" "disk${_num}_dev"
         __config_get "_opts" "disk${_num}_opts"
-
-        # break if disk not found
-        [ -z "${_disk}" -o -z "${_type}" ] && break
 
         # we need to move slot if we've hit function 8
         if [ ${_func} -ge 8 ]; then
@@ -376,12 +375,11 @@ __vm_bhyve_device_networking(){
 
     while [ 1 ]; do
         __config_get "_type" "network${_num}_type"
+        [ -z "${_type}" ] && break
+
         __config_get "_switch" "network${_num}_switch"
         __config_get "_mac" "network${_num}_mac"
         __config_get "_custom_tap" "network${_num}_device"
-
-        # we need at least a type
-        [ -z "${_type}" ] && break
 
         # set a static mac if we don't have one
         [ -z "${_mac}" ] && __vm_generate_static_mac

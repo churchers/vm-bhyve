@@ -79,24 +79,24 @@ Install vm-bhvye
 
 - [ ] Line 2
 Create a dataset for your virtual machines.
-If you're not using ZFS, just create a normal directory
+If you're not using ZFS, just create a normal directory.
 
 - [ ] Lines 3-4
-Enable vm-bhyve in /etc/rc.conf and set the dataset to use
-If not using ZFS, just set `$vm_dir="/my/vm/folder"`
+Enable vm-bhyve in /etc/rc.conf and set the dataset to use.
+If not using ZFS, just set `$vm_dir="/my/vm/folder"`.
 
 - [ ] Line 5
-Run the `vm init` command to create the required directories under $vm_dir and load kernel modules
+Run the `vm init` command to create the required directories under $vm_dir and load kernel modules.
 
 - [ ] Line 6
-Install the sample templates that come with vm-bhyve
+Install the sample templates that come with vm-bhyve.
 
 - [ ] Lines 7-8
-Create a virtual switch called 'public' and attach your network interface to it
-Replace `em0` with whatever interface connects your machine to the network
+Create a virtual switch called 'public' and attach your network interface to it.
+Replace `em0` with whatever interface connects your machine to the network.
 
 - [ ] Line 9
-Download a copy of FreeBSD from the ftp site
+Download a copy of FreeBSD from the ftp site.
 
 - [ ] Lines 10-12
 Create a new guest using the `default.conf` template, run the installer and

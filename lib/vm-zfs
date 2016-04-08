@@ -46,10 +46,7 @@ __zfs_init(){
 
     # check for zfs storage location
     # user should specify "zfs:pool/dataset" if they want ZFS support
-    _zfs=$(echo "${vm_dir}" | cut -c -3)
-
-    # are we storing on ZFS?
-    if [ ${_zfs} = 'zfs' ]; then
+    if [ ${vm_dir%%:*} = "zfs" ]; then
 
         # check zfs running
         kldstat -qm zfs >/dev/null 2>&1
@@ -57,7 +54,7 @@ __zfs_init(){
 
         # global zfs details
         VM_ZFS="1"
-        VM_ZFS_DATASET=$(echo "${vm_dir}" | cut -c 5-)
+        VM_ZFS_DATASET="${vm_dir#*:}"
 
         # update vm_dir
         # this makes sure it exists, confirms it's mounted & gets correct path in one go
@@ -441,10 +438,8 @@ __zfs_image_list(){
 
     ls -1 ${vm_dir}/images/ | \
     while read _file; do
-        _ext=$(echo "${_file}" | cut -d. -f2)
-
-        if [ "${_ext}" = "manifest" ]; then
-            _uuid=$(echo "${_file}" | cut -c -36)
+        if [ "${_file##*.}" = "manifest" ]; then
+            _uuid=${_file%.*}
             _desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" description)
             _created=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" created)
             _name=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)

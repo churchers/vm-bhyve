@@ -164,7 +164,7 @@ vm_delay="5"
 .Pp
 The first and second lines are required to enable the
 .Nm
-utiltity. Please see the
+utility. Please see the
 .Cm startall
 command description for more information on the third and fourth settings.
 .Pp
@@ -176,8 +176,11 @@ command to finish initialisation. This will create subdirectories inside
 to hold configuration and templates. It will also load any required kernel modules.
 This command needs to be run on each boot, which is normally handled by the rc.d script.
 .Pp
-Copy the sample templates into the directory
-.Pa $vm_dir/.templates/ .
+Sample templates are installed to 
+.Pa /usr/local/share/examples/vm-bhyve/ .
+You can make use of these by copying them into your
+.Pa $vm_dir/.templates/
+directory.
 You can create and edit the templates as required. It is recommended to keep a template called
 .Pa default.conf ,
 as this will be used when no template is manually specified.
@@ -217,9 +220,9 @@ Download an ISO file to use for installation:
 .Pp
 Create a new guest using the default template and disk size, then start the installation. The
 .Ar install
-subcommand will pause while the guest boot loader completes. Once successfully loaded, use the
+subcommand will immediately return you to your shell. Once started, use the
 .Ar console
-command to complete the installation.
+command to connect to the guest and complete the installation.
 .Bd -literal -offset ident
 # vm create my-guest
 # vm install my-guest FreeBSD-10.1-RELEASE-amd64-disc1.iso
@@ -228,7 +231,7 @@ command to complete the installation.
 .Pp
 Please note that Linux guests currently require the
 .Sy sysutils/grub2-bhyve
-package to be installed. This is use in place of
+package to be installed. This is used in place of
 .Xr bhyveload 8
 to load the guest kernel into memory.
 .\" ============== WINDOWS ===============
@@ -961,7 +964,7 @@ Limit guest disk write iops to the specified number of operations per second.
 .Xr fetch 1 ,
 .Xr truncate 1 ,
 .Xr zfs 8 ,
-.Xy rctl 8
+.Xr rctl 8
 .\" ============ BUGS =============
 .Sh BUGS
 Please report all bugs/issues/feature requests to the github project at

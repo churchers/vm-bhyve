@@ -328,8 +328,8 @@ __zfs_clone(){
 # @param string _name name of guest to take image of
 #
 __zfs_image_create(){
-    local _name
-    local _opt _desc _uuid _date
+    local _name _opt _des
+    local _uuid _snap _date
 
     while getopts d: _opt ; do
         case $_opt in
@@ -345,6 +345,7 @@ __zfs_image_create(){
     shift $((OPTIND - 1))
     _name=$1
     _uuid=$(uuidgen)
+    _snap=$(echo "${_uuid}" | cut -d'-' -f1)
     _date=$(date)
 
     [ -z "${_desc}" ] && _desc="No description provided"
@@ -357,16 +358,16 @@ __zfs_image_create(){
     fi
 
     # try to snapshot
-    zfs snapshot -r "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
-    [ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_uuid}"
+    zfs snapshot -r "${VM_ZFS_DATASET}/${_name}@${_snap}" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_snap}"
 
     # copy source
     echo "Creating a compressed image, this may take some time..."
-    zfs send -R "${VM_ZFS_DATASET}/${_name}@${_uuid}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
+    zfs send -R "${VM_ZFS_DATASET}/${_name}@${_snap}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
     [ $? -ne 0 ] && exit 1
 
     # done with the source snapshot
-    zfs destroy ${VM_ZFS_DATASET}/${_name}@${_uuid}
+    zfs destroy ${VM_ZFS_DATASET}/${_name}@${_snap}
 
     # create a description file
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "description=${_desc}" >/dev/null 2>&1

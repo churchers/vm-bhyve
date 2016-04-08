@@ -50,7 +50,7 @@
 #
 __guest_load(){
     local _type="$1"
-    local _args _command _timeout
+    local _args _command _timeout _grub_opt
 
     # all loaders have same console and wired memory options
     _args="-c ${_com}"

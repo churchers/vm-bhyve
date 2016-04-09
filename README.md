@@ -102,7 +102,8 @@ Download a copy of FreeBSD from the ftp site.
 Create a new guest using the `default.conf` template, run the installer and
 then connect to its console. At this point proceed through the installation 
 as normal. By specifying the `-f` option before the install command, the guest
-will run directly on your terminal so the `console` command is not required.
+will run directly on your terminal so the `console` command is not required. (Bear
+in mind that you won't get back to your terminal until the guest is fully shutdown)
 
 ## Install
 

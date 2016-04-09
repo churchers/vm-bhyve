@@ -71,7 +71,7 @@ See the sections below for more in-depth details.
     8. vm switch add public em0
     9. vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.3/FreeBSD-10.3-RELEASE-amd64-bootonly.iso
     10. vm create myguest
-    11. vm install myguest FreeBSD-10.3-RELEASE-amd64-bootonly.iso
+    11. vm [-f] install myguest FreeBSD-10.3-RELEASE-amd64-bootonly.iso
     12. vm console myguest
 
 - [ ] Line 1
@@ -101,7 +101,8 @@ Download a copy of FreeBSD from the ftp site.
 - [ ] Lines 10-12
 Create a new guest using the `default.conf` template, run the installer and
 then connect to its console. At this point proceed through the installation 
-as normal. 
+as normal. By specifying the `-f` option before the install command, the guest
+will run directly on your terminal so the `console` command is not required.
 
 ## Install
 

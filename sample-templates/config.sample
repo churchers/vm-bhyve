@@ -236,11 +236,11 @@ grub_run0="linux ..."
 grub_run1="initrd ..."
 
 # grub_run_partition
-# by default 'hd0' is specified as the root when running grub-bhyve.
-# to force 'hd0,msdos1' instead, set this to 'msdos1'.
-# with some guests (such as ubuntu) this is enough for grub-byve
-# to be able to find the guests grub configuration file and boot
-# without requiring and additional grub commands.
+# by default 'hd0,1' is specified as the root when running grub-bhyve.
+# to force 'hd0,X' instead, set this to 'X'.
+# in most cases the default of partition 1 is correct, although
+# this settings allows you to force grub-bhyve to look on a different
+# partition if required.
 #
 grub_run_partition="msdos1"
 

@@ -888,7 +888,7 @@ will be run on the guests console, so you can use the standard
 command to access the bootloader if needed.
 .It grub_run_partition
 Specify the partition that grub should look in for the grub configuration files.
-Some guests, such as Ubuntu, will boot automatically if this variable is set correctly.
+By default, vm-bhyve will specify partition 1, which is correct in most standard cases.
 .It grub_runX
 The option allows you to specify the grub commands needed to boot the guest from disk.
 .Sy X

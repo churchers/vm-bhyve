@@ -88,11 +88,11 @@ __guest_load(){
                     _args="${_args} -r ${_root}"
                 fi
             else
-                _root="hd0"
+                _root="hd0,1"
                 __log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
 
                 __config_get "_grub_opt" "grub_run_partition"
-                [ -n "${_grub_opt}" ] && _root="${_root},${_grub_opt}"
+                [ -n "${_grub_opt}" ] && _root="hd0,${_grub_opt}"
 
                 # if we have local config, point grub-bhyve at it
                 # otherwise we use defaults, or directory and file specified by user

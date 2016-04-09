@@ -38,7 +38,8 @@ on how these variables are set. This is what the configuration for OpenBSD 5.9 l
     grub_run0="kopenbsd -h com0 -r sd0a /bsd"
     grub_run1="boot"
 
-The partition option is not required, the following is also functional:
+The `grub_run_partition` option is not required. By default vm-bhyve will use `hd0,1`, which is correct
+in most cases. It's also possible to specify the correct device and partition directly in the grub commands:
 
     grub_run0="kopenbsd -h com0 -r sd0a (hd0,openbsd1)/bsd"
     grub_run1="boot"

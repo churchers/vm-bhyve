@@ -148,7 +148,7 @@ __vm_info_guest(){
     local _conf="${vm_dir}/${_name}/${_name}.conf"
     local _INDENT="  "
     local _RUN="0"
-    local _res_mem _b_res_mem _global_run
+    local _res_mem _b_res_mem _global_run _port
 
     [ -z "${_name}" ] && return 1
     [ ! -f "${_conf}" ] && return 1
@@ -181,6 +181,17 @@ __vm_info_guest(){
         if [ -n "${_res_mem}" ]; then
             _b_res_mem=$(__vm_info_bytes_human "${_res_mem}")
             echo "${_INDENT}memory-resident: ${_res_mem} (${_b_res_mem})"
+        fi
+
+        # show com ports
+        if [ -e "${vm_dir}/${_name}/console" ]; then
+            echo ""
+            echo "${_INDENT}console-ports"
+
+            cat "${vm_dir}/${_name}/console" | \
+            while read _port; do
+                echo "${_INDENT}${_INDENT}${_port%%=*}: ${_port##*=}"
+            done
         fi
     fi
 

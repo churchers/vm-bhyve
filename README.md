@@ -15,6 +15,8 @@ Some of the main features include:
 * Guest reboot handling
 * Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
 
+See the GitHub wiki for more information and examples.
+
 ## IMPORTANT - Note for Linux/NetBSD & OpenBSD users moving from 0.9 to 0.10+
 
 The method of supporting these guests has been heavily changed in 0.10 to

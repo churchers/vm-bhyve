@@ -356,7 +356,7 @@ __vm_start(){
     local _name="$1"
     local _iso="$2"
     local _conf _host
-    local _cpu _memory _disk
+    local _cpu _memory _disk _guest
 
     _conf="${vm_dir}/${_name}/${_name}.conf"
 
@@ -368,6 +368,7 @@ __vm_start(){
 
     # check basic settings before going into background mode
     __config_load "${_conf}"
+    __config_get "_guest" "guest"
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
     __config_get "_disk" "disk0_name"
@@ -618,6 +619,9 @@ __vm_config_set(){
 # temporary check for guests that need reconfiguring
 #
 __vm_tmp_upgrade_check(){
+
+    # hopefully no guest means it's a recent guest
+    [ -z "${_guest}" ] && return 0
 
     case "${_guest}" in
         freebsd) ;&

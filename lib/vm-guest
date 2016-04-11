@@ -56,8 +56,7 @@ __guest_load(){
     [ "${_wiredmem}" = "1" ] && _args="${_args}${_args:+ }-S"
 
     # get timeout
-    __config_get "_timeout" "loader_timeout"
-    : ${_timeout:=3}
+    __config_get "_timeout" "loader_timeout" "3"
 
     case "${_loader}" in
         bhyveload)

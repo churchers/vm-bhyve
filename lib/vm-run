@@ -48,25 +48,16 @@ __vm_run(){
     __config_load "${_conf}"
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
-    __config_get "_guest" "guest"
+    __config_get "_guest" "guest" "generic"
     __config_get "_loader" "loader"
     __config_get "_bootdisk" "disk0_name"
-    __config_get "_bootdisk_dev" "disk0_dev"
-    __config_get "_uefi" "uefi"
-    __config_get "_hostbridge" "hostbridge"
-    __config_get "_comports" "comports"
+    __config_get "_bootdisk_dev" "disk0_dev" "file"
+    __config_get "_uefi" "uefi" "no"
+    __config_get "_hostbridge" "hostbridge" "standard"
+    __config_get "_comports" "comports" "com1"
     __config_get "_uuid" "uuid"
-    __config_get "_utc" "utctime"
-    __config_get "_debug" "debug"
-
-    # set defaults
-    : ${_guest:=generic}
-    : ${_bootdisk_dev:=file}
-    : ${_comports:=com1}
-    : ${_uefi:=no}
-    : ${_utc:=no}
-    : ${_debug:=no}
-    : ${_hostbridge:=standard}
+    __config_get "_utc" "utctime" "no"
+    __config_get "_debug" "debug" "no"
 
     # force the correct loader for freebsd/linux
     # in the future we may get rid of the guest setting completely

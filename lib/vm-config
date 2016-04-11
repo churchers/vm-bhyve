@@ -47,10 +47,13 @@ __config_load(){
 #
 # @param string _var the variable to put value into
 # @param string _key the name of the config key to retrieve
+# @param optional string _def default value to return if setting not found
+# @return true if setting found
 #
 __config_get(){
     local _c_var="$1"
     local _c_key="$2"
+    local _c_def="$3"
     local _c_line
     local IFS=$'\n'
 
@@ -62,6 +65,6 @@ __config_get(){
     done
 
     # not found
-    setvar "${_c_var}" ""
+    setvar "${_c_var}" "${_c_def}"
     return 1
 }

@@ -322,9 +322,8 @@ __vm_info_output_config(){
     local _default="$3"
     local _var
 
-    __config_get "_var" "${_option}"
+    __config_get "_var" "${_option}" "${_default:--}"
     [ -z "${_title}" ] && _title="${_option}"
-    [ -z "${_var}" ] && _var="${_default:--}"
 
     echo "${_INDENT}${_title}: ${_var}"
 }

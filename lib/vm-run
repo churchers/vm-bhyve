@@ -38,7 +38,7 @@ __vm_run(){
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit
-    local _com _comports _comstring _logpath
+    local _com _comports _comstring _logpath="/dev/null"
     local _conf="${vm_dir}/${_name}/${_name}.conf"
 
     # bail out immediately if no guest or running
@@ -124,7 +124,8 @@ __vm_run(){
         _uefi=""
     fi
 
-    # set uuid in opts
+    # set cpu/memory and uuid in opts
+    _opts="-c ${_cpu} -m ${_memory} ${_opts}"
     [ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
     # set utc time in opts if requested
@@ -136,15 +137,8 @@ __vm_run(){
         fi
     fi
 
-    # see where to send bhyve output
-    if __checkyesno "${_debug}"; then
-        _logpath="${vm_dir}/${_name}/bhyve.log"
-    else
-        _logpath="/dev/null"
-    fi
-
-    # add cpu and memory to opts so we can see all bhyve command in logs
-    _opts="-c ${_cpu} -m ${_memory} ${_opts}"
+    # send bhyve output to bhyve.log if debug=yes
+    __checkyesno "${_debug}" && _logpath="${vm_dir}/${_name}/bhyve.log"
 
     # complete the boot disk path
     __vm_get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
@@ -162,19 +156,6 @@ __vm_run(){
 
     while [ 1 ]; do
 
-        # destroy existing vmm
-        # freebsd seems happy to run a bhyveload/bhyve loop
-        # grub-bhyve doesn't seem to like it
-        # Peter says don't destroy in Windows instructions, so don't if in UEFI mode
-        if [ -e "/dev/vmm/${_name}" -a -z "${_uefi}" ]; then
-            bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
-            if [ $? -ne 0 ]; then
-                __log "guest" "${_name}" "failed to destroy existing vmm device"
-                _exit=15
-                break
-            fi
-        fi
-
         # set full iso path
         # use null.iso if not an install and uefi firmware
         [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
@@ -183,11 +164,7 @@ __vm_run(){
 
         # load guest
         if [ -n "${_loader}" ]; then
-            if [ -n "${_iso}" ]; then
-                __guest_load "install"
-            else
-                __guest_load "run"
-            fi
+            __guest_load "${_iso}"
 
             # check no errors
             if [ ${_exit} -ne 0 ]; then
@@ -202,6 +179,7 @@ __vm_run(){
         [ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
         __log "guest" "${_name}" "starting bhyve"
 
+        # call rctl now as next line will block until bhyve exits
         __vm_set_rctl_limits ${_name} &
 
         # actually run bhyve!
@@ -298,14 +276,9 @@ __vm_bhyve_device_basic(){
 
     # add hostbridge
     case "$_hostbridge" in 
-        no*)
-            ;;
-        amd)
-            _devices="-s 0,amd_hostbridge"
-            ;;
-        *)
-            _devices="-s 0,hostbridge"
-            ;;
+        no*) ;;
+        amd) _devices="-s 0,amd_hostbridge" ;;
+        *)   _devices="-s 0,hostbridge" ;;
     esac
 
     # lpc
@@ -480,7 +453,6 @@ __vm_bhyve_device_passthru(){
 
     while [ 1 ]; do
         __config_get "_dev" "passthru${_num}"
-
         [ -z "${_dev}" ] && break
 
         _orig_slot=${_dev%%/*}

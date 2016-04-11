@@ -356,7 +356,7 @@ __vm_start(){
     local _name="$1"
     local _iso="$2"
     local _conf _host
-    local _memory _guest _disk
+    local _cpu _memory _disk
 
     _conf="${vm_dir}/${_name}/${_name}.conf"
 
@@ -368,11 +368,11 @@ __vm_start(){
 
     # check basic settings before going into background mode
     __config_load "${_conf}"
+    __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
-    __config_get "_guest" "guest"
     __config_get "_disk" "disk0_name"
 
-    if [ -z "${_memory}" -o -z "${_guest}" -o -z "${_disk}" ]; then
+    if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
         __warn "incomplete virtual machine configuration"
         return 1
     fi

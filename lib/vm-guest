@@ -70,7 +70,16 @@ __guest_load(){
             fi
             ;;
         grub)
-            _command="/usr/local/sbin/grub-bhyve"
+            _command=$(which grub-bhyve)
+
+            # check we have grub-bhyve
+            if [ $? -ne 0 ]; then
+                __log "guest" "${_name}" "grub requested but sysutils/grub2-bhyve not installed?"
+                _exit=15
+                return 1
+            fi
+
+            # add device map path and memory
             _args="${_args}${_args:+ }-m ${vm_dir}/${_name}/device.map -M ${_memory}"
 
             if [ -n "${_iso}" ]; then

@@ -287,7 +287,7 @@ __vm_add_network(){
 
     # update configuration
     __vm_config_set "${_name}" "network${_num}_type" "${_emulation}"
-    __vm_config_set "${_name}" "network${_num}_switch" "${_switch}"
+    __vm_config_set "${_name}" "network${_num}_switch" "${_switch}" "1"
     [ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
 }
 
@@ -315,6 +315,7 @@ __vm_startall(){
 
     [ -z "${vm_list}" ] && exit
 
+    # default to 5 second delay, and don't try starting multiple guests on stdio...
     : ${vm_delay:=5}
     VM_FOREGROUND=""
 

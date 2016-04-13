@@ -140,7 +140,7 @@ __guest_write_config(){
     # make sure original boot command file grub.cmd is gone
     # we've switched to grub.cfg now as this is the 
     # default for grub-bhyve and makes one less option needed
-    unlink "${vm_dir}/${_name}/grub.*" >/dev/null 2>&1
+    rm "${vm_dir}/${_name}/grub.*" >/dev/null 2>&1
 
     __config_get "_command" "grub_${_type}${_num}"
     [ -z "${_command}" ] && return 1

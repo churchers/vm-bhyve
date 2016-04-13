@@ -156,6 +156,7 @@ __vm_run(){
         # load guest
         if [ -n "${_loader}" ]; then
             __guest_load "${_iso}"
+            _exit=$?
 
             # check no errors
             if [ ${_exit} -ne 0 ]; then

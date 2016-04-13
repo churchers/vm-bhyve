@@ -156,7 +156,7 @@ __log_rotate(){
         _size=$(stat "${_file}" | cut -d' ' -f8)
 
         if [ -n "${_size}" -a "${_size}" -ge 1048576 ]; then
-            unlink "${_file}.0" >/dev/null 2>&1
+            unlink "${_file}.0.gz" >/dev/null 2>&1
             mv "${_file}" "${_file}.0"
             gzip "${_file}.0"
         fi

@@ -55,16 +55,14 @@ __load_module(){
 #
 __restart_service(){
     local _serv="$1"
+    local _cmd="restart"
 
+    # see if it's actually running
     service ${_serv} status >/dev/null 2>&1
+    [ $? -ne 0 ] && _cmd="start"
 
-    if [ $? -ne 0 ]; then
-        service ${_serv} start >/dev/null 2>&1
-    else
-        service ${_serv} restart >/dev/null 2>&1
-    fi
-
-    [ $? -ne 0 ] && __warn "failed to start/restart service ${_serv}"
+    service ${_serv} ${_cmd} >/dev/null 2>&1
+    [ $? -ne 0 ] && __warn "failed to ${_cmd} service ${_serv}"
 }
 
 # show version & usage information
@@ -137,6 +135,8 @@ __warn(){
 # we move existing log and and create a new one.
 # one keep 1 previous file, as that should be enough
 #
+# @param string _type whether to rotate guest or main log
+#
 __log_rotate(){
     local _type="$1"
     local _lf="vm-bhyve.log"
@@ -169,7 +169,7 @@ __log_rotate(){
 # guest logs are $vm_dir/{guest}/vm-bhyve.log
 #
 # @param string _type=guest|system log to global vm-bhyve log or guest
-# @param string _guest if _type=guest, the guest name, otherwise do not provide at all
+# @param optional string _guest if _type=guest, the guest name, otherwise do not provide at all
 # @param string _message the message to log
 #
 __log(){
@@ -189,8 +189,7 @@ __log(){
             ;;
     esac
 
-    _date=$(date +"%b %d %T")
-    echo "${_date}: ${_message}" >> "${_file}"
+    echo "$(date +'%b %d %T'): ${_message}" >> "${_file}"
 }
 
 # write content to a file, and log what we
@@ -202,14 +201,13 @@ __log(){
 # @param string _type=write|appnd create file or append to it
 # @param string _guest the guest name
 # @param string _file the file name to write to
+# @param string _message the data to write
 #
 __log_and_write(){
     local _type="$1"
     local _guest="$2"
-    local _file="$3"
+    local _file="${vm_dir}/${_guest}/$3"
     local _message="$4"
-
-    _file="${vm_dir}/${_guest}/${_file}"
 
     if [ "${_type}" = "write" ]; then
         __log "guest" "${_guest}" "create file ${_file}"
@@ -232,12 +230,8 @@ __confirm(){
 
     while read -p "${_msg} (y/n)? " _resp; do
         case "${_resp}" in
-            y*)
-                return 0
-                ;;
-            n*)
-                return 1
-                ;;
+            y*) return 0 ;;
+            n*) return 1 ;;
         esac
     done
 }
@@ -256,10 +250,7 @@ __checkyesno(){
 
     case "$_value" in
         [Nn][Oo]|[Ff][Aa][Ll][Ss][Ee]|[Oo][Ff][Ff]|0)
-            return 1
-            ;;
-        *)
-            return 0
-            ;;		
+            return 1 ;;
+        *)  return 0 ;;		
     esac
 }

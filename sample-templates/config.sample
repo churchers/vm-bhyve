@@ -1,8 +1,11 @@
 # This is a sample configuration file containing all supported options
 # Please do not try and use this for a guest
-# For any option that contains a number in the name, such as "disk0_name",
+# For any option that contains a number in the name, such as "network0_type",
 # you can add additional devices of that type by creating a new set of
-# variables using the next number in sequence, e.g "disk1_name"
+# variables using the next number in sequence, e.g "network1_type"
+# The only exception to this is that only one disk device is supported
+# in templates. If additional disks are required, they will need to be
+# added once the guest has been created.
 #
 # Please make sure all option names are specified in lowercase and
 # at the beginning of the line. If there is any whitespace before
@@ -160,6 +163,22 @@ disk0_name="disk0.img"
 #
 disk0_opts=""
 
+# disk0_size
+# When a new guest is created, vm will create a 20G disk image by
+# default. This option can be used to specify a different size
+# for this disk.
+#
+# The size of the first disk (disk0) can also be overridden
+# using the -s option to 'vm create'.
+#
+# NOTE: This option is only supported in template files. This
+# setting serves no purpose in real guests and would become
+# misleading if a disk were resized manually. When provisioning
+# a new guest, all 'diskX_size' options are stripped from
+# its configuration file.
+#
+disk0_size="50"
+
 # network0_type
 # This specifies the emulation type to use for the first network interface.
 # Networking is not required, although this field is mandatory if you do want
@@ -189,8 +208,12 @@ network0_device=""
 
 # network0_mac
 # This allows you to specify a fixed mac address for this interface inside the guest.
-# Without this option, bhyve will automatically assign a mac address to the
-# interface.
+# When a guest is run, vm-bhyve will automatically assign a mac address for each
+# interface if one is not specified. This mac address is then written to the 
+# configuration file using this option. If we didn't do this guests might get
+# a different mac if the tap device changes (very possible in vm-bhyve as all
+# tap devices are dynamic by default). Guests like Windows treat an interface
+# with a different mac as a new interface, with a new set of default settings.
 #
 network0_mac=""
 
@@ -202,6 +225,10 @@ network0_mac=""
 #
 # Please note that in order to stop the bhyve host from attaching to the device,
 # there are some steps required to reserve the device in /boot/loader.conf.
+#
+# The 'vm passthru' command provides a convinient way of seeing the BSF of each
+# device in your system, and whether any have been reserved ready for use
+# in bhyve
 #
 # More details can be found in the FreeBSD bhyve wiki pages
 #
@@ -226,11 +253,6 @@ grub_install1="..."
 # grub_run0
 # use this to specify grub commands to run when starting the guest
 # normally
-#
-# As with the install commands, 'boot' needs to be specified if it
-# is required. (I'm not aware of any situation where it isn't, but
-# have decided to require it rather than hardcode it in the vm-bhyve
-# source, just in case there are any exceptions)
 #
 grub_run0="linux ..."
 grub_run1="initrd ..."

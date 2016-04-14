@@ -81,19 +81,13 @@ __vm_check_name(){
 #
 __vm_create(){
     local _name _template _opt _size _vmdir _disk _disk_dev _uuid
-    local _zfs_opts
+    local _zfs_opts _num=0 _disk_size
 
     while getopts t:s: _opt ; do
         case $_opt in
-            t)
-                _template=${OPTARG}
-                ;;
-            s)
-                _size=${OPTARG}
-                ;;
-            *)
-                __usage
-                ;;
+            t) _template=${OPTARG} ;;
+            s) _size=${OPTARG} ;;
+            *) __usage ;;
         esac
     done
 
@@ -103,7 +97,7 @@ __vm_create(){
     [ -z "${_name}" ] && __usage
     __vm_check_name "${_name}"
 
-    : ${_size:=20G}
+    # use default.conf template if none specified
     : ${_template:=default}
 
     [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
@@ -113,8 +107,10 @@ __vm_create(){
     __config_load "${vm_dir}/.templates/${_template}.conf"
     __config_get "_disk" "disk0_name"
     __config_get "_disk_dev" "disk0_dev"
+    __config_get "_disk_size" "disk0_size" "20G"
     __config_get "_zfs_opts" "zfs_dataset_opts"
 
+    # make sure template has a disk before we start creating anything
     [ -z "${_disk}" ] && __err "template is missing disk0_name specification"
 
     # get the directory to store our vm data in
@@ -138,19 +134,33 @@ __vm_create(){
     # get any zvol options
     __config_get "_zfs_opts" "zfs_zvol_opts"
 
-    # create the disk
-    case "${_disk_dev}" in 
-        zvol)
-            __zfs_make_zvol "${_name}/${_disk}" "${_size}" "0" "${_zfs_opts}"
-            ;;			
-        sparse-zvol)
-            __zfs_make_zvol "${_name}/${_disk}" "${_size}" "1" "${_zfs_opts}"
-            ;;
-        *)
-            truncate -s "${_size}" "${_vmdir}/${_disk}"
-            [ $? -ne 0 ] && __err "failed to create sparse file for disk image"
-            ;;
-    esac
+    # use cmd line size for disk 0 if specified
+    [ -n "${_size}" ] && _disk_size="${_size}"
+
+    # create each disk
+    while [ -n "${_disk}" ]; do
+        case "${_disk_dev}" in 
+            zvol)
+                __zfs_make_zvol "${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
+                ;;			
+            sparse-zvol)
+                __zfs_make_zvol "${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
+                ;;
+            *)
+                truncate -s "${_disk_size}" "${_vmdir}/${_disk}"
+                [ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+                ;;
+        esac
+
+        # scrap size option from guest template
+        sysrc -inxqf "${_vmdir}/${_name}.conf" "disk${_num}_size"
+
+        # look for another disk
+        _num=$((_num + 1))
+        __config_get "_disk" "disk${_num}_name"
+        __config_get "_disk_dev" "disk${_num}_dev"
+        __config_get "_disk_size" "disk${_num}_size" "20G"
+    done
 }
 
 # 'vm add'

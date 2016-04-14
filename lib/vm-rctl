@@ -52,8 +52,7 @@ __vm_set_rctl_limits(){
 
     # see if rctl works
     /usr/bin/rctl >/dev/null 2>&1
-    _exit=$?
-    [ ${_exit} -ne 0 ] && \
+    [ $? -ne 0 ] && \
         __log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
 
     __log "guest" "${_name}" "applying rctl limits"

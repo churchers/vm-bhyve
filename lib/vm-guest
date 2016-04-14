@@ -27,7 +27,7 @@
 # __guest_load
 # this function is responsible for doing any pre-load tasks for a guest.
 # for non uefi guests this normally means running bhyveload or grub-bhyve.
-# this function should update _exit to a non-zero value if there's a problem
+# this function should return a non-zero value if there's a problem
 # or 0 on success.
 # As this is called from within the scope of __vm_run,
 # the following variables are already set (among others)
@@ -44,7 +44,7 @@
 # I've written append wrong as it just needs to be something other than 'write',
 # and is much more readable when all the __log* calls line up
 #
-# @param string _type=install|run whether this is an install or normal run
+# @param optional string _iso set to the boot iso on install, or not given for normal run
 # @return int 0=success, 15=vm-bhyve error (see log), other=bhyveload|grub-bhyve error code
 #
 __guest_load(){

@@ -39,15 +39,16 @@ __switch_init(){
     # create bridges for each switch if they don't already exist
     if [ -n "${_switchlist}" ]; then
         for _switch in ${_switchlist}; do
+            # do nothing if it's a vale switch
+            __config_get "_vale" "vale_${_switch}"
+            __checkyesno "${_vale}" && continue
+
+            # do nothing if the bridge already exists
             __switch_get_ident "_id" "${_switch}"
             [ -n "${_id}" ] && continue
 
             __config_get "_nat" "nat_${_switch}"
             __config_get "_bridge" "bridge_${_switch}"
-
-            # do nothing if it's a vale switch
-            __config_get "_vale" "vale_${_switch}"
-            __checkyesno "${_vale}" && continue
 
             if [ -n "${_bridge}" ]; then
                 ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1

@@ -65,12 +65,18 @@ __restart_service(){
     [ $? -ne 0 ] && __warn "failed to ${_cmd} service ${_serv}"
 }
 
+# show version
+#
+__version(){
+    echo "vm-bhyve: Bhyve virtual machine management v${VERSION} (build ${VERSION_INT})"
+}
+
 # show version & usage information
 # we exit after running this
 #
 __usage(){
-cat << EOT
-vm: Bhyve virtual machine management v${VERSION}
+    __version
+    cat << EOT
 Usage: vm ...
     init
     switch list

@@ -1,10 +1,12 @@
-.Dd Apr 07, 2016
+.Dd Apr 15, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
 .Nm vm
 .Nd "utility to manage bhyve virtual machines"
 .Sh SYNOPSIS
+.Nm
+.Cm version
 .Nm
 .Cm init
 .Pp
@@ -299,6 +301,8 @@ command and runs the guest on stdio.
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS
 .Bl -tag -width indent
+.It Cm version
+Show the version number of vm-bhyve installed.
 .It Cm init
 .br
 This should be run once after each host reboot before running any other

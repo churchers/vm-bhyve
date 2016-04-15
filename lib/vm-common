@@ -78,6 +78,7 @@ __usage(){
     __version
     cat << EOT
 Usage: vm ...
+    version
     init
     switch list
     switch info [name]

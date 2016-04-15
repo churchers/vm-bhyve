@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.0-beta
-VERSION_INT=100000
+VERSION_INT=100001
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 BSD_VERSION=$(uname -K)
 

@@ -3,7 +3,8 @@
 # $FreeBSD$
 
 # PROVIDE: vm
-# REQUIRE: NETWORKING SERVERS DAEMON LOGIN
+# REQUIRE: NETWORKING SERVERS
+# BEFORE: dnsmasq
 # KEYWORD: shutdown nojail
 
 . /etc/rc.subr

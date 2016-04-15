@@ -122,8 +122,7 @@ __switch_create(){
     local _switch="$1"
     local _id _curr_list _curr
 
-    echo "${_switch}" | egrep -iqs '^[a-z0-9][a-z0-9\_\-\.]{0,14}[a-z0-9]$'
-    [ $? -ne 0 ] && __err "invalid switch name"
+    __vm_check_name "${_switch}" || __err "invalid switch name - '${_name}'"
 
     _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 
@@ -150,15 +149,13 @@ __switch_import(){
     local _exists
 
     [ -z "${_switch}" -o -z "${_bridge}" ] && __usage
+    __vm_check_name "${_switch}" || __err "invalid switch name - '${_name}'"
 
-        echo "${_switch}" | egrep -iqs '^[a-z0-9][a-z0-9\_\-\.]{0,14}[a-z0-9]$'
-        [ $? -ne 0 ] && __err "invalid switch name"
+    _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
 
-        _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
-
-        for _curr in $_curr_list; do
-                [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
-        done
+    for _curr in $_curr_list; do
+        [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
+    done
 
     _exists=$(ifconfig | grep "^${_bridge}: ")
     [ -z "${_exists}" ] && __err "${_bridge} does not appear to be a valid existing bridge"
@@ -525,17 +522,15 @@ __switch_nat_init(){
 # interfaces are created on demand when starting guests,
 # and vale switches are dynamic
 #
+# @return int 0 is switch is vale
+#
 __switch_is_vale(){
     local _switch="$1"
     local _is_vale=$(sysrc -inqf "${vm_dir}/.config/switch" "vale_${_switch}")
 
     [ -z "${_is_vale}" ] && return 1
 
-    if __checkyesno "${_is_vale}"; then
-        return 0
-    else
-        return 1
-    fi
+    __checkyesno "${_is_vale}"
 }
 
 # gets a unique port name for a vale interface
@@ -595,9 +590,6 @@ __switch_get_ident(){
     local _c_id
 
     # search ifconfig for our switch id, and pull bridge interface name from preceeding line
-    # we've got rid of trailing '-' on switch names but on vm-bhyve upgrade, before host reboot, users may still have them
     _c_id=$(ifconfig -a | grep -B 1 "vm-${_switch}\$" | head -n 1 | awk -F: '{print $1}')
-    [ -z "${_c_id}" ] && _c_id=$(ifconfig -a | grep -B 1 "vm-${_switch}-\$" | head -n 1 | awk -F: '{print $1}')
-
     setvar "${_var}" "${_c_id}"
 }

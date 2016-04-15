@@ -24,7 +24,7 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-VERSION=0.12.13
+VERSION=0.12.14
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 BSD_VERSION=$(uname -K)
 
@@ -77,4 +77,5 @@ __zfs_init
 [ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
 
+# run the requested command
 __parse_cmd ${VM_COMMAND}

@@ -25,15 +25,12 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# 'vm _rctl'
 # set limits to virtual machine
 # this is the background process
 #
-# @param string _name the name of the guest to enable limits
-#
-__vm_set_rctl_limits(){
+__rcrl_set_limits(){
     local _pcpu _rbps _wbps _riops _wiops
-    local _pid _exit
+    local _pid
 
     # get limit settings
     __config_get "_pcpu" "limit_pcpu"
@@ -63,7 +60,7 @@ __vm_set_rctl_limits(){
     fi
 
     # at this point we can return if < FreeBSD 11
-    [ ${BSD_VERSION} -lt 1100000 ] && return 0
+    [ ${VERSION_BSD} -lt 1100000 ] && return 0
 
     if [ -n "${_rbps}" ]; then
         /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps} >/dev/null 2>&1

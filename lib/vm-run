@@ -91,7 +91,7 @@ __vm_run(){
 
     # if uefi, make sure we have bootrom, then update options for uefi support
     if __checkyesno "${_uefi}"; then
-        if [ ${BSD_VERSION} -lt 1002509 ]; then
+        if [ ${VERSION_BSD} -lt 1002509 ]; then
             __log "guest" "${_name}" "uefi guests can only be run on FreeBSD 10.3 or newer"
             exit 15
         fi
@@ -121,7 +121,7 @@ __vm_run(){
 
     # set utc time in opts if requested
     if __checkyesno "${_utc}"; then
-        if [ ${BSD_VERSION} -ge 1002000 ]; then
+        if [ ${VERSION_BSD} -ge 1002000 ]; then
             _opts="${_opts} -u"
         else
             __log "guest" "${_name}" "utc time requested but not available pre FreeBSD 10.2"
@@ -172,7 +172,7 @@ __vm_run(){
         __log "guest" "${_name}" "starting bhyve"
 
         # call rctl now as next line will block until bhyve exits
-        __vm_set_rctl_limits ${_name} &
+        __rctl_set_limits &
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
@@ -469,7 +469,7 @@ __vm_bhyve_device_passthru(){
         _slot=$((_slot + 1))
 
         # add wired memory for 10.3+
-        [ ${BSD_VERSION} -ge 1003000 ] && _opts="${_opts} -S" && _wiredmem="1"
+        [ ${VERSION_BSD} -ge 1003000 ] && _opts="${_opts} -S" && _wiredmem="1"
     fi
 }
 

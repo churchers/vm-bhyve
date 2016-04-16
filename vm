@@ -25,9 +25,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.0-beta
-VERSION_INT=100001
+VERSION_INT=100002
+VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
-BSD_VERSION=$(uname -K)
 
 . /etc/rc.subr
 load_rc_config "vm"
@@ -57,7 +57,7 @@ fi
 
 # check environment
 [ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
-[ ${BSD_VERSION} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
+[ ${VERSION_BSD} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
 
 # we should be enabled in rc.conf
 # or call it using forcestart

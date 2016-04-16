@@ -422,6 +422,8 @@ __vm_stop(){
             if [ -n "${_pid}" ]; then
                 echo "Sending ACPI shutdown to ${_name}"
                 kill "${_pid}"
+                sleep 1
+                kill "${_pid}"
             elif [ -n "${_loadpid}" ]; then
                 if __confirm "Guest ${_name} is in bootloader stage, do you wish to force exit"; then
                     echo "Killing ${_name}"

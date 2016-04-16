@@ -28,7 +28,7 @@
 # set limits to virtual machine
 # this is the background process
 #
-__rcrl_set_limits(){
+__rctl_set_limits(){
     local _pcpu _rbps _wbps _riops _wiops
     local _pid
 

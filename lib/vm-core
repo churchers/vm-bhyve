@@ -355,6 +355,8 @@ __vm_stopall(){
 
     echo "Shutting down all bhyve virtual machines"
     killall bhyve
+    sleep 1
+    killall bhyve
     wait_for_pids ${_pids}
 }
 

@@ -108,6 +108,20 @@ __datastore_add(){
     sysrc -inqf "${vm_dir}/.config/datastore" "path_${_name}"="${_spec}" >/dev/null 2>&1
 }
 
+# remove a datastore
+# we don't actually delete anything, just remove from config
+#
+# @param string _name name of dataset
+#
+__datastore_remove(){
+    local _name="$1"
+
+    __datastore_get "${_name}" || __err "unable to locate the specified dataset"
+
+    __rc_splice_string ".config/datastore" "datastore_list" "${_name}"
+    sysrc -inxqf "${vm_dir}/.config/datastore" "path_${_name}" >/dev/null 2>&1
+}
+
 # get the filesystem path for the specified dataset spec
 # this can either be just a path, or ZFS dataset
 #

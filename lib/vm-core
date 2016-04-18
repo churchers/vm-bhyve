@@ -87,8 +87,8 @@ __vm_check_name(){
 # @param string _name the name of the guest to create
 #
 __vm_create(){
-    local _name _template _opt _size _vmdir _disk _disk_dev _uuid
-    local _zfs_opts _num=0 _disk_size _ds=default _ds_path
+    local _name _opt _size _vmdir _disk _disk_dev _uuid _num=0
+    local _zfs_opts _disk_size _template="default" _ds="default" _ds_path
 
     while getopts d:t:s: _opt ; do
         case $_opt in
@@ -108,9 +108,6 @@ __vm_create(){
     __vm_check_name "${_name}" || __err "invalid virtual machine name - '${_name}'"
     __datastore_load_guest "${_name}" && __err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
     __datastore_get "${_ds}" || __err "unable to load datastore - '${_ds}'"
-
-    # use default.conf template if none specified
-    : ${_template:=default}
 
     [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
         __err "unable to find template ${vm_dir}/.templates/${_template}.conf"

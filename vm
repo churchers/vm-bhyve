@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.1-alpha
-VERSION_INT=101000
+VERSION_INT=101004
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -47,12 +47,12 @@ fi
 . "${LIB}/vm-common"
 . "${LIB}/vm-config"
 . "${LIB}/vm-core"
+. "${LIB}/vm-datastore"
 . "${LIB}/vm-guest"
 . "${LIB}/vm-info"
 . "${LIB}/vm-rctl"
 . "${LIB}/vm-run"
 . "${LIB}/vm-switch"
-. "${LIB}/vm-sysrc"
 . "${LIB}/vm-zfs"
 
 # check environment

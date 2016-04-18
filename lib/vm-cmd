@@ -38,6 +38,7 @@ __parse_cmd(){
         init)      __setup
                    __switch_init ;;
         switch)    __parse_switch_cmd "$@" ;;
+        datastore) __parse_datastore_cmd "$@" ;;
         image)     __zfs_parse_image_cmd "$@" ;;
         list)      __vm_list ;;
         info)      __vm_info "$@" ;;
@@ -87,6 +88,23 @@ __parse_switch_cmd(){
         vlan)    __switch_vlan "$@" ;;
         nat)     __switch_nat "$@" ;;
         *)       __usage ;;
+    esac
+}
+
+# cmd: vm datastore ...
+#
+# parse a datastore command
+#
+# @param string _cmd the command after 'vm datastore ...'
+#
+__parse_datastore_cmd(){
+    local _cmd="$1"
+    shift
+
+    case "${_cmd}" in
+        add)  __datastore_add "$@" ;;
+        list) __datastore_list ;;
+        *)    __usage ;;
     esac
 }
 

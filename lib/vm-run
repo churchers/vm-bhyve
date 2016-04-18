@@ -39,10 +39,13 @@ __vm_run(){
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit
     local _com _comports _comstring _logpath="/dev/null"
-    local _conf="${vm_dir}/${_name}/${_name}.conf"
+    local _conf
 
-    # bail out immediately if no guest or running
-    [ -z "${_name}" -o ! -f "${_conf}" ] && exit 10
+    # try to load datstore details
+    __datastore_load_guest "${_name}" || exit 5
+    _conf="${VM_DS_PATH}/${_name}/${_name}.conf"
+
+    # bail out immediately if guest running
     __vm_confirm_stopped "${_name}" "1" || exit 10
 
     __config_load "${_conf}"
@@ -129,7 +132,7 @@ __vm_run(){
     fi
 
     # send bhyve output to bhyve.log if debug=yes
-    __checkyesno "${_debug}" && _logpath="${vm_dir}/${_name}/bhyve.log"
+    __checkyesno "${_debug}" && _logpath="${VM_DS_PATH}/${_name}/bhyve.log"
 
     # complete the boot disk path
     __vm_get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
@@ -142,7 +145,7 @@ __vm_run(){
     __vm_bhyve_device_rand
     __vm_bhyve_device_passthru
 
-    __vm_lock "${_name}"
+    __vm_lock
     __log "guest" "${_name}" "booting"
 
     while [ 1 ]; do
@@ -205,7 +208,7 @@ __vm_run(){
 
     __log "guest" "${_name}" "stopped"
     bhyvectl --destroy --vm=${_name}
-    __vm_unlock "${_name}"
+    __vm_unlock
     exit ${_exit}
 }
 
@@ -216,7 +219,7 @@ __vm_run(){
 # @param string - the name of the guest to lock
 #
 __vm_lock(){
-    hostname > "${vm_dir}/$1/run.lock"
+    hostname > "${VM_DS_PATH}/${_name}/run.lock"
 }
 
 # unlock a vm
@@ -224,7 +227,7 @@ __vm_lock(){
 # @param string - the name of the guest to unlock
 #
 __vm_unlock(){
-    unlink "${vm_dir}/$1/run.lock" >/dev/null 2>&1
+    unlink "${VM_DS_PATH}/${_name}/run.lock" >/dev/null 2>&1
 }
 
 # create string for guest com ports
@@ -239,7 +242,7 @@ __vm_unlock(){
 __vm_bhyve_device_comports(){
     local _port _num=1 _nmdm=""
 
-    unlink "${vm_dir}/${_name}/console" >/dev/null 2>&1
+    unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 
     for _port in ${_comports}; do
         if [ -n "${VM_FOREGROUND}" -a "${_num}" = "1" ]; then
@@ -252,7 +255,7 @@ __vm_bhyve_device_comports(){
         # use first com port for the loader
         [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
 
-        echo "${_port}=/dev/nmdm${_nmdm}B" >> "${vm_dir}/${_name}/console"
+        echo "${_port}=/dev/nmdm${_nmdm}B" >> "${VM_DS_PATH}/${_name}/console"
         _comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
         _num=$((_num + 1))
     done
@@ -497,13 +500,13 @@ __vm_get_disk_path(){
             ;&
         sparse-zvol)
             # need to look at this, don't really want to reference VM_ZFS* variables here
-            setvar "${_var}" "/dev/zvol/${VM_ZFS_DATASET}/${_name}/${_disk}"
+            setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}"
             ;;
         custom)
             setvar "${_var}" "${_disk}"
             ;;
         *)
-            setvar "${_var}" "${vm_dir}/${_name}/${_disk}"
+            setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}"
             ;;
     esac
 }
@@ -606,8 +609,8 @@ __vm_confirm_stopped(){
 
     # check vm-bhyve lock
     # this will err even if guest is running on another node
-    if [ -e "${vm_dir}/${_name}/run.lock" ]; then
-        _host=$(head -n 1 "${vm_dir}/${_name}/run.lock")
+    if [ -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
+        _host=$(head -n 1 "${VM_DS_PATH}/${_name}/run.lock")
 
         if [ "${_host}" != "${_our_host}" -o "${_skip_lock}" != "1" ]; then
             __warn "${_name} appears to be running on ${_host} (locked)"

@@ -152,7 +152,7 @@ __log_rotate(){
     case "${_type}" in
         guest)
             _guest="$2"
-            _file="${vm_dir}/${_guest}/${_lf}"
+            _file="${VM_DS_PATH}/${_guest}/${_lf}"
             ;;
         system)
             _file="${vm_dir}/${_lf}"
@@ -188,7 +188,7 @@ __log(){
         guest)
             _guest="$2"
             _message="$3"
-            _file="${vm_dir}/${_guest}/${_lf}"
+            _file="${VM_DS_PATH}/${_guest}/${_lf}"
             ;;
         system)
             _message="$2"
@@ -213,7 +213,7 @@ __log(){
 __log_and_write(){
     local _type="$1"
     local _guest="$2"
-    local _file="${vm_dir}/${_guest}/$3"
+    local _file="${VM_DS_PATH}/${_guest}/$3"
     local _message="$4"
 
     if [ "${_type}" = "write" ]; then

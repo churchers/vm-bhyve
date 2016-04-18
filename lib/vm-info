@@ -32,17 +32,25 @@
 __vm_info(){
     local _name="$1"
     local _bridge_list=$(ifconfig | grep ^bridge | cut -d: -f1)
+    local _ds
 
     __vm_running_load
+    __datastore_load
 
+    # see if one guest provided
     if [ -n "${_name}" ]; then
+        __datastore_load_guest "${_name}" || __err "unable to locate virtual machine '${_name}'"
         __vm_info_guest "${_name}"
         exit
     fi
 
-    ls -1 "${vm_dir}" | \
-    while read _name; do
-        [ -e "${vm_dir}/${_name}/${_name}.conf" ] && __vm_info_guest "${_name}"
+    # show all guests from all datastores
+    for _ds in $VM_DATASTORE_LIST; do
+        __datastore_get "${_ds}"
+        ls -1 "${VM_DS_PATH}" | \
+        while read _name; do
+            [ -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && __vm_info_guest "${_name}"
+        done
     done
 }
 
@@ -145,7 +153,7 @@ __vm_info_switch_ports(){
 #
 __vm_info_guest(){
     local _name="$1"
-    local _conf="${vm_dir}/${_name}/${_name}.conf"
+    local _conf="${VM_DS_PATH}/${_name}/${_name}.conf"
     local _INDENT="  "
     local _RUN="0"
     local _res_mem _b_res_mem _global_run _port
@@ -165,6 +173,7 @@ __vm_info_guest(){
     echo "------------------------"
 
     echo "${_INDENT}state: ${_global_run}"
+    echo "${_INDENT}datastore: ${VM_DS_NAME}"
 
     # basic guest configuration
     __vm_info_output_config "guest"
@@ -184,11 +193,11 @@ __vm_info_guest(){
         fi
 
         # show com ports
-        if [ -e "${vm_dir}/${_name}/console" ]; then
+        if [ -e "${VM_DS_PATH}/${_name}/console" ]; then
             echo ""
             echo "${_INDENT}console-ports"
 
-            cat "${vm_dir}/${_name}/console" | \
+            cat "${VM_DS_PATH}/${_name}/console" | \
             while read _port; do
                 echo "${_INDENT}${_INDENT}${_port%%=*}: ${_port##*=}"
             done

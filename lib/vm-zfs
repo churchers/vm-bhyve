@@ -72,10 +72,10 @@ __zfs_make_dataset(){
     local _name="$1"
     local _opts="$2"
 
-    if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
+    if [ -n "${_name}" -a "${VM_DS_ZFS}" = "1" ]; then
         __zfs_format_options "_opts" "${_opts}"
-        zfs create ${_opts} "${VM_ZFS_DATASET}/${_name}"
-        [ $? -ne 0 ] && __err "failed to create new ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+        zfs create ${_opts} "${_name}"
+        [ $? -ne 0 ] && __err "failed to create new ZFS dataset ${_name}"
     fi
 }
 
@@ -86,9 +86,9 @@ __zfs_make_dataset(){
 __zfs_destroy_dataset(){
     local _name="$1"
 
-    if [ -n "${_name}" -a "${VM_ZFS}" = "1" ]; then
-        zfs destroy -rf "${VM_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-        [ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${VM_ZFS_DATASET}/${_name}"
+    if [ -n "${_name}" -a "${VM_DS_ZFS}" = "1" ]; then
+        zfs destroy -rf "${_name}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "failed to destroy ZFS dataset ${_name}"
     fi
 }
 
@@ -103,15 +103,15 @@ __zfs_rename_dataset(){
     local _old="$1"
     local _new="$2"
 
-    if [ -n "${_old}" -a -n "${_new}" -a "${VM_ZFS}" = "1" ]; then
-        zfs rename "${VM_ZFS_DATASET}/${_old}" "${VM_ZFS_DATASET}/${_new}" >/dev/null 2>&1
-        [ $? -ne 0 ] && __err "failed to rename ZFS dataset ${VM_ZFS_DATASET}/${_old}"
+    if [ -n "${_old}" -a -n "${_new}" -a "${VM_DS_ZFS}" = "1" ]; then
+        zfs rename "${VM_DS_ZFS_DATASET}/${_old}" "${VM_DS_ZFS_DATASET}/${_new}" >/dev/null 2>&1
+        [ $? -ne 0 ] && __err "failed to rename ZFS dataset ${VM_DS_ZFS_DATASET}/${_old}"
     fi
 }
 
 # make a zvol for a guest disk image
 #
-# @param string _name name of the guest (will be a dataset under VM_ZFS_DATASET)
+# @param string _name name of the zvol to create
 # @param string _size how big to create the dataset
 # @param int _sparse=0 set to 1 for a sparse zvol
 #
@@ -122,12 +122,12 @@ __zfs_make_zvol(){
     local _user_opts="$4"
     local _opt="-V"
 
-    [ ! "${VM_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
+    [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot use ZVOL storage unless ZFS support is enabled"
     [ "${_sparse}" = "1" ] && _opt="-sV"
 
     __zfs_format_options "_user_opts" "${_user_opts}"
-    zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${VM_ZFS_DATASET}/${_name}"
-    [ $? -ne 0 ] && __err "failed to create new ZVOL ${VM_ZFS_DATASET}/${_name}"
+    zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${_name}"
+    [ $? -ne 0 ] && __err "failed to create new ZVOL ${_name}"
 }
 
 # format options for zfs commands

@@ -1,0 +1,233 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# 'vm datastore list'
+# show configured datastores
+#
+__datastore_list(){
+    local _format="%-15s%-11s%-30s%s"
+    local _name _type _dataset _path _ds _spec
+
+    # headings
+    printf "${_format}\n" "NAME" "TYPE" "PATH" "ZFS DATASET"
+
+    # add the default datastore
+    _name="default"
+    _path="${vm_dir}"
+
+    # get the type and path
+    if [ "${VM_ZFS}" ]; then
+        _type="zfs"
+        _dataset="${VM_ZFS_DATASET}"
+    else
+        _type="directory"
+        _dataset="-"
+    fi
+
+    printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
+
+    # load the rest
+    __config_load "${vm_dir}/.config/datastore"
+    __config_get "_ds" "datastore_list"
+
+    for _name in ${_ds}; do
+        __config_get "_spec" "path_${_name}"
+        [ -z "${_spec}" ] && continue
+
+        if [ "${_spec%%:*}" = "zfs" ]; then
+            _type="zfs"
+            _dataset="${_spec#*:}"
+            __datastore_resolve_path "_path" "${_spec}"
+        else
+            _type="directory"
+            _path="${_spec}"
+            _dataset="-"
+        fi
+
+        printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
+    done
+}
+
+# 'vm datastore add'
+# create a new datastore
+#
+# we don't try and create directories or datasets.
+# the user should do that first
+#
+# @param string _name datastore name
+# @param string _spec specification (either /path or zfs:dataset)
+#
+__datastore_add(){
+    local _name="$1"
+    local _spec="$2"
+    local _mount _num=0
+
+    [ -z "${_name}" -o -z "${_spec}" ] && __usage
+    [ "${_name}" = "default" ] && __err "additional datastore cannot be named 'default'"
+    __vm_check_name "${_name}" || __err "invalid datastore name - '${_name}'"
+
+    # look for zfs
+    if [ "${_spec%%:*}" = "zfs" ]; then
+        # try to find mountpoint
+        _mount=$(mount | grep "^${_spec#*:} " |cut -d' ' -f3)
+        [ -z "${_mount}" ] && __err "${_spec} doesn't seem to be a valid, mounted dataset"
+    else
+        # make sure it's a directory
+        [ ! -d "${_spec}" ] && __err "${_spec} doesn't seem to be a valid directory"
+
+        _mount="${_spec}"
+    fi
+
+    # see if this is already our default datastore
+    [ "${_mount}" = "${vm_dir}" ] && __err "specified path already exists as default datastore"
+    # save
+    __rc_append_string ".config/datastore" "datastore_list" "${_name}"
+    sysrc -inqf "${vm_dir}/.config/datastore" "path_${_name}"="${_spec}" >/dev/null 2>&1
+}
+
+# get the filesystem path for the specified dataset spec
+# this can either be just a path, or ZFS dataset
+#
+# @param string _var variable to put path into
+# @param string _spec the path spec (either directory or zfs:dataset)
+# @return non-zero on error
+#
+__datastore_resolve_path(){
+    local _var="$1"
+    local _spec="$2"
+
+    if [ "${_spec%%:*}" = "zfs" ]; then
+        _mount=$(mount | grep "^${_spec#*:} " |cut -d' ' -f3)
+
+        if [ -n "${_mount}" ]; then
+            setvar "${_var}" "${_mount}"
+            return 0
+        fi
+    else
+        if [ -d "${_spec}" ]; then
+            setvar "${_var}" "${_spec}"
+            return 0
+        fi
+    fi
+
+    setvar "${_var}" ""
+    return 1
+}
+
+# load list of datastores into VM_DATASTORE_LIST
+#
+# @modifies VM_DATASTORE_LIST
+#
+__datastore_load(){
+    __config_load "${vm_dir}/.config/datastore"
+    __config_get "VM_DATASTORE_LIST" "datastore_list"
+    VM_DATASTORE_LIST="default${VM_DATASTORE_LIST:+ }${VM_DATASTORE_LIST}"
+}
+
+# init global settings for a vm
+# we take a guest name and try to find it in all
+# datastores. we don't allow duplicate names, and
+# if there is, we will just return the first found.
+#
+# @param string _guest guest name
+# @return non-zero on error
+# @modifies VM_DS_NAME VM_DS_PATH VM_DS_ZFS VM_DS_ZFS_DATASET
+#
+__datastore_load_guest(){
+    local _guest="$1"
+    local _ds _spec _path _found _zfs _dataset
+    local _has_ds="$(echo \"${_guest}\" | grep '/')"
+
+    __datastore_load
+
+    # look in default store
+    if [ -f "${vm_dir}/${_guest}/${_guest}.conf" ]; then
+        _found="1"
+        _ds="default"
+        _path="${vm_dir}"
+        _zfs="${VM_ZFS}"
+        _dataset="${VM_ZFS_DATASET}"
+    fi
+
+    # look on other datastores
+    if [ -z "${_found}" ]; then
+        for _ds in ${VM_DATASTORE_LIST}; do
+            [ "${_ds}" = "default" ] && continue
+            __config_get "_spec" "path_${_ds}"
+            __datastore_resolve_path "_path" "${_spec}"
+
+            if [ -f "${_path}/${_guest}/${_guest}.conf" ]; then
+                [ "${_spec%%:*}" = "zfs" ] && _zfs="1" && _dataset="${_spec#*:}"
+
+                _found="1"
+                break
+            fi
+        done
+    fi
+    
+    # make sure we have a path
+    [ -z "${_found}" ] && return 1
+
+    # set variables
+    VM_DS_NAME="${_ds}"
+    VM_DS_PATH="${_path}"
+    VM_DS_ZFS="${_zfs}"
+    VM_DS_ZFS_DATASET="${_dataset}"
+}
+
+# get the path and details for a datastore
+# put into same variables as datastore_load_guest
+# but just path to datastore rather than guest
+#
+# @param string _ds datastore name
+# @return non-zero on error
+# @modifies VM_DS_PATH VM_DS_ZFS VM_DS_ZFS_DATASET
+#
+__datastore_get(){
+    local _ds="$1"
+    local _spec _path _zfs _dataset
+
+    # check for default
+    if [ "${_ds}" = "default" ]; then
+        VM_DS_NAME="default"
+        VM_DS_PATH="${vm_dir}"
+        VM_DS_ZFS="${VM_ZFS}"
+        VM_DS_ZFS_DATASET="${VM_ZFS_DATASET}"
+        return 0
+    fi
+
+    _spec=$(sysrc -inqf "${vm_dir}/.config/datastore" "path_${_ds}")
+    [ -z "${_spec}" ] && return 1
+
+    __datastore_resolve_path "_path" "${_spec}" || return 1
+    [ "${_spec%%:*}" = "zfs" ] && _zfs="1" && _dataset="${_spec#*:}"
+
+    # set variables
+    VM_DS_NAME="${_ds}"
+    VM_DS_PATH="${_path}"
+    VM_DS_ZFS="${_zfs}"
+    VM_DS_ZFS_DATASET="${_dataset}"
+}

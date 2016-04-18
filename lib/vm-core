@@ -30,11 +30,11 @@
 __vm_list(){
     local _name _guest _loader _cpu
     local _path_memory _run _vm _auto _num
-    local _format="%-15s %-15s %-10s %-11s %-6s %-9s %-12s %s\n"
+    local _format="%-15s %-15s %-11s %-6s %-9s %-12s %s\n"
 
     __datastore_load
     __vm_running_load
-    printf "${_format}" "NAME" "DATASTORE" "GUEST" "LOADER" "CPU" "MEMORY" "AUTOSTART" "STATE"
+    printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "AUTOSTART" "STATE"
 
     for _ds in ${VM_DATASTORE_LIST}; do
         __datastore_get "${_ds}" || continue
@@ -44,8 +44,7 @@ __vm_list(){
             [ ! -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && continue
 
             __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
-            __config_get "_guest" "guest"
-            __config_get "_loader" "loader"
+            __config_get "_loader" "loader" "none"
             __config_get "_cpu" "cpu"
             __config_get "_memory" "memory"
 
@@ -65,7 +64,7 @@ __vm_list(){
                 _run="Locked (${_run})"
             fi
 
-            printf "${_format}" "${_name}" "${_ds}" "${_guest}" "${_loader:-default}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
+            printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
         done
     done
 }

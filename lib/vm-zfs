@@ -66,7 +66,7 @@ __zfs_init(){
 # make a new dataset
 # this is always called when creating a new vm, but will do nothing
 #
-# @param string _name name of the dataset (under VM_ZFS_DATASET) to create
+# @param string _name name of the dataset to create
 #
 __zfs_make_dataset(){
     local _name="$1"
@@ -81,7 +81,7 @@ __zfs_make_dataset(){
 
 # destroy a dataset
 #
-# @param string _name name of the dataset to destroy (under VM_ZFS_DATASET)
+# @param string _name name of the dataset to destroy
 #
 __zfs_destroy_dataset(){
     local _name="$1"
@@ -163,12 +163,8 @@ __zfs_snapshot(){
 
     while getopts f _opt; do
         case $_opt in
-            f)
-                _force=1
-                ;;
-            *)
-                __usage
-                ;;
+            f) _force=1 ;;
+            *) __usage ;;
         esac
     done
 
@@ -185,15 +181,15 @@ __zfs_snapshot(){
     fi
 
     [ -z "${_name}" ] && __usage
-    [ ! "${VM_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
-    [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
+    __datastore_load_guest "${_name}" || __err "${_name} does not appear to be an existing virtual machine"
+    [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot snapshot guests unless ZFS support is enabled"
     [ -z "${_snap}" ] && _snap=$(date +"%Y-%m-%d-%H:%M:%S")
 
     if ! __vm_confirm_stopped "${_name}" >/dev/null; then
         [ -z "${_force}" ] && __err "${_name} must be powered off first (use -f to override)"
     fi
 
-    zfs snapshot -r ${VM_ZFS_DATASET}/${_name}@${_snap}
+    zfs snapshot -r ${VM_DS_ZFS_DATASET}/${_name}@${_snap}
     [ $? -ne 0 ] && __err "failed to create recursive snapshot of virtual machine"
 }
 
@@ -212,12 +208,8 @@ __zfs_rollback(){
 
     while getopts r _opt; do
         case $_opt in
-            r)
-                _force="-r"
-                ;;
-            *)
-                __usage
-                ;;
+            r) _force="-r" ;;
+            *) __usage ;;
         esac
     done
 
@@ -230,13 +222,14 @@ __zfs_rollback(){
     _snap="${1##*@}"
 
     [ -z "${_name}" -o -z "${_snap}" ] && __usage
-    [ ! "${VM_ZFS}" = "1" ] && __err "cannot rollback guests unless ZFS support is enabled"
-    [ ! -e "${vm_dir}/${_name}/${_name}.conf" ] && __err "${_name} does not appear to be an existing virtual machine"
+
+    __datastore_load_guest "${_name}" || __err "${_name} does not appear to be an existing virtual machine"
+    [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot rollback guests unless ZFS support is enabled"
 
     __vm_confirm_stopped "${_name}" || exit 1
 
     # list all datasets and zvols under guest
-    zfs list -o name -rHt filesystem,volume ${VM_ZFS_DATASET}/${_name} | \
+    zfs list -o name -rHt filesystem,volume ${VM_DS_ZFS_DATASET}/${_name} | \
     while read _fs; do
         zfs rollback ${_force} ${_fs}@${_snap}
         [ $? -ne 0 ] && exit $?
@@ -258,8 +251,10 @@ __zfs_clone(){
     local _uuid=$(uuidgen)
 
     [ -z "${_old}" -o -z "${_name}" ] && __usage
-    [ ! "${VM_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
-    [ -d "${vm_dir}/${_name}" ] && __err "directory ${vm_dir}/${_name} already exists"
+
+    __datastore_load_guest "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
+    __datastore_load_guest "${_old}" || __err "${_name} does not appear to be an existing virtual machine"
+    [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot clone guests unless ZFS support is enabled"
 
     # try to get snapshot name
     # we support normal zfs syntax for this
@@ -270,19 +265,17 @@ __zfs_clone(){
         _old=${_old%%@*}
     fi
 
-    [ ! -e "${vm_dir}/${_old}/${_old}.conf" ] && __err "${_old} does not appear to be an existing virtual machine"
-
     # get list of datasets to copy
-    _fs_list=$(zfs list -rHo name -t filesystem,volume "${VM_ZFS_DATASET}/${_old}")
-    [ $? -ne 0 ] && __err "unable to list datasets for ${VM_ZFS_DATASET}/${_old}"
+    _fs_list=$(zfs list -rHo name -t filesystem,volume "${VM_DS_ZFS_DATASET}/${_old}")
+    [ $? -ne 0 ] && __err "unable to list datasets for ${VM_DS_ZFS_DATASET}/${_old}"
 
     # generate a short uuid and create snapshot if no custom snap given
     if [ -z "${_snap}" ]; then
         __vm_confirm_stopped "${_old}" || exit 1
         _snap=$(echo "${_uuid}" |awk -F- '{print $1}')
 
-        zfs snapshot -r "${VM_ZFS_DATASET}/${_old}@${_snap}"
-        [ $? -ne 0 ] && __err "failed to create snapshot ${VM_ZFS_DATASET}/${_old}@${_snap}"
+        zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_old}@${_snap}"
+        [ $? -ne 0 ] && __err "failed to create snapshot ${VM_DS_ZFS_DATASET}/${_old}@${_snap}"
     else
         for _fs in ${_fs_list}; do
             zfs get creation "${_fs}@${_snap}" >/dev/null 2>&1
@@ -292,18 +285,18 @@ __zfs_clone(){
 
     # clone
     for _fs in ${_fs_list}; do
-        _newfs=$(echo "${_fs}" | sed "s@${VM_ZFS_DATASET}/${_old}@${VM_ZFS_DATASET}/${_name}@")
+        _newfs=$(echo "${_fs}" | sed "s@${VM_DS_ZFS_DATASET}/${_old}@${VM_DS_ZFS_DATASET}/${_name}@")
 
         zfs clone "${_fs}@${_snap}" "${_newfs}"
         [ $? -ne 0 ] && __err "error while cloning dataset ${_fs}@${_snap}"
     done
 
     # update new guest files
-    mv "${vm_dir}/${_name}/${_old}.conf" "${vm_dir}/${_name}/${_name}.conf"
-    unlink "${vm_dir}/${_name}/vm-bhyve.log" >/dev/null 2>&1
+    mv "${VM_DS_PATH}/${_name}/${_old}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf"
+    unlink "${VM_DS_PATH}/${_name}/vm-bhyve.log" >/dev/null 2>&1
 
     # update mac addresses and uuid
-    __config_load "${vm_dir}/${_name}/${_name}.conf"
+    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
     __vm_config_set "${_name}" "uuid" "${_uuid}"
 
     # find all network interfaces and change mac
@@ -330,12 +323,8 @@ __zfs_image_create(){
 
     while getopts d: _opt ; do
         case $_opt in
-            d)
-                _desc=${OPTARG}
-                ;;
-            *)
-                __usage
-                ;;
+            d) _desc=${OPTARG} ;;
+            *) __usage ;;
         esac
     done
 
@@ -346,7 +335,9 @@ __zfs_image_create(){
     _date=$(date)
 
     [ -z "${_desc}" ] && _desc="No description provided"
-    [ ! -e "${vm_dir}/${_name}" ] && __err "${_name} does not appear to be a valid virtual machine"
+
+    __datastore_load_guest "${_name}" || __err "${_name} does not appear to be a valid virtual machine"
+    [ -z "${VM_ZFS}" -o -z "${VM_DS_ZFS}" ] && __err "this command is only supported on zfs datastores"
 
     # create the image dataset if we don't have it
     if [ ! -e "${vm_dir}/images" ]; then
@@ -355,16 +346,16 @@ __zfs_image_create(){
     fi
 
     # try to snapshot
-    zfs snapshot -r "${VM_ZFS_DATASET}/${_name}@${_snap}" >/dev/null 2>&1
-    [ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_ZFS_DATASET}/${_name}@${_snap}"
+    zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" >/dev/null 2>&1
+    [ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_DS_ZFS_DATASET}/${_name}@${_snap}"
 
     # copy source
     echo "Creating a compressed image, this may take some time..."
-    zfs send -R "${VM_ZFS_DATASET}/${_name}@${_snap}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
+    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
     [ $? -ne 0 ] && exit 1
 
     # done with the source snapshot
-    zfs destroy ${VM_ZFS_DATASET}/${_name}@${_snap}
+    zfs destroy -r ${VM_DS_ZFS_DATASET}/${_name}@${_snap}
 
     # create a description file
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "description=${_desc}" >/dev/null 2>&1
@@ -388,7 +379,7 @@ __zfs_image_provision(){
 
     [ -z "${_uuid}" -o -z "${_name}" ] && __usage
     [ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
-    [ -e "${vm_dir}/${_name}" ] && __err "directory ${vm_dir}/${_name} already exists"
+    __datastore_guest_load "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
 
     # get the data filename
     _file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)

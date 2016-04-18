@@ -28,7 +28,7 @@
 # show configured datastores
 #
 __datastore_list(){
-    local _format="%-15s%-11s%-30s%s"
+    local _format="%-15s%-11s%-26s%s"
     local _name _type _dataset _path _ds _spec
 
     # headings

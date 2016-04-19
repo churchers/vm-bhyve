@@ -13,21 +13,6 @@
 # The '#' character signifies the start of a comment, even within
 # double-quotes, and so cannot be used inside any values.
 
-# guest
-# The type of operating system this virtual machine will use.
-# Different systems often require specific steps to load the
-# virtual machine, or specific bhyve options. The generic option
-# does no specific loading and can be used for standard uefi guests.
-#
-# This is no longer a required option and will default to 'generic'
-# if not specified. If set to freebsd, the bhyveload loader is 
-# automatically used, and if set to linux, grub-bhyve will be used.
-#
-# Default: generic
-# Valid Options: freebsd,linux,windows,generic
-#
-guest=""
-
 # loader
 # If the guest you are using requires either bhyveload or grub-bhyve,
 # specify the loader to use here. If the guest is freebsd or linux,

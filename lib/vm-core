@@ -508,7 +508,7 @@ __vm_rename(){
     __zfs_rename_dataset "${_old}" "${_new}"
 
     # rename folder if it still exists (shouldn't if zfs mode and rename worked)
-    if [ -d "${V_DS_PATH}/${_old}" ]; then
+    if [ -d "${VM_DS_PATH}/${_old}" ]; then
         mv "${VM_DS_PATH}/${_old}" "${VM_DS_PATH}/${_new}" >/dev/null 2>&1
         [ $? -ne 0 ] && __err "failed to rename guest directory"
     fi

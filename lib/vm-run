@@ -39,16 +39,14 @@ __vm_run(){
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit
     local _com _comports _comstring _logpath="/dev/null"
-    local _conf
 
     # try to load datstore details
     __datastore_load_guest "${_name}" || exit 5
-    _conf="${VM_DS_PATH}/${_name}/${_name}.conf"
 
     # bail out immediately if guest running
     __vm_confirm_stopped "${_name}" "1" || exit 10
 
-    __config_load "${_conf}"
+    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
     __config_get "_loader" "loader"

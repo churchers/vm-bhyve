@@ -113,7 +113,7 @@ __datastore_add(){
     # save
     __config_core_set "datastore_list" "${_name}" "1"
     __config_core_set "path_${_name}" "${_spec}"
-    [ $? -ne 0 ] && __err "error saving setting to configuration file"
+    [ $? -ne 0 ] && __err "error saving settings to configuration file"
 }
 
 # remove a datastore
@@ -181,7 +181,6 @@ __datastore_load(){
 __datastore_load_guest(){
     local _guest="$1"
     local _ds _spec _path _found _zfs _dataset
-    local _has_ds="$(echo \"${_guest}\" | grep '/')"
 
     __datastore_load
 
@@ -222,7 +221,6 @@ __datastore_load_guest(){
 
 # get the path and details for a datastore
 # put into same variables as datastore_load_guest
-# but just path to datastore rather than guest
 #
 # @param string _ds datastore name
 # @return non-zero on error

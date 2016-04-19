@@ -39,7 +39,7 @@ __parse_cmd(){
                    __switch_init ;;
         switch)    __parse_switch_cmd "$@" ;;
         datastore) __parse_datastore_cmd "$@" ;;
-        image)     __zfs_parse_image_cmd "$@" ;;
+        image)     __parse_image_cmd "$@" ;;
         list)      __vm_list ;;
         info)      __vm_info "$@" ;;
         create)    __vm_create "$@" ;;
@@ -106,6 +106,26 @@ __parse_datastore_cmd(){
         add)    __datastore_add "$@" ;;
         remove) __datastore_remove "$@" ;;
         *)      __usage ;;
+    esac
+}
+
+# cmd 'vm image ...'
+# parse the image command set
+#
+# @param string _cmd the command after 'vm image '
+#
+__parse_image_cmd(){
+    local _cmd="$1"
+    shift
+
+    [ -z "${VM_ZFS}" ] && __err "\$vm_dir must be a ZFS datastore to use these functions"
+
+    case "${_cmd}" in
+        list)      __zfs_image_list ;;
+        create)    __zfs_image_create "$@" ;;
+        provision) __zfs_image_provision "$@" ;;
+        destroy)   __zfs_image_destroy "$@" ;;
+        *)         __usage ;;
     esac
 }
 

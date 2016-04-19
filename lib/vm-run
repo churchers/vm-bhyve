@@ -51,7 +51,6 @@ __vm_run(){
     __config_load "${_conf}"
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
-    __config_get "_guest" "guest" "generic"
     __config_get "_loader" "loader"
     __config_get "_bootdisk" "disk0_name"
     __config_get "_bootdisk_dev" "disk0_dev" "file"
@@ -62,15 +61,8 @@ __vm_run(){
     __config_get "_utc" "utctime" "no"
     __config_get "_debug" "debug" "no"
 
-    # force the correct loader for freebsd/linux
-    # in the future we may get rid of the guest setting completely
-    # and rely on loader
-    [ "${_guest}" = "freebsd" ] && _loader="bhyveload"
-    [ "${_guest}" = "linux" ] && _loader="grub"
-
     __log_rotate "guest" "${_name}"
     __log "guest" "${_name}" "initialising"
-    __log "guest" "${_name}" " [guest: ${_guest}]"
     __log "guest" "${_name}" " [loader: ${_loader:-none}]"
     __log "guest" "${_name}" " [uefi: ${_uefi}]"
     __log "guest" "${_name}" " [cpu: ${_cpu}]"

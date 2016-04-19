@@ -28,8 +28,8 @@
 # list virtual machines
 #
 __vm_list(){
-    local _name _guest _loader _cpu
-    local _path_memory _run _vm _auto _num
+    local _name _loader _cpu
+    local _memory _run _vm _auto _num
     local _format="%-15s %-15s %-11s %-6s %-9s %-12s %s\n"
 
     __datastore_load
@@ -59,8 +59,8 @@ __vm_list(){
             done
 
             # if stopped, see if it's locked by another host
-            if [ "${_run}" = "Stopped" -a -e "${_path}/${_name}/run.lock" ]; then
-                _run=$(head -n1 "${_path}/${_name}/run.lock")
+            if [ "${_run}" = "Stopped" -a -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
+                _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
                 _run="Locked (${_run})"
             fi
 
@@ -380,7 +380,6 @@ __vm_start(){
 
     # check basic settings before going into background mode
     __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    __config_get "_guest" "guest"
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
     __config_get "_disk" "disk0_name"
@@ -389,8 +388,6 @@ __vm_start(){
         __warn "incomplete virtual machine configuration"
         return 1
     fi
-
-    __vm_tmp_upgrade_check
 
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
@@ -632,26 +629,4 @@ __vm_config_set(){
 
     sysrc -inqf "${VM_DS_PATH}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
     return $?
-}
-
-# temporary check for guests that need reconfiguring
-#
-__vm_tmp_upgrade_check(){
-
-    # hopefully no guest means it's a recent guest
-    [ -z "${_guest}" ] && return 0
-
-    case "${_guest}" in
-        freebsd) ;&
-        linux) ;&
-        generic) ;&
-        windows) ;;
-        *)
-            echo "******"
-            echo "  This guest needs to be updated to use newer grub-bhyve support"
-            echo "  Please see the GitHub readme for more information"
-            echo "******"
-            exit 1
-            ;;
-    esac
 }

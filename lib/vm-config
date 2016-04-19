@@ -75,8 +75,8 @@ __config_core_load(){
     # check config file exists
     # this is mainly for upgrades to make sure switch/datastore config are migrated
     if [ ! -e "${vm_dir}/.config/system.conf" ]; then
-        cat "${vm_dir}/.config/switch" > "${vm_dir}/.config/system.conf"
-        cat "${vm_dir}/.config/datastore" >> "${vm_dir}/.config/system.conf"
+        cat "${vm_dir}/.config/switch" > "${vm_dir}/.config/system.conf" 2>/dev/null
+        cat "${vm_dir}/.config/datastore" >> "${vm_dir}/.config/system.conf" 2>/dev/null
     fi
 
     VM_CORE_CONFIG=$(grep '^[a-z]' "${vm_dir}/.config/system.conf" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')

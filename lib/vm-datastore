@@ -82,11 +82,18 @@ __datastore_list(){
 __datastore_add(){
     local _name="$1"
     local _spec="$2"
-    local _mount _num=0
+    local _mount _num=0 _list _curr
 
     [ -z "${_name}" -o -z "${_spec}" ] && __usage
     [ "${_name}" = "default" ] && __err "additional datastore cannot be named 'default'"
     __vm_check_name "${_name}" || __err "invalid datastore name - '${_name}'"
+
+    # check name not in use
+    __config_core_get "_list" "datastore_list"
+
+    for _curr in ${_list}; do
+        [ "${_curr}" = "${_name}" ] && __err "datstore ${_name} already exists!"
+    done
 
     # look for zfs
     if [ "${_spec%%:*}" = "zfs" ]; then

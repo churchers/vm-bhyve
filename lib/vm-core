@@ -562,7 +562,7 @@ __vm_configure(){
     [ -z "${_name}" ] && __usage
     [ -z "${EDITOR}" ] && EDITOR=vi
 
-    __datastore_load_guest "${_name}" || 
+    __datastore_load_guest "${_name}" || \
         __err "cannot locate configuration file for virtual machine: ${_name}"
 
     $EDITOR "${VM_DS_PATH}/${_name}/${_name}.conf"

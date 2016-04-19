@@ -1,4 +1,4 @@
-.Dd Apr 15, 2016
+.Dd Apr 18, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -38,7 +38,17 @@
 .Ar name
 .Pp
 .Nm
+.Cm datastore list
+.Nm
+.Cm datastore add
+.Ar name spec
+.Nm
+.Cm datastore remove
+.Ar name
+.Pp
+.Nm
 .Cm create
+.Op Fl d Ar datastore
 .Op Fl t Ar template
 .Op Fl s Ar size
 .Ar name
@@ -284,13 +294,6 @@ but before any subcommand. These are global options that affect the way
 .Nm
 functions.
 .Bl -tag -width 12n
-.It Fl d Ar directory
-This allows you to run
-.Nm
-using a directory other than that specified in
-.Pa /etc/rc.conf .
-Please note that this alternate directory is used for everything, including
-switch configuration data and templates.
 .It Fl f
 Run 
 .Nm
@@ -432,8 +435,34 @@ Completely remove the named virtual switch and all configuration. The associated
 interface will be removed, as well as any
 .Xr vlan 4
 interfaces if they are not in use by other virtual switches.
+.It Cm datastore list
+List the configured datastores. Normally
+.Sy vm-bhyve
+will store all guests under the directory specified in
+.Pa /etc/rc.conf .
+This is the 
+.Sy default
+datastore. Additional datastores can be added, providing the
+ability to store guests in multiple locations on your system.
+.It Cm datastore add Ar name spec
+Add a new datastore to the system. The datastore name can only contain letters,
+numbers and _. characters. The
+.Pa spec
+should use the same format as
+.Sy $vm_dir .
+A standard directory can be specified by just providing the path, whereas a ZFS
+storage location should be specified in
+.Sy zfs:pool/dataset
+format.
+.Pp
+Please note that the dircetory or dataset should already exist. We do not try to 
+create it.
+.It Cm datastore remove Ar name
+Remove the specified datastore from the list. This does not destroy the directory
+or dataset, leaving all files intact.
 .It Xo
 .Cm create
+.Op Fl d Ar datastore
 .Op Fl t Ar template
 .Op Fl s Ar size
 .Ar name
@@ -447,6 +476,11 @@ created the virtual machine directory
 .Pa $vm_dir/$name ,
 and create the configuration file and empty disk image within.
 .Bl -tag -width 12n
+.It Fl d Ar datastore
+Specify the datastore to create this virtual machine under. If not specified, the
+.Sy default
+dataset will be used, which is the location specified in
+.Pa /etc/rc.conf .
 .It Fl t Ar template
 Specifies the template to use from within the
 .Pa $vm_dir/.templates

@@ -89,6 +89,9 @@ Usage: vm ...
     switch add <name> <interface>
     switch remove <name> <interface>
     switch destroy <name>
+    datastore list
+    datastore add <name> <spec>
+    datastore remove <name>
     list
     info [name]
     create [-t template] [-s size] <name>

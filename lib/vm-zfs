@@ -181,7 +181,7 @@ __zfs_snapshot(){
     fi
 
     [ -z "${_name}" ] && __usage
-    __datastore_load_guest "${_name}" || __err "${_name} does not appear to be an existing virtual machine"
+    __datastore_get_guest "${_name}" || __err "${_name} does not appear to be an existing virtual machine"
     [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot snapshot guests on non-zfs datastores"
     [ -z "${_snap}" ] && _snap=$(date +"%Y-%m-%d-%H:%M:%S")
 
@@ -223,7 +223,7 @@ __zfs_rollback(){
 
     [ -z "${_name}" -o -z "${_snap}" ] && __usage
 
-    __datastore_load_guest "${_name}" || __err "${_name} does not appear to be an existing virtual machine"
+    __datastore_get_guest "${_name}" || __err "${_name} does not appear to be an existing virtual machine"
     [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot rollback guests on non-zfs datastores"
 
     __vm_confirm_stopped "${_name}" || exit 1
@@ -252,8 +252,8 @@ __zfs_clone(){
 
     [ -z "${_old}" -o -z "${_name}" ] && __usage
 
-    __datastore_load_guest "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
-    __datastore_load_guest "${_old}" || __err "${_name} does not appear to be an existing virtual machine"
+    __datastore_get_guest "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
+    __datastore_get_guest "${_old}" || __err "${_name} does not appear to be an existing virtual machine"
     [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot clone guests on non-zfs datastores"
 
     # try to get snapshot name
@@ -336,7 +336,7 @@ __zfs_image_create(){
 
     [ -z "${_desc}" ] && _desc="No description provided"
 
-    __datastore_load_guest "${_name}" || __err "${_name} does not appear to be a valid virtual machine"
+    __datastore_get_guest "${_name}" || __err "${_name} does not appear to be a valid virtual machine"
     [ -z "${VM_ZFS}" -o -z "${VM_DS_ZFS}" ] && __err "this command is only supported on zfs datastores"
 
     # create the image dataset if we don't have it

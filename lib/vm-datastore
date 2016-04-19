@@ -28,7 +28,7 @@
 # show configured datastores
 #
 __datastore_list(){
-    local _format="%-15s%-11s%-26s%s"
+    local _format="%-15s %-11s %-25s %s"
     local _name _type _dataset _path _ds _spec
 
     # headings
@@ -178,7 +178,7 @@ __datastore_load(){
 # @return non-zero on error
 # @modifies VM_DS_NAME VM_DS_PATH VM_DS_ZFS VM_DS_ZFS_DATASET
 #
-__datastore_load_guest(){
+__datastore_get_guest(){
     local _guest="$1"
     local _ds _spec _path _found _zfs _dataset
 

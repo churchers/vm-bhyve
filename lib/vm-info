@@ -39,13 +39,13 @@ __vm_info(){
 
     # see if one guest provided
     if [ -n "${_name}" ]; then
-        __datastore_load_guest "${_name}" || __err "unable to locate virtual machine '${_name}'"
+        __datastore_get_guest "${_name}" || __err "unable to locate virtual machine '${_name}'"
         __vm_info_guest "${_name}"
         exit
     fi
 
     # show all guests from all datastores
-    for _ds in $VM_DATASTORE_LIST; do
+    for _ds in ${VM_DATASTORE_LIST}; do
         __datastore_get "${_ds}"
         ls -1 "${VM_DS_PATH}" | \
         while read _name; do

@@ -105,7 +105,7 @@ __vm_create(){
 
     # check guest name
     __vm_check_name "${_name}" || __err "invalid virtual machine name - '${_name}'"
-    __datastore_load_guest "${_name}" && __err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
+    __datastore_get_guest "${_name}" && __err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
     __datastore_get "${_ds}" || __err "unable to load datastore - '${_ds}'"
 
     [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
@@ -200,7 +200,7 @@ __vm_add(){
 
     # check guest
     [ -z "${_name}" ] && __usage
-    __datastore_load_guest "${_name}" || "${_name} does not appear to be a valid virtual machine"
+    __datastore_get_guest "${_name}" || "${_name} does not appear to be a valid virtual machine"
 
     case "${_device}" in
         disk)
@@ -370,7 +370,7 @@ __vm_start(){
     [ -z "${_name}" ] && __usage
 
     # try to find guest
-    if ! __datastore_load_guest "${_name}"; then
+    if ! __datastore_get_guest "${_name}"; then
         __warn "${_name} does not seem to be a valid virtual machine"
         return 1
     fi
@@ -475,7 +475,7 @@ __vm_destroy(){
     local _name="$1"
 
     [ -z "${_name}" ] && __usage
-    __datastore_load_guest "${_name}" || __err "${_name} doesn't appear to be a valid virtual machine"
+    __datastore_get_guest "${_name}" || __err "${_name} doesn't appear to be a valid virtual machine"
 
     # make sure it's stopped!
     __vm_confirm_stopped "${_name}" || exit 1
@@ -498,8 +498,8 @@ __vm_rename(){
     [ -z "${_old}" -o -z "${_new}" ] && __usage
     __vm_check_name "${_new}" || __err "invalid virtual machine name - '${_name}'"
 
-    __datastore_load_guest "${_new}" && __err "directory ${VM_DS_PATH}/${_new} already exists"
-    __datastore_load_guest "${_old}" || __err "${_old} doesn't appear to be a valid virtual machine"
+    __datastore_get_guest "${_new}" && __err "directory ${VM_DS_PATH}/${_new} already exists"
+    __datastore_get_guest "${_old}" || __err "${_old} doesn't appear to be a valid virtual machine"
 
     # confirm guest stopped
     __vm_confirm_stopped "${_old}" || exit 1
@@ -535,7 +535,7 @@ __vm_console(){
 
     [ -z "${_name}" ] && __usage
 
-    __datastore_load_guest "${_name}" || __err "${_name} doesn't appear to be a valid virtual machine"
+    __datastore_get_guest "${_name}" || __err "${_name} doesn't appear to be a valid virtual machine"
     [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
     [ ! -e "${VM_DS_PATH}/${_name}/console" ] && __err "can't locate console data for ${_name}"
 
@@ -562,7 +562,7 @@ __vm_configure(){
     [ -z "${_name}" ] && __usage
     [ -z "${EDITOR}" ] && EDITOR=vi
 
-    __datastore_load_guest "${_name}" || \
+    __datastore_get_guest "${_name}" || \
         __err "cannot locate configuration file for virtual machine: ${_name}"
 
     $EDITOR "${VM_DS_PATH}/${_name}/${_name}.conf"

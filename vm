@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.1-alpha
-VERSION_INT=101009
+VERSION_INT=101012
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -79,4 +79,5 @@ __zfs_init
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
 
 # run the requested command
+__config_core_load
 __parse_cmd ${VM_COMMAND}

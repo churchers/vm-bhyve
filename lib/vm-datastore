@@ -50,11 +50,10 @@ __datastore_list(){
     printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
 
     # load the rest
-    __config_load "${vm_dir}/.config/datastore"
-    __config_get "_ds" "datastore_list"
+    __config_core_get "_ds" "datastore_list"
 
     for _name in ${_ds}; do
-        __config_get "_spec" "path_${_name}"
+        __config_core_get "_spec" "path_${_name}"
         [ -z "${_spec}" ] && continue
 
         if [ "${_spec%%:*}" = "zfs" ]; then
@@ -103,9 +102,11 @@ __datastore_add(){
 
     # see if this is already our default datastore
     [ "${_mount}" = "${vm_dir}" ] && __err "specified path already exists as default datastore"
+
     # save
-    __rc_append_string ".config/datastore" "datastore_list" "${_name}"
-    sysrc -inqf "${vm_dir}/.config/datastore" "path_${_name}"="${_spec}" >/dev/null 2>&1
+    __config_core_set "datastore_list" "${_name}" "1"
+    __config_core_set "path_${_name}" "${_spec}"
+    [ $? -ne 0 ] && __err "error saving setting to configuration file"
 }
 
 # remove a datastore
@@ -118,8 +119,9 @@ __datastore_remove(){
 
     __datastore_get "${_name}" || __err "unable to locate the specified dataset"
 
-    __rc_splice_string ".config/datastore" "datastore_list" "${_name}"
-    sysrc -inxqf "${vm_dir}/.config/datastore" "path_${_name}" >/dev/null 2>&1
+    __config_core_remove "datastore_list" "${_name}"
+    __config_core_remove "path_${_name}"
+    [ $? -ne 0 ] && __err "error removing settings from configuration file"
 }
 
 # get the filesystem path for the specified dataset spec
@@ -156,8 +158,7 @@ __datastore_resolve_path(){
 # @modifies VM_DATASTORE_LIST
 #
 __datastore_load(){
-    __config_load "${vm_dir}/.config/datastore"
-    __config_get "VM_DATASTORE_LIST" "datastore_list"
+    __config_core_get "VM_DATASTORE_LIST" "datastore_list"
     VM_DATASTORE_LIST="default${VM_DATASTORE_LIST:+ }${VM_DATASTORE_LIST}"
 }
 
@@ -190,7 +191,7 @@ __datastore_load_guest(){
     if [ -z "${_found}" ]; then
         for _ds in ${VM_DATASTORE_LIST}; do
             [ "${_ds}" = "default" ] && continue
-            __config_get "_spec" "path_${_ds}"
+            __config_core_get "_spec" "path_${_ds}"
             __datastore_resolve_path "_path" "${_spec}"
 
             if [ -f "${_path}/${_guest}/${_guest}.conf" ]; then
@@ -233,7 +234,7 @@ __datastore_get(){
         return 0
     fi
 
-    _spec=$(sysrc -inqf "${vm_dir}/.config/datastore" "path_${_ds}")
+    __config_core_get "_spec" "path_${_ds}"
     [ -z "${_spec}" ] && return 1
 
     __datastore_resolve_path "_path" "${_spec}" || return 1

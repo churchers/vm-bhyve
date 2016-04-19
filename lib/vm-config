@@ -69,46 +69,80 @@ __config_get(){
     return 1
 }
 
-# add a value to an rc file, appending to an existing string value
+# load core configuration file
 #
-# @param string _file the file to update (relative to $vm_dir/)
-# @param string _var the variable to update
-# @param string _value value to add to the string
-#
-__rc_append_string(){
-    local _file="${vm_dir}/$1"
-    local _var="$2"
-    local _value="$3"
-    local _curr
+__config_core_load(){
+    # check config file exists
+    # this is mainly for upgrades to make sure switch/datastore config are migrated
+    if [ ! -e "${vm_dir}/.config/system.conf" ]; then
+        cat "${vm_dir}/.config/switch" > "${vm_dir}/.config/system.conf"
+        cat "${vm_dir}/.config/datastore" >> "${vm_dir}/.config/system.conf"
+    fi
 
-    _curr=$(sysrc -inqf "${_file}" "${_var}")
-    _curr="${_curr}${_curr:+ }${_value}"
-
-    sysrc -inqf "${_file}" "${_var}=${_curr}" >/dev/null 2>&1
-    [ $? -ne 0 ] && __warn "unable to update configuration file for ${_var}"
+    VM_CORE_CONFIG=$(grep '^[a-z]' "${vm_dir}/.config/system.conf" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
 }
 
-# remove a value from a string list
-# eg. removing "two" from var="one two three" would result in var="one three"
+# get a value from core config
 #
-# @param string _file the file to update (relative to $vm_dir/)
-# @param string _var the variable to update
-# @param string _value the value to remove
+# @param string _c_var variable name to put value into
+# @param string _c_key config key to look for
+# @param string _c_def default value if not value
+# @return 0 if found
 #
-__rc_splice_string(){
-    local _file="${vm_dir}/$1"
-    local _var="$2"
-    local _value="$3"
-    local _curr _key _new
+__config_core_get(){
+    local _c_var="$1"
+    local _c_key="$2"
+    local _c_def="$3"
+    local _c_line
+    local IFS=$'\n'
 
-    _curr=$(sysrc -inqf "${_file}" "${_var}")
-
-    for _key in ${_curr}; do
-        if [ "${_key}" != "${_value}" ]; then
-            _new="${_new}${_new:+ }${_key}"
+    for _c_line in ${VM_CORE_CONFIG}; do
+        if [ "${_c_key}" = "${_c_line%%=*}" ]; then
+            setvar "${_c_var}" "${_c_line#*=}"
+            return 0
         fi
     done
 
-    sysrc -inqf "${_file}" "${_var}=${_new}" >/dev/null 2>&1
-    [ $? -ne 0 ] && __warn "unable to update configuration file for ${_var}"
+    # not found
+    setvar "${_c_var}" "${_c_def}"
+    return 1
+}
+
+# add a value to core configuration
+#
+# @param string _var variable to set
+# @param string _value new value
+# @param string _append non-empty to append to existing value
+#
+__config_core_set(){
+    local _var="$1"
+    local _value="$2"
+    local _append="$3"
+
+    if [ -n "${_append}" ]; then
+        sysrc -inqf "${vm_dir}/.config/system.conf" "${_var}"+="${_value}" >/dev/null 2>&1
+    else
+        sysrc -inqf "${vm_dir}/.config/system.conf" "${_var}"="${_value}" >/dev/null 2>&1
+    fi
+
+    return $?
+}
+
+# remove a value from core configuration
+#
+# @param string _var variable to remove
+# @param string _value if non-empty we will try to remove just this value from setting
+# @return non-zero on error
+#
+__config_core_remove(){
+    local _var="$1"
+    local _value="$2"
+
+    if [ -n "${_value}" ]; then
+        sysrc -inqf "${vm_dir}/.config/system.conf" "${_var}"-="${_value}" >/dev/null 2>&1
+    else
+        sysrc -inxqf "${vm_dir}/.config/system.conf" ${_var} >/dev/null 2>&1
+    fi
+
+    return $?
 }

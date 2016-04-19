@@ -33,22 +33,21 @@ __switch_init(){
     local _switchlist _switch _id
     local _nat _havenat=0 _bridge _vale
 
-    __config_load "${vm_dir}/.config/switch"
-    __config_get "_switchlist" "switch_list"
+    __config_core_get "_switchlist" "switch_list"
 
     # create bridges for each switch if they don't already exist
     if [ -n "${_switchlist}" ]; then
         for _switch in ${_switchlist}; do
             # do nothing if it's a vale switch
-            __config_get "_vale" "vale_${_switch}"
+            __config_core_get "_vale" "vale_${_switch}"
             __checkyesno "${_vale}" && continue
 
             # do nothing if the bridge already exists
             __switch_get_ident "_id" "${_switch}"
             [ -n "${_id}" ] && continue
 
-            __config_get "_nat" "nat_${_switch}"
-            __config_get "_bridge" "bridge_${_switch}"
+            __config_core_get "_nat" "nat_${_switch}"
+            __config_core_get "_bridge" "bridge_${_switch}"
 
             if [ -n "${_bridge}" ]; then
                 ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1
@@ -76,8 +75,7 @@ __switch_list(){
     local _vlan _nat _bridge _type _vale
     local _id _format="%-15s %-10s %-11s %-9s %-12s %s\n"
 
-    __config_load "${vm_dir}/.config/switch"
-    __config_get "_switchlist" "switch_list"
+    __config_core_get "_switchlist" "switch_list"
 
     printf "${_format}" "NAME" "TYPE" "IDENT" "VLAN" "NAT" "PORTS"
 
@@ -85,11 +83,11 @@ __switch_list(){
         __switch_get_ident "_id" "${_switch}"
         [ -z "${_id}" ] && _id="-"
 
-        __config_get "_portlist" "ports_${_switch}"
-        __config_get "_vlan" "vlan_${_switch}"
-        __config_get "_nat" "nat_${_switch}"
-        __config_get "_bridge" "bridge_${_switch}"
-        __config_get "_vale" "vale_${_switch}"
+        __config_core_get "_portlist" "ports_${_switch}"
+        __config_core_get "_vlan" "vlan_${_switch}"
+        __config_core_get "_nat" "nat_${_switch}"
+        __config_core_get "_bridge" "bridge_${_switch}"
+        __config_core_get "_vale" "vale_${_switch}"
 
         if __checkyesno "${_vale}"; then
             _type="vale"
@@ -123,14 +121,14 @@ __switch_create(){
     local _id _curr_list _curr
 
     __vm_check_name "${_switch}" || __err "invalid switch name - '${_name}'"
-
-    _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+    __config_core_get "_curr_list" "switch_list"
 
     for _curr in $_curr_list; do
         [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
     done
 
-    __rc_append_string ".config/switch" "switch_list" "${_switch}"
+    __config_core_set "switch_list" "${_switch}" "1"
+    [ $? -ne 0 ] && __err "failed to add switch to configuration file"
 
     _id=$(ifconfig bridge create)
     [ $? -ne 0 ] && __err "failed to create bridge interface"
@@ -150,8 +148,7 @@ __switch_import(){
 
     [ -z "${_switch}" -o -z "${_bridge}" ] && __usage
     __vm_check_name "${_switch}" || __err "invalid switch name - '${_name}'"
-
-    _curr_list=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+    __config_core_get "_curr_list" "switch_list"
 
     for _curr in $_curr_list; do
         [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
@@ -160,8 +157,9 @@ __switch_import(){
     _exists=$(ifconfig | grep "^${_bridge}: ")
     [ -z "${_exists}" ] && __err "${_bridge} does not appear to be a valid existing bridge"
 
-    __rc_append_string ".config/switch" "switch_list" "${_switch}"
-    sysrc -inqf "${vm_dir}/.config/switch" "bridge_${_switch}"="${_bridge}" >/dev/null 2>&1
+    __config_core_set "switch_list" "${_switch}" "1"
+    __config_core_set "bridge_${_switch}" "${_bridge}"
+    [ $? -ne 0 ] && __err "failed to add switch to configuration file"
 
     # attach our description to bridge
     # this will allow vm-bhyve to find it and attach guests
@@ -177,16 +175,15 @@ __switch_remove(){
     local _switch="$1"
     local _id _nat _bridge _vale
 
-    __config_load "${vm_dir}/.config/switch"
-    __config_get "_bridge" "bridge_${_switch}"
-    __config_get "_nat" "nat_${_switch}"
-    __config_get "_vale" "vale_${_switch}"
+    __config_core_get "_bridge" "bridge_${_switch}"
+    __config_core_get "_nat" "nat_${_switch}"
+    __config_core_get "_vale" "vale_${_switch}"
 
     # if manual, leave it there and just remove from our config
     if [ -n "${_bridge}" ]; then
         ifconfig "${_bridge}" description "" >/dev/null 2>&1
-        __rc_splice_string ".config/switch" "switch_list" "${_switch}"
-        sysrc -inxqf "${vm_dir}/.config/switch" "bridge_${_switch}"
+        __config_core_remove "switch_list" "${_switch}"
+        __config_core_remove "bridge_${_switch}"
         exit 0
     fi	
 
@@ -195,9 +192,8 @@ __switch_remove(){
         __switch_remove_allmembers "${_switch}" "${_id}"
     fi
 
-    __rc_splice_string ".config/switch" "switch_list" "${_switch}"
-    sysrc -inxqf "${vm_dir}/.config/switch" "ports_${_switch}" "vlan_${_switch}" \
-        "nat_${_switch}" "vale_${_switch}" >/dev/null 2>&1
+    __config_core_remove "switch_list" "${_switch}" "1"
+    __config_core_remove "ports_${_switch} vlan_${_switch} nat_${_switch} vale_${_switch}"
 
     if [ -z "${_vale}" ]; then
         if [ -n "${_id}" ]; then
@@ -235,9 +231,9 @@ __switch_vlan(){
     __switch_remove_allmembers "${_switch}"
 
     if [ "${_vlan}" = "0" ]; then
-        sysrc -inxqf "${vm_dir}/.config/switch" "vlan_${_switch}" >/dev/null 2>&1
+        __config_core_remove "vlan_${_switch}"
     else
-        sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}"="${_vlan}" >/dev/null 2>&1
+        __config_core_set "vlan_${_switch}" "${_vlan}"
     fi
 
     # put interfaces back in
@@ -262,7 +258,7 @@ __switch_add_allmembers(){
         [ -z "${_id}" ] && __err "failed to get switch id while adding members"
     fi
 
-    _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+    __config_core_get "_portlist" "ports_${_switch}"
 
     if [ -n "${_portlist}" ]; then
         for _port in ${_portlist}; do
@@ -287,7 +283,7 @@ __switch_remove_allmembers(){
         [ -z "${_id}" ] && __err "failed to get switch id while removing members"
     fi
 
-    _portlist=$(sysrc -inqf "${vm_dir}/.config/switch" "ports_${_switch}")
+    __config_core_get "_portlist" "ports_${_switch}"
 
     if [ -n "${_portlist}" ]; then
         for _port in ${_portlist}; do
@@ -311,7 +307,7 @@ __switch_configure_port(){
     local _member="$3"
     local _vlan _vid
 
-    _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+    __config_core_get "_vlan" "vlan_${_switch}"
 
     if [ -n "${_vlan}" ]; then
         __switch_get_ident "_vid" "vlan-${_member}-${_vlan}"
@@ -349,7 +345,7 @@ __switch_add_member(){
     [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
 
     __switch_configure_port "${_switch}" "${_id}" "${_member}"
-    __rc_append_string ".config/switch" "ports_${_switch}" "${_member}"
+    __config_core_add "ports_${_switch}" "${_member}" "1"
 }
 
 # physically remove a port from a virtual switch / bridge
@@ -365,7 +361,7 @@ __switch_unconfigure_port(){
     local _member="$3"
     local _id _vlan _vid _usage
 
-    _vlan=$(sysrc -inqf "${vm_dir}/.config/switch" "vlan_${_switch}")
+    __config_core_get "_vlan" "vlan_${_switch}"
 
     if [ -n "${_vlan}" ]; then
         __switch_get_ident "_vid" "vlan-${_member}-${_vlan}"
@@ -405,7 +401,7 @@ __switch_remove_member(){
     __switch_get_ident "_id" "${_switch}"
     [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
 
-    __rc_splice_string ".config/switch" "ports_${_switch}" "${_member}"
+    __config_core_remove "ports_${_switch}" "${_member}"
     __switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
 }
 
@@ -425,14 +421,14 @@ __switch_nat(){
 
     case "${_nat}" in
         off)
-            sysrc -inxqf "${vm_dir}/.config/switch" "nat_${_switch}"
+            __config_core_remove "nat_${_switch}"
             ;;
         on)
             if ! checkyesno pf_enable; then
                 __err "pf needs to be enabled for nat functionality"
             fi
 
-            sysrc -inqf "${vm_dir}/.config/switch" "nat_${_switch}=yes" >/dev/null 2>&1
+            __config_core_set "nat_${_switch}" "yes"
             [ $? -ne 0 ] && __err "failed to store nat configuration"
 
             echo "******"
@@ -485,11 +481,11 @@ __switch_nat_init(){
     _grep=$(grep "${_pf_rules}" /etc/pf.conf)
     [ -z "${_grep}" ] && echo "include \"${_pf_rules}\"" >> /etc/pf.conf
 
-    _switchlist=$(sysrc -inqf "${vm_dir}/.config/switch" switch_list)
+    _config_core_get "_switchlist" "switch_list"
 
     # add each nat switch to dnsmasq.conf and .config/pf-nat.conf
     for _switch in ${_switchlist}; do
-        _nat=$(sysrc -inqf "${vm_dir}/.config/switch" "nat_${_switch}")
+        __config_core_get "_nat" "nat_${_switch}"
         __switch_get_ident "_id" "${_switch}"
 
         if [ "${_nat}" = "yes" -a -n "${_id}" ]; then
@@ -526,8 +522,8 @@ __switch_nat_init(){
 #
 __switch_is_vale(){
     local _switch="$1"
-    local _is_vale=$(sysrc -inqf "${vm_dir}/.config/switch" "vale_${_switch}")
 
+    __config_core_get "_is_vale" "vale_${_switch}"
     [ -z "${_is_vale}" ] && return 1
 
     __checkyesno "${_is_vale}"
@@ -571,8 +567,9 @@ __switch_auto(){
     local _switch="$1"
     local _bridge _vale
 
-    _bridge=$(sysrc -inqf "${vm_dir}/.config/switch" "bridge_${_switch}")
-    _vale=$(sysrc -inqf "${vm_dir}/.config/switch" "vale_${_switch}")
+    __config_core_get "_bridge" "bridge_${_switch}"
+    __config_core_get "_vale" "vale_${_switch}"
+
     [ -n "${_bridge}" ] && __err "this is a manual switch that is managed outside of vm-bhyve"
     [ -n "${_vale}" ] && __err "this command is not currently supported on vale switches"
 }

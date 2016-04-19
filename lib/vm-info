@@ -61,10 +61,11 @@ __vm_info(){
 #
 __vm_info_switch(){
     local _switch="$1"
-    local _conf="${vm_dir}/.config/switch"
     local _list
 
-    __config_load "${_conf}"
+    # load config file manually using non-core function
+    # this means we can share the config_output function with guest
+    __config_load "${vm_dir}/.config/system.conf"
     __config_get "_list" "switch_list"
 
     if [ -n "${_switch}" ]; then

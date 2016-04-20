@@ -4,7 +4,7 @@ Management system for FreeBSD bhyve virtual machines
 
 Some of the main features include:
 
-* Now with beta Windows/UEFI support as of v0.7.2!
+* Now with Windows/UEFI support as of v0.7.2!
 * Simple commands to create/start/stop bhyve instances
 * Simple configuration file format
 * Virtual switches supporting vlans & nat (no manual tap or bridge devices needed)
@@ -14,8 +14,9 @@ Some of the main features include:
 * Integration with rc.d startup/shutdown
 * Guest reboot handling
 * Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
+* Multiple datastores
 
-See the GitHub wiki for more information and examples.
+##### See the GitHub wiki for more information and examples.
 
 For most users, I recommend using the version in ports (0.12+), or the 1.0 beta - available
 as a release on GitHub. Main development happens in the master branch and it may contain

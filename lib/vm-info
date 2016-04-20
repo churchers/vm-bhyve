@@ -46,8 +46,9 @@ __vm_info(){
 
     # show all guests from all datastores
     for _ds in ${VM_DATASTORE_LIST}; do
-        __datastore_get "${_ds}"
-        ls -1 "${VM_DS_PATH}" | \
+        __datastore_get "${_ds}" || continue
+
+        ls -1 "${VM_DS_PATH}" 2>/dev/null | \
         while read _name; do
             [ -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && __vm_info_guest "${_name}"
         done

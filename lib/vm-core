@@ -39,7 +39,7 @@ __vm_list(){
     for _ds in ${VM_DATASTORE_LIST}; do
         __datastore_get "${_ds}" || continue
 
-        ls -1 "${VM_DS_PATH}" | \
+        ls -1 "${VM_DS_PATH}" 2>/dev/null | \
         while read _name; do
             [ ! -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && continue
 

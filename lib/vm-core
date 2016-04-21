@@ -180,18 +180,10 @@ __vm_add(){
 
     while getopts d:t:s: _opt; do
         case $_opt in
-            d)
-                _device=${OPTARG}
-                ;;
-            t)
-                _type=${OPTARG}
-                ;;
-            s)
-                _sopt=${OPTARG}
-                ;;
-            *)
-                __usage
-                ;;
+            d) _device=${OPTARG} ;;
+            t) _type=${OPTARG} ;;
+            s) _sopt=${OPTARG} ;;
+            *) __usage ;;
         esac
     done
 
@@ -203,15 +195,9 @@ __vm_add(){
     __datastore_get_guest "${_name}" || "${_name} does not appear to be a valid virtual machine"
 
     case "${_device}" in
-        disk)
-            __vm_add_disk "${_name}" "${_type}" "${_sopt}"
-            ;;
-        network)
-            __vm_add_network "${_name}" "${_sopt}"
-            ;;
-        *)
-            __err "device must be one of the following: disk network"
-            ;;
+        disk)    __vm_add_disk "${_name}" "${_type}" "${_sopt}" ;;
+        network) __vm_add_network "${_name}" "${_sopt}" ;;
+        *)       __err "device must be one of the following: disk network" ;;
     esac
 }
 

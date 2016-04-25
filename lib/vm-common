@@ -94,10 +94,10 @@ Usage: vm ...
     datastore remove <name>
     list
     info [name]
-    create [-t template] [-s size] <name>
-    install <name> <iso>
-    start <name>
-    stop <name> <...>
+    create [-d datastore] [-t template] [-s size] <name>
+    [-f] install <name> <iso>
+    [-f] start <name>
+    stop <name> [...]
     console <name> [com1|com2]
     rename <name> <new-name>
     add [-d device] [-t type] [-s size|switch] <name>

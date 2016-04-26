@@ -113,9 +113,9 @@ Usage: vm ...
     rollback [-r] <name@snapshot>
     iso [url]
     image list
-    image create [-d description] <name>
+    image create [-d description] [-u] <name>
     image destroy <uuid>
-    image provision <uuid> <newname>
+    image provision [-d datastore] <uuid> <newname>
 EOT
     exit 1
 }

@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.1-alpha
-VERSION_INT=101027
+VERSION_INT=101028
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -61,9 +61,7 @@ fi
 
 # we should be enabled in rc.conf
 # or call it using forcestart
-if [ -z "$rc_force" ] && ! checkyesno vm_enable; then
-    __err "\$vm_enable is not enabled in /etc/rc.conf!"
-fi
+[ -z "$rc_force" ] && ! checkyesno vm_enable && __err "\$vm_enable is not enabled in /etc/rc.conf!"
 
 # check for any global arguments
 __parse_cmd_args $@

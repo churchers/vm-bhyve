@@ -1,4 +1,4 @@
-.Dd Apr 18, 2016
+.Dd Apr 26, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -121,9 +121,11 @@
 .Nm
 .Cm image create
 .Op Fl d Ar description
+.Op Fl u
 .Ar name
 .Nm
 .Cm image provision
+.Op Fl d Ar datastore
 .Ar uuid
 .Ar new-name
 .Nm
@@ -724,6 +726,7 @@ and as such are only available when using a ZFS dataset as the storage location.
 .It Xo
 .Cm image create
 .Op Fl d Ar description
+.Op Fl u
 .Ar name
 .Xc
 Create a new image from the named virtual machine. This will create a compressed copy of
@@ -734,10 +737,20 @@ directory. It also creates a
 file which contains details about the image.
 .Pp
 Once complete, it will display the UUID which has been assigned to this image.
-.It Cm image provision Ar uuid Ar new-name
+.Pp
+If you do not want the image to be compressed, specify the
+.Sy -u
+option.
+.It Xo
+.Cm image provision
+.Op Fl d Ar datastore
+.Ar uuid Ar new-name
+.Xc
 Create a new virtual machine, named
 .Pa new-name ,
-from the specified image UUID.
+from the specified image UUID. This will be created on the
+.Sy default
+datastore unless specified otherwise.
 .It Cm image destroy Ar uuid
 Destroy the specified image.
 .El

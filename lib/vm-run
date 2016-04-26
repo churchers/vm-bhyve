@@ -634,7 +634,7 @@ __vm_generate_static_mac(){
 
     _base="${_name}:${_num}:${_time}"
 
-    # generate the last 4 bytes
+    # generate the last 5 digits
     # make sure we don't get 0:00:00 (see sys/net/ieee_oui.h)
     while [ "${_part}" = "0:00:00" ]; do
         _key="${_base}:${_int}"

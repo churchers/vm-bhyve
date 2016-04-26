@@ -319,11 +319,12 @@ __zfs_clone(){
 #
 __zfs_image_create(){
     local _name _opt _desc
-    local _uuid _snap _date
+    local _uuid _snap _date _no_compress _filename
 
-    while getopts d: _opt ; do
+    while getopts d:u _opt ; do
         case $_opt in
             d) _desc=${OPTARG} ;;
+            u) _no_compress="1" ;;
             *) __usage ;;
         esac
     done
@@ -350,8 +351,18 @@ __zfs_image_create(){
     [ $? -ne 0 ] && __err "failed to create snapshot of source dataset ${VM_DS_ZFS_DATASET}/${_name}@${_snap}"
 
     # copy source
-    echo "Creating a compressed image, this may take some time..."
-    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | xz > "${vm_dir}/images/${_uuid}.zfs.xz"
+    if [ -n "${_no_compress}" ]; then
+        _filename="${_uuid}.zfs"
+
+        echo "Creating guest image, this may take some time..."
+        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" > "${vm_dir}/images/${_filename}"
+    else
+        _filename="${_uuid}.zfs.xz"
+
+        echo "Creating a compressed image, this may take some time..."
+        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | xz > "${vm_dir}/images/${_filename}"
+    fi
+
     [ $? -ne 0 ] && exit 1
 
     # done with the source snapshot
@@ -361,7 +372,7 @@ __zfs_image_create(){
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "description=${_desc}" >/dev/null 2>&1
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "created=${_date}" >/dev/null 2>&1
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "name=${_name}" >/dev/null 2>&1
-    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "filename=${_uuid}.zfs.xz" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "filename=${_filename}" >/dev/null 2>&1
 
     echo "Image of ${_name} created with UUID ${_uuid}"
 }
@@ -373,34 +384,59 @@ __zfs_image_create(){
 # @param string _name name of the new guest
 #
 __zfs_image_provision(){
-    local _uuid="$1"
-    local _name="$2"
-    local _file _oldname _entry _num=0
+    local _uuid _name _file _oldname _entry _num=0 _type
+    local _datastore="default"
+
+    while getopts d: _opt ; do
+        case $_opt in
+            d) _datastore="${OPTARG}" ;;
+            *) __usage ;;
+        esac
+    done
+
+    shift $((OPTIND - 1))
+    _uuid="$1"
+    _name="$2"
 
     [ -z "${_uuid}" -o -z "${_name}" ] && __usage
     [ ! -e "${vm_dir}/images/${_uuid}.manifest" ] && __err "unable to locate image with uuid ${_uuid}"
-    __datastore_guest_load "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
+    __datastore_get_guest "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
 
     # get the data filename
     _file=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" filename)
+    _type=${_file##*.}
+
     _oldname=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
     [ -z "${_file}" -o -z "${_oldname}" ] && __err "unable to locate required details from the specified image manifest"
     [ ! -e "${vm_dir}/images/${_file}" ] && __err "image data file does not exist: ${vm_dir}/images/${_file}"
 
+    # get the datastore to create on
+    __datastore_get "${_datastore}" || __err "unable to locate datastore '${_datastore}'"
+
     # try to recieve
-    echo "Unpacking compressed image, this may take some time..."
-    cat "${vm_dir}/images/${_file}" | xz -d | zfs recv "${VM_ZFS_DATASET}/${_name}"
+    echo "Unpacking guest image, this may take some time..."
+
+    # check format of image
+    case ${_type} in
+        zfs) cat "${vm_dir}/images/${_file}" | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
+        xz)  cat "${vm_dir}/images/${_file}" | xz -d | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
+        *)   __err "unsupported guest image type - '${_type}'" ;;
+    esac
+
+    # error unpacking?
     [ $? -ne 0 ] && __err "errors occured while trying to unpackage the image file"
 
     # remove the original snapshot
-    zfs destroy "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+    zfs destroy -r "${VM_DS_ZFS_DATASET}/${_name}@${_uuid%%-*}" >/dev/null 2>&1
 
     # rename the guest configuration file
-    mv "${vm_dir}/${_name}/${_oldname}.conf" "${vm_dir}/${_name}/${_name}.conf" >/dev/null 2>&1
+    mv "${VM_DS_PATH}/${_name}/${_oldname}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf" >/dev/null 2>&1
     [ $? -ne 0 ] && __err "unpackaged image but unable to update guest configuration file"
 
-    # update mac addresses and uuid
-    __config_load "${vm_dir}/${_name}/${_name}.conf"
+    # update mac addresses and create a new uuid
+    _uuid=$(uuidgen)
+
+    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
     __vm_config_set "${_name}" "uuid" "${_uuid}"
 
     # find all network interfaces and change mac
@@ -413,8 +449,8 @@ __zfs_image_provision(){
     done
 
     # vm may be started when 'vm image create' is executed
-    rm -f "${vm_dir}/${_name}/run.lock" >/dev/null 2>&1
-    rm -f "${vm_dir}/${_name}/vm-bhyve.log*" >/dev/null 2>&1
+    rm -f "${VM_DS_PATH}/${_name}/run.lock" >/dev/null 2>&1
+    rm -f "${VM_DS_PATH}/${_name}/vm-bhyve.log*" >/dev/null 2>&1
 }
 
 # 'vm image list'

@@ -182,8 +182,6 @@ __datastore_get_guest(){
     local _guest="$1"
     local _ds _spec _path _found _zfs _dataset
 
-    __datastore_load
-
     # look in default store
     if [ -f "${vm_dir}/${_guest}/${_guest}.conf" ]; then
         _found="1"
@@ -220,7 +218,7 @@ __datastore_get_guest(){
 }
 
 # get the path and details for a datastore
-# put into same variables as datastore_load_guest
+# put into same variables as datastore_get_guest
 #
 # @param string _ds datastore name
 # @return non-zero on error

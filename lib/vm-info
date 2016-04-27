@@ -35,7 +35,6 @@ __vm_info(){
     local _ds
 
     __vm_running_load
-    __datastore_load
 
     # see if one guest provided
     if [ -n "${_name}" ]; then

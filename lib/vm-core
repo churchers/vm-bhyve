@@ -32,7 +32,6 @@ __vm_list(){
     local _memory _run _vm _auto _num
     local _format="%-15s %-15s %-11s %-6s %-9s %-12s %s\n"
 
-    __datastore_load
     __vm_running_load
     printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "AUTOSTART" "STATE"
 

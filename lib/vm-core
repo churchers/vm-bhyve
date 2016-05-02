@@ -397,9 +397,9 @@ __vm_start(){
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
     if [ -n "${VM_FOREGROUND}" ]; then
-        $0 -fd "${vm_dir}" _run "${_name}" "${_iso}"
+        $0 -f _run "${_name}" "${_iso}"
     else
-        $0 -d "${vm_dir}" _run "${_name}" "${_iso}" >/dev/null 2>&1 &
+        $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
     fi
 }
 

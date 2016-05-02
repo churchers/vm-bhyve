@@ -91,8 +91,7 @@ __parse_switch_cmd(){
 }
 
 # look for any arguments to the vm command
-# -d /dir - change the global vm_dir to specified value
-# -f      - run vm-bhyve/loader/bhyve in the foreground
+# -f - run vm-bhyve/loader/bhyve in the foreground
 #
 # the argument string without any options is put into 
 # VM_COMMAND for the main command parser to handle
@@ -104,7 +103,6 @@ __parse_cmd_args(){
 
     while getopts d:f _opt; do
         case ${_opt} in
-            d) vm_dir="${OPTARG}" ;;
             f) VM_FOREGROUND="1" ;;
         esac
     done

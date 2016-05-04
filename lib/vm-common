@@ -48,6 +48,46 @@ __load_module(){
     fi
 }
 
+# check if system have bhyve support
+# we look for POPCNT feature which is required
+# and should be listed on both Intel & AMD systems
+# 
+__check_bhyve_support(){
+    local _mesg _result
+
+    # basic checks
+    [ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
+    [ ${VERSION_BSD} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
+
+    # get features2 line which should include popcnt
+    _mesg=$(grep -E '^[ ]+Features2' /var/run/dmesg.boot | tail -n 1)
+
+    # only check if we found it
+    if [ -n "${_mesg}" ]; then
+
+        # look for pop cnt
+        _result=$(echo "${_mesg}" |grep "POPCNT")
+        [ -z "${_result}" ] && __err "it doesn't look like your cpu supports bhyve (missing POPCNT)"
+    fi
+
+    # check ept for intel
+    _mesg=$(grep -E '^[ ]+VT-x' /var/run/dmesg.boot | tail -n 1)
+
+    if [ -n "${_mesg}" ]; then
+
+        # look for ept
+        _result=$(echo "${_mesg}" |grep "EPT")
+        [ -z "${_result}" ] && __err "it doesn't look like your cpu supports bhyve (missing EPT)"
+
+        # look for unrestricted guest
+        _result=$(echo "${_mesg}" |grep ",UG1")
+        [ -z "${_result}" ] && VM_NO_UG="1"
+    fi
+
+    # return ok if we got this far
+    return 0
+}
+
 # restart a local service
 # checks if service is running and either starts or restarts
 #

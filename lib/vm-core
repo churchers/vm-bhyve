@@ -350,7 +350,7 @@ __vm_stopall(){
 __vm_start(){
     local _name="$1"
     local _iso="$2"
-    local _cpu _memory _disk _guest
+    local _cpu _memory _disk _guest _loader
 
     [ -z "${_name}" ] && __usage
 
@@ -368,11 +368,15 @@ __vm_start(){
     __config_get "_cpu" "cpu"
     __config_get "_memory" "memory"
     __config_get "_disk" "disk0_name"
+    __config_get "_loader" "loader"
 
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
         __warn "incomplete virtual machine configuration"
         return 1
     fi
+
+    [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ] && \
+        __err "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
 
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot

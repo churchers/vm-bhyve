@@ -26,6 +26,22 @@
 
 # cmd: vm ...
 #
+# handle simple information commands that don't need any 
+# priviledged access or bhyve support
+#
+# @param string _cmd the command right after 'vm '
+#
+__parse_info_cmd(){
+    local _cmd="$1"
+
+    case "${_cmd}" in
+        version) __version && exit ;;
+        usage)   __usage ;;
+    esac
+}
+
+# cmd: vm ...
+#
 # process the vm command line to see which function is requested
 #
 # @param string _cmd the command right after 'vm '
@@ -61,7 +77,6 @@ __parse_cmd(){
         clone)     __zfs_clone "$@" ;;
         snapshot)  __zfs_snapshot "$@" ;;
         rollback)  __zfs_rollback "$@" ;;
-        version)   __version ;;
         *)         __usage ;;
     esac
 }

@@ -79,6 +79,22 @@ __vm_run(){
         exit 15
     fi
 
+    # check ug
+    if [ -n "${VM_NO_UG}" ]; then
+
+        # only FreeBSD guests. these start direct in 64bit mode and don't need UG
+        if [ "${_loader}" != "bhyveload" ]; then
+            __log "guest" "${_name}" "unable to start - no unrestricted guest support"
+            exit 15
+        fi
+
+        # only 1 vcpu
+        if [ "${_cpu}" -gt "1" ]; then
+            _cpu=1
+            __log "guest" "${_name}" "no unrestricted guest support. reducing vcpu count to 1"
+        fi
+    fi
+
     # default bhyve options
     _opts="-AHP"
 

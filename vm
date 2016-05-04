@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.1-alpha
-VERSION_INT=101029
+VERSION_INT=101030
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -55,16 +55,15 @@ fi
 . "${LIB}/vm-switch"
 . "${LIB}/vm-zfs"
 
-# check environment
-[ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
-[ ${VERSION_BSD} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
+# check informational commands
+__parse_info_cmd $@
 
 # we should be enabled in rc.conf
 # or call it using forcestart
 [ -z "$rc_force" ] && ! checkyesno vm_enable && __err "\$vm_enable is not enabled in /etc/rc.conf!"
 
-# check for any global arguments
-__parse_cmd_args $@
+# check we can run bhyve
+__check_bhyve_support
 
 # init for zfs
 __zfs_init
@@ -81,4 +80,5 @@ __config_core_load
 __datastore_load
 
 # run the requested command
+__parse_cmd_args $@
 __parse_cmd ${VM_COMMAND}

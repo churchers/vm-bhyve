@@ -147,6 +147,19 @@ __vm_run(){
 
     while [ 1 ]; do
 
+        # destroy existing vmm
+        # freebsd seems happy to run a bhyveload/bhyve loop
+        # grub-bhyve doesn't seem to like it for a lot of users
+        # Peter says don't destroy in Windows instructions, so don't if in UEFI mode
+        if [ -e "/dev/vmm/${_name}" -a -z "${_uefi}" ]; then
+            bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                __log "guest" "${_name}" "failed to destroy existing vmm device"
+                _exit=15
+                break
+            fi
+        fi
+
         # set full iso path
         # use null.iso if not an install and uefi firmware
         [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"

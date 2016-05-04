@@ -80,7 +80,7 @@ __check_bhyve_support(){
         [ -z "${_result}" ] && __err "it doesn't look like your cpu supports bhyve (missing EPT)"
 
         # look for unrestricted guest
-        _result=$(echo "${_mesg}" |grep ",UG1")
+        _result=$(echo "${_mesg}" |grep ",UG")
         [ -z "${_result}" ] && VM_NO_UG="1"
     fi
 

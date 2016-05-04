@@ -375,8 +375,10 @@ __vm_start(){
         return 1
     fi
 
-    [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ] && \
-        __err "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
+    if [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ]; then
+        __warn "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
+        return 1
+    fi
 
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot

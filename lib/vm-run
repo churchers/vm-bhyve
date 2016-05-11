@@ -37,7 +37,7 @@ __vm_run(){
     local _iso="$2" _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
-    local _opts _devices _slot=4 _func=0 _taplist _exit
+    local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null"
 
     # try to load datstore details
@@ -75,7 +75,7 @@ __vm_run(){
 
     # check basic settings
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
-        __log "guest" "${_name}" "unable to start - missing required configuration"
+        __log "guest" "${_name}" "fatal; unable to start - missing required configuration"
         exit 15
     fi
 
@@ -84,14 +84,14 @@ __vm_run(){
 
         # only FreeBSD guests. these start direct in 64bit mode and don't need UG
         if [ "${_loader}" != "bhyveload" ]; then
-            __log "guest" "${_name}" "unable to start - no unrestricted guest support"
+            __log "guest" "${_name}" "fatal; unable to start - no unrestricted guest support"
             exit 15
         fi
 
         # only 1 vcpu
         if [ "${_cpu}" -gt "1" ]; then
             _cpu=1
-            __log "guest" "${_name}" "no unrestricted guest support. reducing vcpu count to 1"
+            __log "guest" "${_name}" "warning; no unrestricted guest support. reducing vcpu count to 1"
         fi
     fi
 
@@ -101,20 +101,20 @@ __vm_run(){
     # if uefi, make sure we have bootrom, then update options for uefi support
     if __checkyesno "${_uefi}"; then
         if [ ${VERSION_BSD} -lt 1002509 ]; then
-            __log "guest" "${_name}" "uefi guests can only be run on FreeBSD 10.3 or newer"
+            __log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
             exit 15
         fi
 
         if [ "${_uefi}" = "csm" ]; then
             if [ ! -e "${vm_dir}/.config/BHYVE_UEFI_CSM.fd" ]; then
-                __log "guest" "${_name}" "please download uefi csm firmware to ${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+                __log "guest" "${_name}" "fatal; please download uefi csm firmware to ${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
                 exit 15
             fi
 
             _opts="-Hwl bootrom,${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
         else
             if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
-                __log "guest" "${_name}" "please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
+                __log "guest" "${_name}" "fatal; please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
                 exit 15
             fi
 
@@ -122,6 +122,14 @@ __vm_run(){
         fi
     else
         _uefi=""
+    fi
+
+    # if we have passthru, check vt-d support now and exit
+    __config_get "_passdev" "passthru0"
+
+    if [ -n "${_passdev}" ] && ! __check_bhyve_iommu; then
+        __log "guest" "${_name}" "fatal; pci passthrough not supported on this system (no VT-d)"
+        exit 15
     fi
 
     # set cpu/memory and uuid in opts
@@ -133,7 +141,7 @@ __vm_run(){
         if [ ${VERSION_BSD} -ge 1002000 ]; then
             _opts="${_opts} -u"
         else
-            __log "guest" "${_name}" "utc time requested but not available pre FreeBSD 10.2"
+            __log "guest" "${_name}" "warning; utc time requested but not available pre FreeBSD 10.2"
         fi
     fi
 
@@ -163,7 +171,7 @@ __vm_run(){
         if [ -e "/dev/vmm/${_name}" -a -z "${_uefi}" ]; then
             bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
             if [ $? -ne 0 ]; then
-                __log "guest" "${_name}" "failed to destroy existing vmm device"
+                __log "guest" "${_name}" "fatal; failed to destroy existing vmm device"
                 _exit=15
                 break
             fi
@@ -182,7 +190,7 @@ __vm_run(){
 
             # check no errors
             if [ ${_exit} -ne 0 ]; then
-                __log "guest" "${_name}" "loader returned error ${_exit}"
+                __log "guest" "${_name}" "fatal; loader returned error ${_exit}"
                 break
             fi
         fi

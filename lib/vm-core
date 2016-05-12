@@ -29,7 +29,7 @@
 #
 __vm_list(){
     local _name _loader _cpu
-    local _memory _run _vm _auto _num
+    local _memory _run _vm _auto _num _uefi
     local _format="%-15s %-15s %-11s %-6s %-9s %-12s %s\n"
 
     __vm_running_load
@@ -46,8 +46,11 @@ __vm_list(){
             __config_get "_loader" "loader" "none"
             __config_get "_cpu" "cpu"
             __config_get "_memory" "memory"
+            __config_get "_uefi" "uefi"
 
+            __checkyesno "${_uefi}" && _loader="uefi"
             __vm_running_check "_run" "${_name}"
+
             _num=1
             _auto="No"
 
@@ -370,11 +373,13 @@ __vm_start(){
     __config_get "_disk" "disk0_name"
     __config_get "_loader" "loader"
 
+    # check minimum configuration
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
         __warn "incomplete virtual machine configuration"
         return 1
     fi
 
+    # we can only load freebsd without unrestricted guest support
     if [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ]; then
         __warn "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
         return 1

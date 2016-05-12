@@ -38,7 +38,7 @@ __vm_run(){
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
-    local _com _comports _comstring _logpath="/dev/null"
+    local _com _comports _comstring _logpath="/dev/null" _bootrom
 
     # try to load datstore details
     __datastore_get_guest "${_name}" || exit 5
@@ -105,23 +105,29 @@ __vm_run(){
             exit 15
         fi
 
-        if [ "${_uefi}" = "csm" ]; then
-            if [ ! -e "${vm_dir}/.config/BHYVE_UEFI_CSM.fd" ]; then
-                __log "guest" "${_name}" "fatal; please download uefi csm firmware to ${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
-                exit 15
-            fi
+        case "${_uefi}" in
+            csm)
+                _bootrom="${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+                ;&
+            *)
+                [ -z "${_bootrom}" ] && _bootrom="${vm_dir}/.config/BHYVE_UEFI.fd"
 
-            _opts="-Hwl bootrom,${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
-        else
-            if [ ! -e "${vm_dir}/.config/BHYVE_UEFI.fd" ]; then
-                __log "guest" "${_name}" "fatal; please download uefi firmware to ${vm_dir}/.config/BHYVE_UEFI.fd"
-                exit 15
-            fi
+                if [ ! -e "${_bootrom}" ]; then
+                    __log "guest" "${_name}" "fatal; please download relevant uefi firmware to ${_bootrom}"
+                    exit 15
+                fi
 
-            _opts="-Hwl bootrom,${vm_dir}/.config/BHYVE_UEFI.fd"
-        fi
+                _opts="-Hwl bootrom,${_bootrom}"
+                ;;
+        esac
     else
         _uefi=""
+
+        # we must have a loader
+        if [ -z "${_loader}" ]; then
+            __log "guest" "${_name}" "fatal; guest does not have a loader specified"
+            exit 15
+        fi
     fi
 
     # if we have passthru, check vt-d support now and exit

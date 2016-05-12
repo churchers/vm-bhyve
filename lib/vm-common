@@ -52,6 +52,8 @@ __load_module(){
 # we look for POPCNT feature which is required
 # and should be listed on both Intel & AMD systems
 # 
+# @modifies VM_NO_UG
+#
 __check_bhyve_support(){
     local _mesg _result
 
@@ -87,6 +89,8 @@ __check_bhyve_support(){
 
 # check for vt-d support
 # following neel@ wiki we search for DMAR acpi table
+#
+# @return success if host has vt-d
 #
 __check_bhyve_iommu(){
     local _mesg

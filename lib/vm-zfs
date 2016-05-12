@@ -383,6 +383,7 @@ __zfs_image_create(){
 #
 __zfs_image_provision(){
     local _uuid="$1"
+    local _snap="${_uuid%%-*}"
     local _name="$2"
     local _file _oldname _entry _num=0
 
@@ -402,7 +403,7 @@ __zfs_image_provision(){
     [ $? -ne 0 ] && __err "errors occured while trying to unpackage the image file"
 
     # remove the original snapshot
-    zfs destroy "${VM_ZFS_DATASET}/${_name}@${_uuid}" >/dev/null 2>&1
+    zfs destroy "${VM_ZFS_DATASET}/${_name}@${_snap}" >/dev/null 2>&1
 
     # rename the guest configuration file
     mv "${vm_dir}/${_name}/${_oldname}.conf" "${vm_dir}/${_name}/${_name}.conf" >/dev/null 2>&1

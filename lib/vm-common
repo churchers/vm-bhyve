@@ -177,7 +177,7 @@ EOT
 # @param string - the message to display
 #
 __err(){
-    echo "${0}: ERROR: $1"
+    echo "${0}: ERROR: $1" >&2
     exit 1
 }
 
@@ -187,7 +187,7 @@ __err(){
 # @param string - the message to display
 #
 __warn(){
-    echo "${0}: WARNING: $1"
+    echo "${0}: WARNING: $1" >&2
 }
 
 # log_rotate

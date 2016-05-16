@@ -345,7 +345,7 @@ __switch_add_member(){
     [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
 
     __switch_configure_port "${_switch}" "${_id}" "${_member}"
-    __config_core_add "ports_${_switch}" "${_member}" "1"
+    __config_core_set "ports_${_switch}" "${_member}" "1"
 }
 
 # physically remove a port from a virtual switch / bridge
@@ -481,7 +481,7 @@ __switch_nat_init(){
     _grep=$(grep "${_pf_rules}" /etc/pf.conf)
     [ -z "${_grep}" ] && echo "include \"${_pf_rules}\"" >> /etc/pf.conf
 
-    _config_core_get "_switchlist" "switch_list"
+    __config_core_get "_switchlist" "switch_list"
 
     # add each nat switch to dnsmasq.conf and .config/pf-nat.conf
     for _switch in ${_switchlist}; do

@@ -263,6 +263,7 @@ __vm_lock(){
 #
 __vm_unlock(){
     unlink "${VM_DS_PATH}/${_name}/run.lock" >/dev/null 2>&1
+    unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 }
 
 # create string for guest com ports

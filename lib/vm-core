@@ -28,9 +28,11 @@
 # list virtual machines
 #
 __vm_list(){
-    local _name _loader _cpu
+    local _name _loader _cpu _our_host
     local _memory _run _vm _auto _num _uefi _graphics _vnc
     local _format="%-15s %-15s %-11s %-6s %-9s %-20s %-12s %s\n"
+
+    _our_host=$(hostname)
 
     __vm_running_load
     printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
@@ -56,7 +58,8 @@ __vm_list(){
             _vnc="-"
 
             # check if the guest is running
-            if __vm_running_check "_run" "${_name}" || [ -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
+            if __vm_running_check "_run" "${_name}" || \
+               [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
 
                 # if running and graphics, try to get vnc port
                 if __checkyesno "${_graphics}"; then

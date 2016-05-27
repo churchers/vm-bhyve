@@ -30,7 +30,7 @@
 __vm_list(){
     local _name _loader _cpu
     local _memory _run _vm _auto _num _uefi _graphics _vnc
-    local _format="%-15s %-15s %-11s %-6s %-9s %-8s %-12s %s\n"
+    local _format="%-15s %-15s %-11s %-6s %-9s %-20s %-12s %s\n"
 
     __vm_running_load
     printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
@@ -48,10 +48,22 @@ __vm_list(){
             __config_get "_memory" "memory"
             __config_get "_uefi" "uefi"
             __config_get "_graphics" "graphics"
-            __config_get "_vnc" "graphics_port" "5900"
 
+            # show uefi in loader column if it's a uefi guest
             __checkyesno "${_uefi}" && _loader="uefi"
-            __vm_running_check "_run" "${_name}"
+
+            # defaults
+            _vnc="-"
+
+            # check if the guest is running
+            if __vm_running_check "_run" "${_name}"; then
+
+                # if running and graphics, try to get vnc port
+                if __checkyesno "${_graphics}"; then
+                    _vnc=$(grep vnc "${VM_DS_PATH}/${_name}/console" 2>/dev/null |cut -d= -f2)
+                    [ -z "${_vnc}" ] && _vnc="-"
+                fi
+            fi
 
             _num=1
             _auto="No"
@@ -67,9 +79,6 @@ __vm_list(){
                 _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
                 _run="Locked (${_run})"
             fi
-
-            # set vnc port to - if no graphics/vnc
-            ! __checkyesno "${_graphics}" && _vnc="-"
 
             printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
         done

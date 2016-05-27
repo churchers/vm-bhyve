@@ -485,14 +485,31 @@ __vm_bhyve_device_fbuf(){
     # return if graphics disabled
     ! __checkyesno "${_graphics}" && return 0
 
+    # try to get port
+    # return if we can't
+    if [ -z "${_port}" ]; then
+        __vm_find_available_port "_port" "5900"
+
+        if [ -z "${_port}" ]; then
+            __log "guest" "${_name}" "warning; unable to allocate a network port for graphics/vnc"
+            return 1
+        fi
+
+        __log "guest" "${_name}" "dynamically allocated port ${_port} for vnc connections"
+    fi
+
     # add ip and port
-    _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port:-5900}"
+    _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port}"
 
     # have a res?
     if [ -n "${_res}" ]; then
         _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
     fi
 
+    # write vnc port to console data
+    echo "vnc=${_listen:-0.0.0.0}:${_port}" >> "${VM_DS_PATH}/${_name}/console"
+
+    # add device
     _devices="${_devices} -s ${_slot}:0,fbuf,${_fbuf_conf}"
     _slot=$((_slot + 1))
 }
@@ -733,4 +750,47 @@ __vm_generate_static_mac(){
 
     __log "guest" "${_name}" "generated static mac ${_mac} (based on '${_key}')"
     __vm_config_set "${_name}" "network${_num}_mac" "${_mac}"
+}
+
+# try to find an available network port to listen on
+# this isn't clever enough to diffeential ports on unique ip's yet
+#
+# @param string _var variable to put port into
+# @param int _curr the port to start searching from
+# @return true if we found a port
+#
+__vm_find_available_port(){
+    local _var="$1"
+    local _curr="$2"
+    local _open _line _max
+    local IFS=$'\n'
+
+    # stop searching after 200 ports
+    _max=$((_curr + 200))
+
+    # get list of open ports
+    _open=$(netstat -an | grep LISTEN | awk '{print $4}' | awk -F. '{print $NF}')
+
+    while [ "${_curr}" -lt "${_max}" ]; do
+
+        # reset used flag
+        _used=""
+
+        # see if current port is used
+        for _line in ${_open}; do
+            [ "${_line}" = "${_curr}" ] && _used="1"
+        done
+
+        # this port available?
+        if [ -z "${_used}" ]; then
+            setvar "${_var}" "${_curr}"
+            return 0
+        fi
+
+        _curr=$((_curr + 1))
+    done
+
+    # not found a port
+    setvar "${_var}" ""
+    return 1
 }

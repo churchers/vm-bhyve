@@ -259,12 +259,21 @@ graphics_listen="10.0.0.1"
 #
 graphics_res="1600x900"
 
-# mouse
+# graphics_wait
+# Set to yes in order to make guest boot wait for the VNC console
+# to be opened. This can help when installing operating systems
+# that require immediate keyboard input (such as a timed 'enter setup'
+# screen).
+#
+graphics_wait="yes"
+
+# xhci_mouse
 # When graphics are enabled, a PS2 mouse is created by default. This
 # doesn't track very well, and can be replaced with an XHCI mouse
-# by settings this option to yes
+# by settings this option to yes. Please note only some guests support
+# this mouse
 #
-mouse="yes"
+xhci_mouse="yes"
 
 # grub_install0
 # use this to specify grub commands that should be run inside the

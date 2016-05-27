@@ -1022,7 +1022,12 @@ format. Please note that only a certain range of resolutions are currently suppo
 Please set
 .Pa config.sample
 for a full up-to-date list.
-.It mouse
+.It graphics_wait
+Set this to yes in order to make guest boot wait for the VNC console
+to be opened. This can help when installing operating systems
+that require immediate keyboard input (such as a timed 'enter setup'
+screen).
+.It xhci_mouse
 Set this option to
 .Sy yes
 in order to provide an XHCI mouse device to the guest. This tracks much better than

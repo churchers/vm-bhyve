@@ -474,13 +474,14 @@ __vm_bhyve_device_rand(){
 # add frame buffer output
 #
 __vm_bhyve_device_fbuf(){
-    local _graphics _port _listen _res
+    local _graphics _port _listen _res _wait
     local _fbuf_conf
 
     __config_get "_graphics" "graphics"
     __config_get "_port" "graphics_port"
     __config_get "_listen" "graphics_listen"
     __config_get "_res" "graphics_res"
+    __config_get "_wait" "graphics_wait"
 
     # return if graphics disabled
     ! __checkyesno "${_graphics}" && return 0
@@ -498,13 +499,10 @@ __vm_bhyve_device_fbuf(){
         __log "guest" "${_name}" "dynamically allocated port ${_port} for vnc connections"
     fi
 
-    # add ip and port
+    # add ip, port, resolution, wait
     _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port}"
-
-    # have a res?
-    if [ -n "${_res}" ]; then
-        _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
-    fi
+    [ -n "${_res}" ] && _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
+    __checkyesno "${_wait}" && _fbuf_conf="${_fbuf_conf},wait"
 
     # write vnc port to console data
     echo "vnc=${_listen:-0.0.0.0}:${_port}" >> "${VM_DS_PATH}/${_name}/console"
@@ -519,10 +517,9 @@ __vm_bhyve_device_fbuf(){
 __vm_bhyve_device_mouse(){
     local _mouse
 
-    __config_get "_mouse" "mouse"
+    __config_get "_mouse" "xhci_mouse"
 
     # add a tablet device if enabled
-    # if mouse is set to ps2, we shouldn't need to provide anything as it's the default
     if __checkyesno "${_mouse}"; then
         _devices="${_devices} -s ${_slot}:0,xhci,tablet"
         _slot=$((_slot + 1))
@@ -762,7 +759,7 @@ __vm_generate_static_mac(){
 __vm_find_available_port(){
     local _var="$1"
     local _curr="$2"
-    local _open _line _max
+    local _open _line _max _used
     local IFS=$'\n'
 
     # stop searching after 200 ports

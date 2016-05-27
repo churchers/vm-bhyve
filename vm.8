@@ -996,8 +996,40 @@ Set this option to
 if you want to create a
 .Sy virtio-rnd
 device for this guest.
+.It graphics
+If set to you, a frame buffer is added to the guest. This provides a graphical
+console that is accessible using VNC. By default the console is 800x600, and will
+listen on
+.Sy 0.0.0.0:5900 .
+If port 5900 is not available, the next available port will be used. The active address and
+port can be viewed in
+.Sy vm list
+and
+.Sy vm info
+output.
+.It graphics_port
+This option allows you to specific a fixed port that the VNC service should listen on.
+Please remember that all guests should ideally use a unique port to avoid any problems.
+.It graphics_listen
+By default the graphical VNC console will listen on
+.Sy 0.0.0.0 ,
+so is accessible by connecting to any IP address assigned to the bhyve host. Use this
+option to specify a specific IP address that the VNC service should bind to.
+.It graphics_res
+Specify the resolution of the graphical console in
+.Pa WxH
+format. Please note that only a certain range of resolutions are currently supported.
+Please set
+.Pa config.sample
+for a full up-to-date list.
+.It mouse
+Set this option to
+.Sy yes
+in order to provide an XHCI mouse device to the guest. This tracks much better than
+the default PS2 mouse in VNC settings, although this mouse may not supported by older
+guests.
 .It zfs_dataset_opts
-This allows you to specify one or more ZFS properties to set on the dataset when a 
+This allows you to specify one or more ZFS properties to set on the dataset when a
 guest is created. Because properties are assigned as the dataset is created, this option
 is most useful when specified inside a template. As a guest is created, all properties
 listed in this option will be applied to the guest dataset.

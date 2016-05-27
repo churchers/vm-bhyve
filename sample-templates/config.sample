@@ -225,6 +225,47 @@ passthru0=""
 #
 virt_random=""
 
+# graphics
+# Set to a value other than [empty]/off/false/no/0 to enable
+# the bhyve frame buffer device. This creates a graphics console
+# in the guest, which is accessible using vnc
+#
+# By default this is set at 800x600, and we find an available vnc
+# port starting at 5900. The port can be seen in vm list|info output.
+#
+graphics="yes"
+
+# graphics_port
+# Use this option to specify a fixed network port that the vnc service
+# should listen on. Obviously all guests need to use a unique port number
+#
+graphics_port="5999"
+
+# graphics_listen
+# By default, the vnc service will listen on 0.0.0.0, so you can connect be
+# using an IP address assigned to the bhyve host. Use this option if you
+# want to specify a specific IP address that the service should bind to
+#
+# Default: 0.0.0.0
+#
+graphics_listen="10.0.0.1"
+
+# graphics_res
+# This allows you to specify a resolution for the graphical console.
+# Pleas note only the below options are supported
+#
+# Default: 800x600
+# Valid Options: 1920x1200,1920x1080,1600x1200,1600x900,1280x1024,1280x720,1024x768,800x600,640x480
+#
+graphics_res="1600x900"
+
+# mouse
+# When graphics are enabled, a PS2 mouse is created by default. This
+# doesn't track very well, and can be replaced with an XHCI mouse
+# by settings this option to yes
+#
+mouse="yes"
+
 # grub_install0
 # use this to specify grub commands that should be run inside the
 # guest when installing.

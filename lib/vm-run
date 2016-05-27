@@ -164,6 +164,8 @@ __vm_run(){
     __vm_bhyve_device_networking
     __vm_bhyve_device_rand
     __vm_bhyve_device_passthru
+    __vm_bhyve_device_fbuf
+    __vm_bhyve_device_mouse
 
     __vm_lock
     __log "guest" "${_name}" "booting"
@@ -465,6 +467,47 @@ __vm_bhyve_device_rand(){
 
     if __checkyesno "${_rand}"; then
         _devices="${_devices} -s ${_slot}:0,virtio-rnd"
+        _slot=$((_slot + 1))
+    fi
+}
+
+# add frame buffer output
+#
+__vm_bhyve_device_fbuf(){
+    local _graphics _port _listen _res
+    local _fbuf_conf
+
+    __config_get "_graphics" "graphics"
+    __config_get "_port" "graphics_port"
+    __config_get "_listen" "graphics_listen"
+    __config_get "_res" "graphics_res"
+
+    # return if graphics disabled
+    ! __checkyesno "${_graphics}" && return 0
+
+    # add ip and port
+    _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port:-5900}"
+
+    # have a res?
+    if [ -n "${_res}" ]; then
+        _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
+    fi
+
+    _devices="${_devices} -s ${_slot}:0,fbuf,${_fbuf_conf}"
+    _slot=$((_slot + 1))
+}
+
+# add a xhci mouse device
+#
+__vm_bhyve_device_mouse(){
+    local _mouse
+
+    __config_get "_mouse" "mouse"
+
+    # add a tablet device if enabled
+    # if mouse is set to ps2, we shouldn't need to provide anything as it's the default
+    if __checkyesno "${_mouse}"; then
+        _devices="${_devices} -s ${_slot}:0,xhci,tablet"
         _slot=$((_slot + 1))
     fi
 }

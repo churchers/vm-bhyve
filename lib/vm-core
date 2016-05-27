@@ -29,11 +29,11 @@
 #
 __vm_list(){
     local _name _loader _cpu
-    local _memory _run _vm _auto _num _uefi
-    local _format="%-15s %-15s %-11s %-6s %-9s %-12s %s\n"
+    local _memory _run _vm _auto _num _uefi _graphics _vnc
+    local _format="%-15s %-15s %-11s %-6s %-9s %-8s %-12s %s\n"
 
     __vm_running_load
-    printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "AUTOSTART" "STATE"
+    printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
 
     for _ds in ${VM_DATASTORE_LIST}; do
         __datastore_get "${_ds}" || continue
@@ -47,6 +47,8 @@ __vm_list(){
             __config_get "_cpu" "cpu"
             __config_get "_memory" "memory"
             __config_get "_uefi" "uefi"
+            __config_get "_graphics" "graphics"
+            __config_get "_vnc" "graphics_port" "5900"
 
             __checkyesno "${_uefi}" && _loader="uefi"
             __vm_running_check "_run" "${_name}"
@@ -66,7 +68,10 @@ __vm_list(){
                 _run="Locked (${_run})"
             fi
 
-            printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_auto}" "${_run}"
+            # set vnc port to - if no graphics/vnc
+            ! __checkyesno "${_graphics}" && _vnc="-"
+
+            printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
         done
     done
 }

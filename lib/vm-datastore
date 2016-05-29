@@ -124,6 +124,8 @@ __datastore_add(){
 __datastore_remove(){
     local _name="$1"
 
+    [ "${_name}" = "default" ] && __err "cannot remove default datastore"
+
     __datastore_get "${_name}" || __err "unable to locate the specified dataset"
 
     __config_core_remove "datastore_list" "${_name}"

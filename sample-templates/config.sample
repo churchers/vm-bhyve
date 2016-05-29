@@ -1,11 +1,8 @@
 # This is a sample configuration file containing all supported options
-# Please do not try and use this for a guest
+# Please do not try and use this file itself for a guest
 # For any option that contains a number in the name, such as "network0_type",
 # you can add additional devices of that type by creating a new set of
 # variables using the next number in sequence, e.g "network1_type"
-# The only exception to this is that only one disk device is supported
-# in templates. If additional disks are required, they will need to be
-# added once the guest has been created.
 #
 # Please make sure all option names are specified in lowercase and
 # at the beginning of the line. If there is any whitespace before
@@ -15,11 +12,7 @@
 
 # loader
 # If the guest you are using requires either bhyveload or grub-bhyve,
-# specify the loader to use here. If the guest is freebsd or linux,
-# this is not required as the correct loader is used by default.
-#
-# If using guests such as netbsd, you can either set the guest to
-# linux, or set to generic and specify the grub loader here
+# specify the loader to use here.
 #
 # Valid Options: bhyveload,grub
 #
@@ -37,7 +30,10 @@ loader_timeout="3"
 # Tells bhyve that it should load the UEFI firmware. To use UEFI
 # this can be any value other than [empty]/off/false/no/0. If
 # it contains the string 'csm', the UEFI BIOS compatability (CSM)
-# firmware will be used
+# firmware will be used.
+#
+# Please note when using UEFI firmware, no loader is required
+# regardless of the guest operating system.
 #
 # Default: no
 #
@@ -237,12 +233,13 @@ graphics="yes"
 
 # graphics_port
 # Use this option to specify a fixed network port that the vnc service
-# should listen on. Obviously all guests need to use a unique port number
+# should listen on. If specifying port numbers manually, please make 
+# sure all guests have a unique port.
 #
 graphics_port="5999"
 
 # graphics_listen
-# By default, the vnc service will listen on 0.0.0.0, so you can connect be
+# By default, the vnc service will listen on 0.0.0.0, so you can connect by
 # using an IP address assigned to the bhyve host. Use this option if you
 # want to specify a specific IP address that the service should bind to
 #
@@ -270,7 +267,7 @@ graphics_wait="yes"
 # xhci_mouse
 # When graphics are enabled, a PS2 mouse is created by default. This
 # doesn't track very well, and can be replaced with an XHCI mouse
-# by settings this option to yes. Please note only some guests support
+# by setting this option to yes. Please note only some guests support
 # this mouse
 #
 xhci_mouse="yes"

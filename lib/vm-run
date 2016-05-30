@@ -482,11 +482,17 @@ __vm_bhyve_device_fbuf(){
     __config_get "_port" "graphics_port"
     __config_get "_listen" "graphics_listen"
     __config_get "_res" "graphics_res"
-    __config_get "_wait" "graphics_wait"
+    __config_get "_wait" "graphics_wait" "auto"
 
     # return if graphics disabled
     ! __checkyesno "${_graphics}" && return 0
     [ -z "${_uefi}" ] && return 0
+
+    # check if graphics_wait is auto
+    # auto will count as yes so we need to unset it if we're not in an install.
+    # note that we only build _devices once, so after install
+    # boot will continue to wait on every reboot until guest is fully shutdown/restarted
+    [ "${_wait}" = "auto" -a -z "${_iso}" ] && _wait="no"
 
     # try to get port
     # return if we can't

@@ -1023,10 +1023,20 @@ Please set
 .Pa config.sample
 for a full up-to-date list.
 .It graphics_wait
-Set this to yes in order to make guest boot wait for the VNC console
+Set this to
+.Sy yes
+in order to make guest boot wait for the VNC console
 to be opened. This can help when installing operating systems
 that require immediate keyboard input (such as a timed 'enter setup'
-screen).
+screen). Set to 
+.Sy no
+in order to completely disable this function.
+.Pp
+The default is
+.Sy auto ,
+in which case the console will wait if the guest is started in install mode.
+Note that after install, the wait option will continue to be present until the guest
+is fully shutdown and restarted.
 .It xhci_mouse
 Set this option to
 .Sy yes

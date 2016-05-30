@@ -254,15 +254,21 @@ graphics_listen="10.0.0.1"
 # Default: 800x600
 # Valid Options: 1920x1200,1920x1080,1600x1200,1600x900,1280x1024,1280x720,1024x768,800x600,640x480
 #
-graphics_res="1600x900"
+graphics_res="800x600"
 
 # graphics_wait
 # Set to yes in order to make guest boot wait for the VNC console
 # to be opened. This can help when installing operating systems
 # that require immediate keyboard input (such as a timed 'enter setup'
-# screen).
+# screen). The default setting of auto will add the wait option
+# if the guest is run in install mode. Note that in auto mode
+# the wait option will continue to be present if a guest is rebooted
+# after an install. The guest will need to be shutdown and restarted
+# fully for the wait option to be discarded. 
 #
-graphics_wait="yes"
+# Valid Options: no,yes,auto
+#
+graphics_wait="auto"
 
 # xhci_mouse
 # When graphics are enabled, a PS2 mouse is created by default. This

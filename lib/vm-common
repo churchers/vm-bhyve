@@ -97,6 +97,8 @@ __check_bhyve_iommu(){
 
     _mesg=$(acpidump -t |grep DMAR)
     [ -z "${_mesg}" ] && return 1
+
+    return 0
 }
 
 # restart a local service

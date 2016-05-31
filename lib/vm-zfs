@@ -250,11 +250,9 @@ __zfs_clone(){
     local _num=0 _error=0
     local _uuid=$(uuidgen)
 
+    # check args and make sure new guest doesn't already exist
     [ -z "${_old}" -o -z "${_name}" ] && __usage
-
     __datastore_get_guest "${_name}" && __err "new guest already exists in ${VM_DS_PATH}/${_name}"
-    __datastore_get_guest "${_old}" || __err "${_name} does not appear to be an existing virtual machine"
-    [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot clone guests on non-zfs datastores"
 
     # try to get snapshot name
     # we support normal zfs syntax for this
@@ -264,6 +262,10 @@ __zfs_clone(){
         _snap=${_old##*@}
         _old=${_old%%@*}
     fi
+
+    # make sure old guest exists
+    __datastore_get_guest "${_old}" || __err "${_old} does not appear to be an existing virtual machine"
+    [ ! "${VM_DS_ZFS}" = "1" ] && __err "cannot clone guests on non-zfs datastores"
 
     # get list of datasets to copy
     _fs_list=$(zfs list -rHo name -t filesystem,volume "${VM_DS_ZFS_DATASET}/${_old}")

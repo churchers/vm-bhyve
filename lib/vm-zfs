@@ -294,8 +294,14 @@ __zfs_clone(){
     done
 
     # update new guest files
-    mv "${VM_DS_PATH}/${_name}/${_old}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf"
     unlink "${VM_DS_PATH}/${_name}/vm-bhyve.log" >/dev/null 2>&1
+    mv "${VM_DS_PATH}/${_name}/${_old}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf" >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Unable to rename configuration file to ${_name}.conf"
+        echo "This will need to be renamed manually"
+        echo "Please also update guest UUID and remove any mac address settings"
+        exit 1
+    fi
 
     # update mac addresses and uuid
     __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"

@@ -541,7 +541,7 @@ __vm_bhyve_device_mouse(){
 # @modifies _devices _slot _opts _wiredmem
 #
 __vm_bhyve_device_passthru(){
-    local _dev _orig_slot _orig_func
+    local _dev _orig_slot _func=0
     local _last_orig_slot
     local _num=0
 
@@ -550,21 +550,20 @@ __vm_bhyve_device_passthru(){
         [ -z "${_dev}" ] && break
 
         _orig_slot=${_dev%%/*}
-        _orig_func=${_dev##*/}
 
         # only move to new slot if the original device is on a different slot to the last one.
         # if user wants to passthru a device that has multiple functions which must stay together
         # on one slot, they should be together in configuration file
         if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
             _slot=$((_slot + 1))
+            _func=0
         fi
 
-        # we use the original function number for all devices.
-        # does this work if you only pass through function 1 or 2, and leave 0 empty?
-        _devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
+        _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
         _last_orig_slot=${_orig_slot}
 
         _num=$((_num + 1))
+        _func=$((_func + 1))
     done
 
     if [ ${_num} -ge 1 ]; then

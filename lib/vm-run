@@ -453,7 +453,7 @@ __vm_bhyve_device_rand(){
 # @modifies _devices _slot _opts _wiredmem
 #
 __vm_bhyve_device_passthru(){
-    local _dev _orig_slot _orig_func
+    local _dev _orig_slot _func=0
     local _last_orig_slot
     local _num=0
 
@@ -469,14 +469,14 @@ __vm_bhyve_device_passthru(){
         # on one slot, they should be together in configuration file
         if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
             _slot=$((_slot + 1))
+            _func=0
         fi
 
-        # we use the original function number for all devices.
-        # does this work if you only pass through function 1 or 2, and leave 0 empty?
-        _devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
+        _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
         _last_orig_slot=${_orig_slot}
 
         _num=$((_num + 1))
+        _func=$((_func + 1))
     done
 
     if [ ${_num} -ge 1 ]; then

@@ -59,7 +59,7 @@ info::guest(){
 #
 # @param optional string _switch name of switch to display
 #
-info::guest_switch(){
+info::switch(){
     local _switch="$1"
     local _list
 
@@ -69,12 +69,12 @@ info::guest_switch(){
     config::get "_list" "switch_list"
 
     if [ -n "${_switch}" ]; then
-        info::guest_switch_show "${_switch}"
+        info::switch_show "${_switch}"
         exit
     fi
 
     for _switch in ${_list}; do
-        info::guest_switch_show "${_switch}"
+        info::switch_show "${_switch}"
     done
 }
 
@@ -82,7 +82,7 @@ info::guest_switch(){
 #
 # @param string _switch the name of the switch
 #
-info::guest_switch_show(){
+info::switch_show(){
     local _switch="$1"
     local _bridge _vale _id
     local _INDENT="  "
@@ -110,23 +110,23 @@ info::guest_switch_show(){
 
     echo "${_INDENT}ident: ${_id:--}"
 
-    info::guest_output_config "vlan_${_switch}" "vlan"
-    info::guest_output_config "nat_${_switch}" "nat"
-    info::guest_output_config "ports_${_switch}" "physical-ports"
+    info::__output_config "vlan_${_switch}" "vlan"
+    info::__output_config "nat_${_switch}" "nat"
+    info::__output_config "ports_${_switch}" "physical-ports"
 
     if [ -n "${_bridge}" ]; then
         _stats=$(netstat -biI "${_bridge}" |grep '<Link#' | tail -n1 | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | awk '{print $5,$2}')
 
         if [ -n "${_stats}" ]; then
-            _b_in=$(info::guest_bytes_human "${_stats%% *}")
-            _b_out=$(info::guest_bytes_human "${_stats##* }")
+            _b_in=$(info::__bytes_human "${_stats%% *}")
+            _b_out=$(info::__bytes_human "${_stats##* }")
 
             echo "${_INDENT}bytes-in: ${_stats%% *} (${_b_in})"
             echo "${_INDENT}bytes-out: ${_stats##* } (${_b_out})"
         fi
 
         # show guest ports
-        info::guest_switch_ports
+        info::switch_ports
     fi
 
     echo ""
@@ -134,7 +134,7 @@ info::guest_switch_show(){
 
 # get all guest ports for current bridge
 #
-info::guest_switch_ports(){
+info::switch_ports(){
     local _port_list=$(ifconfig "${_bridge}" |grep 'member: tap' |awk '{print $2}')
     local _port _guest
 
@@ -177,18 +177,18 @@ info::guest_show(){
     echo "${_INDENT}datastore: ${VM_DS_NAME}"
 
     # basic guest configuration
-    info::guest_output_config "loader" "" "default"
-    info::guest_output_config "uuid" "" "auto"
-    info::guest_output_config "uefi" "" "no"
-    info::guest_output_config "cpu"
-    info::guest_output_config "memory"
+    info::__output_config "loader" "" "default"
+    info::__output_config "uuid" "" "auto"
+    info::__output_config "uefi" "" "no"
+    info::__output_config "cpu"
+    info::__output_config "memory"
 
     # running system details
     if [ "${_RUN}" = "1" ]; then
         _res_mem=$(bhyvectl --get-stats --vm="${_name}" |grep 'Resident memory' |awk '{print $3}')
 
         if [ -n "${_res_mem}" ]; then
-            _b_res_mem=$(info::guest_bytes_human "${_res_mem}")
+            _b_res_mem=$(info::__bytes_human "${_res_mem}")
             echo "${_INDENT}memory-resident: ${_res_mem} (${_b_res_mem})"
         fi
 
@@ -234,9 +234,9 @@ info::guest_disks(){
         echo "  virtual-disk"
         echo "${_INDENT}number: ${_num}"
 
-        info::guest_output_config "disk${_num}_dev" "device-type" "file"
-        info::guest_output_config "disk${_num}_type" "emulation"
-        info::guest_output_config "disk${_num}_opts" "options"
+        info::__output_config "disk${_num}_dev" "device-type" "file"
+        info::__output_config "disk${_num}_type" "emulation"
+        info::__output_config "disk${_num}_opts" "options"
 
         echo "${_INDENT}system-path: ${_path:--}"
 
@@ -257,8 +257,8 @@ info::guest_disks(){
             esac
 
             if [ -n "${_size}" -a -n "${_used}" ]; then
-                _b_size=$(info::guest_bytes_human "${_size}")
-                _b_used=$(info::guest_bytes_human "${_used}")
+                _b_size=$(info::__bytes_human "${_size}")
+                _b_used=$(info::__bytes_human "${_used}")
                 echo "${_INDENT}bytes-size: ${_size} (${_b_size})"
                 echo "${_INDENT}bytes-used: ${_used} (${_b_used})"
             fi
@@ -284,10 +284,10 @@ info::guest_networking(){
         echo "${_INDENT}number: ${_num}"
 
         # basic interface config
-        info::guest_output_config "network${_num}_type" "emulation"
-        info::guest_output_config "network${_num}_switch" "virtual-switch"
-        info::guest_output_config "network${_num}_mac" "fixed-mac-address"
-        info::guest_output_config "network${_num}_device" "fixed-device"
+        info::__output_config "network${_num}_type" "emulation"
+        info::__output_config "network${_num}_switch" "virtual-switch"
+        info::__output_config "network${_num}_mac" "fixed-mac-address"
+        info::__output_config "network${_num}_device" "fixed-device"
 
         # if running, try to get some more interface details
         if [ "${_RUN}" = "1" ]; then
@@ -297,7 +297,7 @@ info::guest_networking(){
             _id=${_int%%:*}
             _tag=$(ifconfig | grep "vmnet-${_name}-${_num}-" | cut -d' ' -f2)
 
-            info::guest_find_bridge "_bridge" "${_id}"
+            info::__find_bridge "_bridge" "${_id}"
 
             echo "${_INDENT}active-device: ${_id:--}"
             echo "${_INDENT}desc: ${_tag:--}"
@@ -306,8 +306,8 @@ info::guest_networking(){
 
             if [ -n "${_id}" ]; then
                 _stats=$(netstat -biI "${_id}" | tail -n1 | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | awk '{print $2,$5}')
-                _b_in=$(info::guest_bytes_human "${_stats%% *}")
-                _b_out=$(info::guest_bytes_human "${_stats##* }")
+                _b_in=$(info::__bytes_human "${_stats%% *}")
+                _b_out=$(info::__bytes_human "${_stats##* }")
 
                 echo "${_INDENT}bytes-in: ${_stats%% *} (${_b_in})"
                 echo "${_INDENT}bytes-out: ${_stats##* } (${_b_out})"
@@ -325,7 +325,7 @@ info::guest_networking(){
 # @param optional string _title title to display instead of using option name
 # @param optional string _default default value to display if not -
 #
-info::guest_output_config(){
+info::__output_config(){
     local _option="$1"
     local _title="$2"
     local _default="$3"
@@ -345,7 +345,7 @@ info::guest_output_config(){
 # @param string _var variable to put value into
 # @param string _interface interface to look for
 #
-info::guest_find_bridge(){
+info::__find_bridge(){
     local _var="$1"
     local _interface="$2"
     local _br _found
@@ -369,7 +369,7 @@ info::guest_find_bridge(){
 #
 # @param int _val the value to convert
 #
-info::guest_bytes_human(){
+info::__bytes_human(){
     local _val="$1" _int _ext
     local _num=1
 

@@ -95,7 +95,7 @@ cmd::parse_switch(){
     case "${_cmd}" in
         create)  switch::create "$@" ;;
         list)    switch::list ;;
-        info)    info::guest_switch "$@" ;;
+        info)    info::switch "$@" ;;
         destroy) switch::remove "$@" ;;
         import)  switch::import "$@" ;;
         add)     switch::add_member "$@" ;;

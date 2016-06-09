@@ -39,7 +39,7 @@ info::guest(){
     # see if one guest provided
     if [ -n "${_name}" ]; then
         datastore::get_guest "${_name}" || util::err "unable to locate virtual machine '${_name}'"
-        info::guest_guest "${_name}"
+        info::guest_show "${_name}"
         exit
     fi
 
@@ -49,7 +49,7 @@ info::guest(){
 
         ls -1 "${VM_DS_PATH}" 2>/dev/null | \
         while read _name; do
-            [ -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && info::guest_guest "${_name}"
+            [ -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && info::guest_show "${_name}"
         done
     done
 }
@@ -152,7 +152,7 @@ info::guest_switch_ports(){
 #
 # @param string _name name of the guest to display
 #
-info::guest_guest(){
+info::guest_show(){
     local _name="$1"
     local _conf="${VM_DS_PATH}/${_name}/${_name}.conf"
     local _INDENT="  "

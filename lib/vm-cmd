@@ -31,12 +31,12 @@
 #
 # @param string _cmd the command right after 'vm '
 #
-__parse_info_cmd(){
+cmd::parse_info(){
     local _cmd="$1"
 
     case "${_cmd}" in
-        version) __version && exit ;;
-        usage)   __usage ;;
+        version) util::version && exit ;;
+        usage)   util::usage ;;
     esac
 }
 
@@ -46,38 +46,38 @@ __parse_info_cmd(){
 #
 # @param string _cmd the command right after 'vm '
 #
-__parse_cmd(){
+cmd::parse(){
     local _cmd="$1"
     shift
 
     case "${_cmd}" in
-        init)      __setup
-                   __switch_init ;;
-        switch)    __parse_switch_cmd "$@" ;;
-        datastore) __parse_datastore_cmd "$@" ;;
-        image)     __parse_image_cmd "$@" ;;
-        list)      __vm_list ;;
-        info)      __vm_info "$@" ;;
-        create)    __vm_create "$@" ;;
-        destroy)   __vm_destroy "$@" ;;
-        rename)    __vm_rename "$@" ;;
-        install)   __vm_install "$@" ;;
-        start)     __vm_start "$1" ;;
-        stop)      __vm_stop "$@" ;;
-        add)       __vm_add "$@" ;;
-        reset)     __vm_reset "$@" ;;
-        poweroff)  __vm_poweroff "$@" ;;
-        startall)  __vm_startall ;;
-        stopall)   __vm_stopall ;;
-        console)   __vm_console "$@" ;;
-        _run)      __vm_run "$@" ;;
-        iso)       __vm_iso "$@" ;;
-        configure) __vm_configure "$@" ;;
-        passthru)  __vm_passthru ;;
-        clone)     __zfs_clone "$@" ;;
-        snapshot)  __zfs_snapshot "$@" ;;
-        rollback)  __zfs_rollback "$@" ;;
-        *)         __usage ;;
+        init)      util::setup
+                   switch::init ;;
+        switch)    cmd::parse_switch "$@" ;;
+        datastore) cmd::parse_datastore "$@" ;;
+        image)     cmd::parse_image "$@" ;;
+        list)      core::list ;;
+        info)      info::guest "$@" ;;
+        create)    core::create "$@" ;;
+        destroy)   core::destroy "$@" ;;
+        rename)    core::rename "$@" ;;
+        install)   core::install "$@" ;;
+        start)     core::start "$1" ;;
+        stop)      core::stop "$@" ;;
+        add)       core::add "$@" ;;
+        reset)     core::reset "$@" ;;
+        poweroff)  core::poweroff "$@" ;;
+        startall)  core::startall ;;
+        stopall)   core::stopall ;;
+        console)   core::console "$@" ;;
+        _run)      vm::run "$@" ;;
+        iso)       core::iso "$@" ;;
+        configure) core::configure "$@" ;;
+        passthru)  core::passthru ;;
+        clone)     zfs::clone "$@" ;;
+        snapshot)  zfs::snapshot "$@" ;;
+        rollback)  zfs::rollback "$@" ;;
+        *)         util::usage ;;
     esac
 }
 
@@ -88,21 +88,21 @@ __parse_cmd(){
 #
 # @param string _cmd the command right after 'vm switch '
 #
-__parse_switch_cmd(){
+cmd::parse_switch(){
     local _cmd="$1"
     shift
 
     case "${_cmd}" in
-        create)  __switch_create "$@" ;;
-        list)    __switch_list ;;
-        info)    __vm_info_switch "$@" ;;
-        destroy) __switch_remove "$@" ;;
-        import)  __switch_import "$@" ;;
-        add)     __switch_add_member "$@" ;;
-        remove)  __switch_remove_member "$@" ;;
-        vlan)    __switch_vlan "$@" ;;
-        nat)     __switch_nat "$@" ;;
-        *)       __usage ;;
+        create)  switch::create "$@" ;;
+        list)    switch::list ;;
+        info)    info::guest_switch "$@" ;;
+        destroy) switch::remove "$@" ;;
+        import)  switch::import "$@" ;;
+        add)     switch::add_member "$@" ;;
+        remove)  switch::remove_member "$@" ;;
+        vlan)    switch::vlan "$@" ;;
+        nat)     switch::nat "$@" ;;
+        *)       util::usage ;;
     esac
 }
 
@@ -112,15 +112,15 @@ __parse_switch_cmd(){
 #
 # @param string _cmd the command after 'vm datastore ...'
 #
-__parse_datastore_cmd(){
+cmd::parse_datastore(){
     local _cmd="$1"
     shift
 
     case "${_cmd}" in
-        list)   __datastore_list ;;
-        add)    __datastore_add "$@" ;;
-        remove) __datastore_remove "$@" ;;
-        *)      __usage ;;
+        list)   datastore::list ;;
+        add)    datastore::add "$@" ;;
+        remove) datastore::remove "$@" ;;
+        *)      util::usage ;;
     esac
 }
 
@@ -129,18 +129,18 @@ __parse_datastore_cmd(){
 #
 # @param string _cmd the command after 'vm image '
 #
-__parse_image_cmd(){
+cmd::parse_image(){
     local _cmd="$1"
     shift
 
-    [ -z "${VM_ZFS}" ] && __err "\$vm_dir must be a ZFS datastore to use these functions"
+    [ -z "${VM_ZFS}" ] && util::err "\$vm_dir must be a ZFS datastore to use these functions"
 
     case "${_cmd}" in
-        list)      __zfs_image_list ;;
-        create)    __zfs_image_create "$@" ;;
-        provision) __zfs_image_provision "$@" ;;
-        destroy)   __zfs_image_destroy "$@" ;;
-        *)         __usage ;;
+        list)      zfs::image_list ;;
+        create)    zfs::image_create "$@" ;;
+        provision) zfs::image_provision "$@" ;;
+        destroy)   zfs::image_destroy "$@" ;;
+        *)         util::usage ;;
     esac
 }
 
@@ -152,7 +152,7 @@ __parse_image_cmd(){
 #
 # @modifies VM_COMMAND VM_FOREGROUND vm_dir
 #
-__parse_cmd_args(){
+cmd::parse_args(){
     local _opt
 
     while getopts f _opt; do

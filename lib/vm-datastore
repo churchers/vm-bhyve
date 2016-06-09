@@ -27,7 +27,7 @@
 # 'vm datastore list'
 # show configured datastores
 #
-__datastore_list(){
+datastore::list(){
     local _format="%-15s %-11s %-25s %s"
     local _name _type _dataset _path _ds _spec
 
@@ -50,16 +50,16 @@ __datastore_list(){
     printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
 
     # load the rest
-    __config_core_get "_ds" "datastore_list"
+    config::core_get "_ds" "datastore_list"
 
     for _name in ${_ds}; do
-        __config_core_get "_spec" "path_${_name}"
+        config::core_get "_spec" "path_${_name}"
         [ -z "${_spec}" ] && continue
 
         if [ "${_spec%%:*}" = "zfs" ]; then
             _type="zfs"
             _dataset="${_spec#*:}"
-            __datastore_resolve_path "_path" "${_spec}"
+            datastore::__resolve_path "_path" "${_spec}"
         else
             _type="directory"
             _path="${_spec}"
@@ -79,41 +79,41 @@ __datastore_list(){
 # @param string _name datastore name
 # @param string _spec specification (either /path or zfs:dataset)
 #
-__datastore_add(){
+datastore::add(){
     local _name="$1"
     local _spec="$2"
     local _mount _num=0 _list _curr
 
-    [ -z "${_name}" -o -z "${_spec}" ] && __usage
-    [ "${_name}" = "default" ] && __err "additional datastore cannot be named 'default'"
-    __vm_check_name "${_name}" || __err "invalid datastore name - '${_name}'"
+    [ -z "${_name}" -o -z "${_spec}" ] && util::usage
+    [ "${_name}" = "default" ] && util::err "additional datastore cannot be named 'default'"
+    core::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
 
     # check name not in use
-    __config_core_get "_list" "datastore_list"
+    config::core_get "_list" "datastore_list"
 
     for _curr in ${_list}; do
-        [ "${_curr}" = "${_name}" ] && __err "datstore ${_name} already exists!"
+        [ "${_curr}" = "${_name}" ] && util::err "datstore ${_name} already exists!"
     done
 
     # look for zfs
     if [ "${_spec%%:*}" = "zfs" ]; then
         # try to find mountpoint
         _mount=$(mount | grep "^${_spec#*:} " |cut -d' ' -f3)
-        [ -z "${_mount}" ] && __err "${_spec} doesn't seem to be a valid, mounted dataset"
+        [ -z "${_mount}" ] && util::err "${_spec} doesn't seem to be a valid, mounted dataset"
     else
         # make sure it's a directory
-        [ ! -d "${_spec}" ] && __err "${_spec} doesn't seem to be a valid directory"
+        [ ! -d "${_spec}" ] && util::err "${_spec} doesn't seem to be a valid directory"
 
         _mount="${_spec}"
     fi
 
     # see if this is already our default datastore
-    [ "${_mount}" = "${vm_dir}" ] && __err "specified path already exists as default datastore"
+    [ "${_mount}" = "${vm_dir}" ] && util::err "specified path already exists as default datastore"
 
     # save
-    __config_core_set "datastore_list" "${_name}" "1"
-    __config_core_set "path_${_name}" "${_spec}"
-    [ $? -ne 0 ] && __err "error saving settings to configuration file"
+    config::core_set "datastore_list" "${_name}" "1"
+    config::core_set "path_${_name}" "${_spec}"
+    [ $? -ne 0 ] && util::err "error saving settings to configuration file"
 }
 
 # remove a datastore
@@ -121,16 +121,16 @@ __datastore_add(){
 #
 # @param string _name name of dataset
 #
-__datastore_remove(){
+datastore::remove(){
     local _name="$1"
 
-    [ "${_name}" = "default" ] && __err "cannot remove default datastore"
+    [ "${_name}" = "default" ] && util::err "cannot remove default datastore"
 
-    __datastore_get "${_name}" || __err "unable to locate the specified dataset"
+    datastore::get "${_name}" || util::err "unable to locate the specified dataset"
 
-    __config_core_remove "datastore_list" "${_name}"
-    __config_core_remove "path_${_name}"
-    [ $? -ne 0 ] && __err "error removing settings from configuration file"
+    config::core_remove "datastore_list" "${_name}"
+    config::core_remove "path_${_name}"
+    [ $? -ne 0 ] && util::err "error removing settings from configuration file"
 }
 
 # get the filesystem path for the specified dataset spec
@@ -140,7 +140,7 @@ __datastore_remove(){
 # @param string _spec the path spec (either directory or zfs:dataset)
 # @return non-zero on error
 #
-__datastore_resolve_path(){
+datastore::__resolve_path(){
     local _var="$1"
     local _spec="$2"
 
@@ -166,8 +166,8 @@ __datastore_resolve_path(){
 #
 # @modifies VM_DATASTORE_LIST
 #
-__datastore_load(){
-    __config_core_get "VM_DATASTORE_LIST" "datastore_list"
+datastore::load(){
+    config::core_get "VM_DATASTORE_LIST" "datastore_list"
     VM_DATASTORE_LIST="default${VM_DATASTORE_LIST:+ }${VM_DATASTORE_LIST}"
 }
 
@@ -180,7 +180,7 @@ __datastore_load(){
 # @return non-zero on error
 # @modifies VM_DS_NAME VM_DS_PATH VM_DS_ZFS VM_DS_ZFS_DATASET
 #
-__datastore_get_guest(){
+datastore::get_guest(){
     local _guest="$1"
     local _ds _spec _path _found _zfs _dataset
 
@@ -197,8 +197,8 @@ __datastore_get_guest(){
     if [ -z "${_found}" ]; then
         for _ds in ${VM_DATASTORE_LIST}; do
             [ "${_ds}" = "default" ] && continue
-            __config_core_get "_spec" "path_${_ds}"
-            __datastore_resolve_path "_path" "${_spec}"
+            config::core_get "_spec" "path_${_ds}"
+            datastore::__resolve_path "_path" "${_spec}"
 
             if [ -f "${_path}/${_guest}/${_guest}.conf" ]; then
                 [ "${_spec%%:*}" = "zfs" ] && _zfs="1" && _dataset="${_spec#*:}"
@@ -226,7 +226,7 @@ __datastore_get_guest(){
 # @return non-zero on error
 # @modifies VM_DS_PATH VM_DS_ZFS VM_DS_ZFS_DATASET
 #
-__datastore_get(){
+datastore::get(){
     local _ds="$1"
     local _spec _path _zfs _dataset
 
@@ -239,10 +239,10 @@ __datastore_get(){
         return 0
     fi
 
-    __config_core_get "_spec" "path_${_ds}"
+    config::core_get "_spec" "path_${_ds}"
     [ -z "${_spec}" ] && return 1
 
-    __datastore_resolve_path "_path" "${_spec}" || return 1
+    datastore::__resolve_path "_path" "${_spec}" || return 1
     [ "${_spec%%:*}" = "zfs" ] && _zfs="1" && _dataset="${_spec#*:}"
 
     # set variables

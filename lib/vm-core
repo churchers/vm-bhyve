@@ -27,42 +27,42 @@
 # 'vm list'
 # list virtual machines
 #
-__vm_list(){
+core::list(){
     local _name _loader _cpu _our_host
     local _memory _run _vm _auto _num _uefi _graphics _vnc
     local _format="%-15s %-15s %-11s %-6s %-9s %-20s %-12s %s\n"
 
     _our_host=$(hostname)
 
-    __vm_running_load
+    vm::running_load
     printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
 
     for _ds in ${VM_DATASTORE_LIST}; do
-        __datastore_get "${_ds}" || continue
+        datastore::get "${_ds}" || continue
 
         ls -1 "${VM_DS_PATH}" 2>/dev/null | \
         while read _name; do
             [ ! -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && continue
 
-            __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
-            __config_get "_loader" "loader" "none"
-            __config_get "_cpu" "cpu"
-            __config_get "_memory" "memory"
-            __config_get "_uefi" "uefi"
-            __config_get "_graphics" "graphics"
+            config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+            config::get "_loader" "loader" "none"
+            config::get "_cpu" "cpu"
+            config::get "_memory" "memory"
+            config::get "_uefi" "uefi"
+            config::get "_graphics" "graphics"
 
             # show uefi in loader column if it's a uefi guest
-            __checkyesno "${_uefi}" && _loader="uefi"
+            util::checkyesno "${_uefi}" && _loader="uefi"
 
             # defaults
             _vnc="-"
 
             # check if the guest is running
-            if __vm_running_check "_run" "${_name}" || \
+            if vm::running_check "_run" "${_name}" || \
                [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
 
                 # if running and graphics, try to get vnc port
-                if __checkyesno "${_graphics}"; then
+                if util::checkyesno "${_graphics}"; then
                     _vnc=$(grep vnc "${VM_DS_PATH}/${_name}/console" 2>/dev/null |cut -d= -f2)
                     [ -z "${_vnc}" ] && _vnc="-"
                 fi
@@ -93,7 +93,7 @@ __vm_list(){
 #
 # @return int 0 if name is valid
 #
-__vm_check_name(){
+core::check_name(){
     echo "$1" | egrep -iqs '^[a-z0-9][.a-z0-9-]{0,14}[a-z0-9]$'
 }
 
@@ -104,7 +104,7 @@ __vm_check_name(){
 # @param optional string (-s) _size guest size (default = 20G)
 # @param string _name the name of the guest to create
 #
-__vm_create(){
+core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _uuid _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path
 
@@ -113,49 +113,49 @@ __vm_create(){
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
             d) _ds=${OPTARG} ;;
-            *) __usage ;;
+            *) util::usage ;;
         esac
     done
 
     shift $((OPTIND - 1))
     _name=$1
 
-    [ -z "${_name}" ] && __usage
+    [ -z "${_name}" ] && util::usage
 
     # check guest name
-    __vm_check_name "${_name}" || __err "invalid virtual machine name - '${_name}'"
-    __datastore_get_guest "${_name}" && __err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
-    __datastore_get "${_ds}" || __err "unable to load datastore - '${_ds}'"
+    core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    datastore::get_guest "${_name}" && util::err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
+    datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
 
     [ ! -f "${vm_dir}/.templates/${_template}.conf" ] && \
-        __err "unable to find template ${vm_dir}/.templates/${_template}.conf"
+        util::err "unable to find template ${vm_dir}/.templates/${_template}.conf"
 
     # we need to get disk0 name and device type from the template
-    __config_load "${vm_dir}/.templates/${_template}.conf"
-    __config_get "_disk" "disk0_name"
-    __config_get "_disk_dev" "disk0_dev"
-    __config_get "_disk_size" "disk0_size" "20G"
-    __config_get "_zfs_opts" "zfs_dataset_opts"
+    config::load "${vm_dir}/.templates/${_template}.conf"
+    config::get "_disk" "disk0_name"
+    config::get "_disk_dev" "disk0_dev"
+    config::get "_disk_size" "disk0_size" "20G"
+    config::get "_zfs_opts" "zfs_dataset_opts"
 
     # make sure template has a disk before we start creating anything
-    [ -z "${_disk}" ] && __err "template is missing disk0_name specification"
+    [ -z "${_disk}" ] && util::err "template is missing disk0_name specification"
 
     # if we're on zfs, make a new filesystem
-    __zfs_make_dataset "${VM_DS_ZFS_DATASET}/${_name}" "${_zfs_opts}"
+    zfs::make_dataset "${VM_DS_ZFS_DATASET}/${_name}" "${_zfs_opts}"
 
     [ ! -d "${VM_DS_PATH}/${_name}" ] && mkdir "${VM_DS_PATH}/${_name}" >/dev/null 2>&1
-    [ ! -d "${VM_DS_PATH}/${_name}" ] && __err "unable to create virtual machine directory ${VM_DS_PATH}/${_name}"
+    [ ! -d "${VM_DS_PATH}/${_name}" ] && util::err "unable to create virtual machine directory ${VM_DS_PATH}/${_name}"
 
     cp "${vm_dir}/.templates/${_template}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf"
-    [ $? -ne 0 ] && __err "unable to copy template to virtual machine directory"
+    [ $? -ne 0 ] && util::err "unable to copy template to virtual machine directory"
 
     # generate a uuid
     # jump through some hoops to make sure it gets its own line (but no gap)
     _uuid=$(uuidgen)
-    __vm_config_set "${_name}" "uuid" "${_uuid}"
+    core::guest_config_set "${_name}" "uuid" "${_uuid}"
 
     # get any zvol options
-    __config_get "_zfs_opts" "zfs_zvol_opts"
+    config::get "_zfs_opts" "zfs_zvol_opts"
 
     # use cmd line size for disk 0 if specified
     [ -n "${_size}" ] && _disk_size="${_size}"
@@ -164,14 +164,14 @@ __vm_create(){
     while [ -n "${_disk}" ]; do
         case "${_disk_dev}" in 
             zvol)
-                __zfs_make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
+                zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
                 ;;			
             sparse-zvol)
-                __zfs_make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
+                zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
                 ;;
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
-                [ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+                [ $? -ne 0 ] && util::err "failed to create sparse file for disk image"
                 ;;
         esac
 
@@ -180,9 +180,9 @@ __vm_create(){
 
         # look for another disk
         _num=$((_num + 1))
-        __config_get "_disk" "disk${_num}_name"
-        __config_get "_disk_dev" "disk${_num}_dev"
-        __config_get "_disk_size" "disk${_num}_size" "20G"
+        config::get "_disk" "disk${_num}_name"
+        config::get "_disk_dev" "disk${_num}_dev"
+        config::get "_disk_size" "disk${_num}_size" "20G"
     done
 }
 
@@ -194,7 +194,7 @@ __vm_create(){
 # @param string (-s) _sopt for disk the size, for network the virtual switch name
 # @param string _name name of the guest
 #
-__vm_add(){
+core::add(){
     local _name _device _type _sopt _opt
 
     while getopts d:t:s: _opt; do
@@ -202,7 +202,7 @@ __vm_add(){
             d) _device=${OPTARG} ;;
             t) _type=${OPTARG} ;;
             s) _sopt=${OPTARG} ;;
-            *) __usage ;;
+            *) util::usage ;;
         esac
     done
 
@@ -210,13 +210,13 @@ __vm_add(){
     _name="$1"
 
     # check guest
-    [ -z "${_name}" ] && __usage
-    __datastore_get_guest "${_name}" || "${_name} does not appear to be a valid virtual machine"
+    [ -z "${_name}" ] && util::usage
+    datastore::get_guest "${_name}" || "${_name} does not appear to be a valid virtual machine"
 
     case "${_device}" in
-        disk)    __vm_add_disk "${_name}" "${_type}" "${_sopt}" ;;
-        network) __vm_add_network "${_name}" "${_sopt}" ;;
-        *)       __err "device must be one of the following: disk network" ;;
+        disk)    core::add_disk "${_name}" "${_type}" "${_sopt}" ;;
+        network) core::add_network "${_name}" "${_sopt}" ;;
+        *)       util::err "device must be one of the following: disk network" ;;
     esac
 }
 
@@ -229,7 +229,7 @@ __vm_add(){
 # @param string _device type of device file|zvol|sparse-zvol
 # @param string _size size of the disk to create
 #
-__vm_add_disk(){
+core::add_disk(){
     local _name="$1"
     local _device="$2"
     local _size="$3"
@@ -237,46 +237,46 @@ __vm_add_disk(){
 
     : ${_device:=file}
 
-    [ -z "${_size}" ] && __usage
+    [ -z "${_size}" ] && util::usage
 
     # get the last existing disk
-    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    __config_get "_zfs_opts" "zfs_zvol_opts"
+    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+    config::get "_zfs_opts" "zfs_zvol_opts"
 
     while [ 1 ]; do
-        __config_get "_curr" "disk${_num}_name"
+        config::get "_curr" "disk${_num}_name"
         [ -z "${_curr}" ] && break
-        __config_get "_emulation" "disk${_num}_type"
+        config::get "_emulation" "disk${_num}_type"
         _num=$((_num + 1))
     done
 
-    [ -z "${_emulation}" ] && __err "failed to get emulation type of the existing guest disks"
+    [ -z "${_emulation}" ] && util::err "failed to get emulation type of the existing guest disks"
 
     # create the disk first, then update config if no problems
     case "${_device}" in
         zvol)
-            __zfs_make_zvol "${VM_DS_ZFS_DATASET}/${_name}/disk${_num}" "${_size}" "0" "${_zfs_opts}"
+            zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/disk${_num}" "${_size}" "0" "${_zfs_opts}"
             _diskname="disk${_num}"
             ;;
         sparse-zvol)
-            __zfs_make_zvol "${VM_DS_ZFS_DATASET}/${_name}/disk${_num}" "${_size}" "1" "${_zfs_opts}"
+            zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/disk${_num}" "${_size}" "1" "${_zfs_opts}"
             _diskname="disk${_num}"
             ;;
         file)
             truncate -s "${_size}" "${VM_DS_PATH}/${_name}/disk${_num}.img"
-            [ $? -ne 0 ] && __err "failed to create sparse file for disk image"
+            [ $? -ne 0 ] && util::err "failed to create sparse file for disk image"
             _diskname="disk${_num}.img"
             ;;
         *)
-            __err "device type must be one of the following: zvol sparse-zvol file"
+            util::err "device type must be one of the following: zvol sparse-zvol file"
             ;;
     esac
 
     # update configuration
-    __vm_config_set "${_name}" "disk${_num}_name" "${_diskname}"
-    __vm_config_set "${_name}" "disk${_num}_type" "${_emulation}" "1"
-    __vm_config_set "${_name}" "disk${_num}_dev" "${_device}" "1"
-    [ $? -ne 0 ] && __err "disk image created but errors while updating guest configuration"
+    core::guest_config_set "${_name}" "disk${_num}_name" "${_diskname}"
+    core::guest_config_set "${_name}" "disk${_num}_type" "${_emulation}" "1"
+    core::guest_config_set "${_name}" "disk${_num}_dev" "${_device}" "1"
+    [ $? -ne 0 ] && util::err "disk image created but errors while updating guest configuration"
 }
 
 # add network interface to guest
@@ -285,18 +285,18 @@ __vm_add_disk(){
 # @param string _name name of the guest
 # @param string _switch the switch name for this interface
 #
-__vm_add_network(){
+core::add_network(){
     local _name="$1"
     local _switch="$2"
     local _num=0 _curr _emulation
 
-    [ -z "${_switch}" ] && __usage
+    [ -z "${_switch}" ] && util::usage
 
-    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
+    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
 
     while [ 1 ]; do
         _emulation="${_curr}"
-        __config_get "_curr" "network${_num}_type"
+        config::get "_curr" "network${_num}_type"
         [ -z "${_curr}" ] && break
         _num=$((_num + 1))
     done
@@ -305,9 +305,9 @@ __vm_add_network(){
     : ${_emulation:=virtio-net}
 
     # update configuration
-    __vm_config_set "${_name}" "network${_num}_type" "${_emulation}"
-    __vm_config_set "${_name}" "network${_num}_switch" "${_switch}" "1"
-    [ $? -ne 0 ] && __err "errors encountered while updating guest configuration"
+    core::guest_config_set "${_name}" "network${_num}_type" "${_emulation}"
+    core::guest_config_set "${_name}" "network${_num}_switch" "${_switch}" "1"
+    [ $? -ne 0 ] && util::err "errors encountered while updating guest configuration"
 }
 
 # 'vm install'
@@ -316,20 +316,20 @@ __vm_add_network(){
 # @param string _name the guest to install to
 # @param string _iso the iso file in $vm_dir/.iso to use
 #
-__vm_install(){
+core::install(){
     local _name="$1"
     local _iso="$2"
 
-    [ -z "${_name}" -o -z "${_iso}" ] && __usage
+    [ -z "${_name}" -o -z "${_iso}" ] && util::usage
 
     # just run start with an iso
-    __vm_start "$1" "$2"
+    core::start "$1" "$2"
 }
 
 # 'vm startall'
 # start all virtual machines listed in rc.conf:$vm_list
 #
-__vm_startall(){
+core::startall(){
     local _vm _done _conf
 
     [ -z "${vm_list}" ] && exit
@@ -342,7 +342,7 @@ __vm_startall(){
         [ -n "${_done}" ] && sleep ${vm_delay}
 
         echo "Starting ${_vm}..."
-        __vm_start "${_vm}"
+        core::start "${_vm}"
         _done=1
     done
 }
@@ -351,7 +351,7 @@ __vm_startall(){
 # stop all bhyve instances
 # note this will also stop instances not started by vm-bhyve
 #
-__vm_stopall(){
+core::stopall(){
     local _pids=$(pgrep -f 'bhyve:')
 
     echo "Shutting down all bhyve virtual machines"
@@ -367,38 +367,38 @@ __vm_stopall(){
 # @param string _name the name of the guest to start
 # @param optional string _iso iso file is this is an install (can only be provided through 'vm install' command)
 #
-__vm_start(){
+core::start(){
     local _name="$1"
     local _iso="$2"
     local _cpu _memory _disk _guest _loader
 
-    [ -z "${_name}" ] && __usage
+    [ -z "${_name}" ] && util::usage
 
     # try to find guest
-    if ! __datastore_get_guest "${_name}"; then
-        __warn "${_name} does not seem to be a valid virtual machine"
+    if ! datastore::get_guest "${_name}"; then
+        util::warn "${_name} does not seem to be a valid virtual machine"
         return 1
     fi
 
     # confirm we aren't running
-    __vm_confirm_stopped "${_name}" "1" || return 1
+    vm::confirm_stopped "${_name}" "1" || return 1
 
     # check basic settings before going into background mode
-    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    __config_get "_cpu" "cpu"
-    __config_get "_memory" "memory"
-    __config_get "_disk" "disk0_name"
-    __config_get "_loader" "loader"
+    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+    config::get "_cpu" "cpu"
+    config::get "_memory" "memory"
+    config::get "_disk" "disk0_name"
+    config::get "_loader" "loader"
 
     # check minimum configuration
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
-        __warn "incomplete virtual machine configuration"
+        util::warn "incomplete virtual machine configuration"
         return 1
     fi
 
     # we can only load freebsd without unrestricted guest support
     if [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ]; then
-        __warn "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
+        util::warn "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
         return 1
     fi
 
@@ -416,15 +416,15 @@ __vm_start(){
 #
 # @param string _name name of the guest to stop
 #
-__vm_stop(){
+core::stop(){
     local _name="$1"
     local _pid _loadpid
 
-    [ -z "${_name}" ] && __usage
+    [ -z "${_name}" ] && util::usage
 
     while [ -n "${_name}" ]; do
         if [ ! -e "/dev/vmm/${_name}" ]; then
-            __warn "${_name} doesn't appear to be a running virtual machine"
+            util::warn "${_name} doesn't appear to be a running virtual machine"
         else
             _pid=$(pgrep -fx "bhyve: ${_name}")
             _loadpid=$(pgrep -fl "grub-bhyve|bhyveload" | grep " ${_name}\$" |cut -d' ' -f1)
@@ -435,13 +435,13 @@ __vm_stop(){
                 sleep 1
                 kill "${_pid}"
             elif [ -n "${_loadpid}" ]; then
-                if __confirm "Guest ${_name} is in bootloader stage, do you wish to force exit"; then
+                if util::confirm "Guest ${_name} is in bootloader stage, do you wish to force exit"; then
                     echo "Killing ${_name}"
                     kill "${_loadpid}"
                     bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
                 fi
             else
-                __warn "unable to locate process id for ${_name}"
+                util::warn "unable to locate process id for ${_name}"
             fi
         fi
         shift
@@ -454,13 +454,13 @@ __vm_stop(){
 #
 # @param string _name name of the guest
 #
-__vm_reset(){
+core::reset(){
     local _name="$1"
 
-    [ -z "${_name}" ] && __usage
-    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+    [ -z "${_name}" ] && util::usage
+    [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
 
-    __confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
+    util::confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
     bhyvectl --force-reset --vm=${_name}
 }
 
@@ -469,13 +469,13 @@ __vm_reset(){
 #
 # @param string _name name of the guest
 #
-__vm_poweroff(){
+core::poweroff(){
     local _name="$1"
 
-    [ -z "${_name}" ] && __usage
-    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
+    [ -z "${_name}" ] && util::usage
+    [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
 
-    __confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
+    util::confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
     bhyvectl --force-poweroff --vm=${_name}
 }
 
@@ -484,17 +484,17 @@ __vm_poweroff(){
 #
 # @param string _name name of the guest
 #
-__vm_destroy(){
+core::destroy(){
     local _name="$1"
 
-    [ -z "${_name}" ] && __usage
-    __datastore_get_guest "${_name}" || __err "${_name} doesn't appear to be a valid virtual machine"
+    [ -z "${_name}" ] && util::usage
+    datastore::get_guest "${_name}" || util::err "${_name} doesn't appear to be a valid virtual machine"
 
     # make sure it's stopped!
-    __vm_confirm_stopped "${_name}" || exit 1
+    vm::confirm_stopped "${_name}" || exit 1
 
-    __confirm "Are you sure you want to completely remove this virtual machine" || exit 0
-    __zfs_destroy_dataset "${VM_DS_ZFS_DATASET}/${_name}"
+    util::confirm "Are you sure you want to completely remove this virtual machine" || exit 0
+    zfs::destroy_dataset "${VM_DS_ZFS_DATASET}/${_name}"
     [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH}/${_name}"
 }
 
@@ -504,31 +504,31 @@ __vm_destroy(){
 # @param string _old the existing guest name
 # @param string _new the new guest name
 #
-__vm_rename(){
+core::rename(){
     local _old="$1"
     local _new="$2"
 
-    [ -z "${_old}" -o -z "${_new}" ] && __usage
-    __vm_check_name "${_new}" || __err "invalid virtual machine name - '${_name}'"
+    [ -z "${_old}" -o -z "${_new}" ] && util::usage
+    core::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
 
-    __datastore_get_guest "${_new}" && __err "directory ${VM_DS_PATH}/${_new} already exists"
-    __datastore_get_guest "${_old}" || __err "${_old} doesn't appear to be a valid virtual machine"
+    datastore::get_guest "${_new}" && util::err "directory ${VM_DS_PATH}/${_new} already exists"
+    datastore::get_guest "${_old}" || util::err "${_old} doesn't appear to be a valid virtual machine"
 
     # confirm guest stopped
-    __vm_confirm_stopped "${_old}" || exit 1
+    vm::confirm_stopped "${_old}" || exit 1
 
     # rename zfs dataset
-    __zfs_rename_dataset "${_old}" "${_new}"
+    zfs::rename_dataset "${_old}" "${_new}"
 
     # rename folder if it still exists (shouldn't if zfs mode and rename worked)
     if [ -d "${VM_DS_PATH}/${_old}" ]; then
         mv "${VM_DS_PATH}/${_old}" "${VM_DS_PATH}/${_new}" >/dev/null 2>&1
-        [ $? -ne 0 ] && __err "failed to rename guest directory"
+        [ $? -ne 0 ] && util::err "failed to rename guest directory"
     fi
 
     # rename config file
     mv "${VM_DS_PATH}/${_new}/${_old}.conf" "${VM_DS_PATH}/${_new}/${_new}.conf" >/dev/null 2>&1
-    [ $? -ne 0 ] && __err "changed guest directory but failed to rename configuration file"
+    [ $? -ne 0 ] && util::err "changed guest directory but failed to rename configuration file"
 }
 
 # 'vm console'
@@ -541,16 +541,16 @@ __vm_rename(){
 # @param string _name name of the guest
 # @param string _port the port to connect to (default = first in configuration)
 #
-__vm_console(){
+core::console(){
     local _name="$1"
     local _port="$2"
     local _console
 
-    [ -z "${_name}" ] && __usage
+    [ -z "${_name}" ] && util::usage
 
-    __datastore_get_guest "${_name}" || __err "${_name} doesn't appear to be a valid virtual machine"
-    [ ! -e "/dev/vmm/${_name}" ] && __err "${_name} doesn't appear to be a running virtual machine"
-    [ ! -e "${VM_DS_PATH}/${_name}/console" ] && __err "can't locate console data for ${_name}"
+    datastore::get_guest "${_name}" || util::err "${_name} doesn't appear to be a valid virtual machine"
+    [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
+    [ ! -e "${VM_DS_PATH}/${_name}/console" ] && util::err "can't locate console data for ${_name}"
 
     # did user specify a com port?
     # if not, get first in the file (the first will also be the console used for loader)
@@ -560,7 +560,7 @@ __vm_console(){
         _console=$(head -n 1 "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
     fi
 
-    [ -z "${_console}" ] && __err "unable to locate console device for this virtual machine"
+    [ -z "${_console}" ] && util::err "unable to locate console device for this virtual machine"
     cu -l "${_console}"
 }
 
@@ -569,14 +569,14 @@ __vm_console(){
 #
 # @param string _name name of the guest
 #
-__vm_configure(){
+core::configure(){
     local _name="$1"
 
-    [ -z "${_name}" ] && __usage
+    [ -z "${_name}" ] && util::usage
     [ -z "${EDITOR}" ] && EDITOR=vi
 
-    __datastore_get_guest "${_name}" || \
-        __err "cannot locate configuration file for virtual machine: ${_name}"
+    datastore::get_guest "${_name}" || \
+        util::err "cannot locate configuration file for virtual machine: ${_name}"
 
     $EDITOR "${VM_DS_PATH}/${_name}/${_name}.conf"
 }
@@ -586,7 +586,7 @@ __vm_configure(){
 #
 # @param string _url if specified, the url will be fetch'ed into $vm_dir/.iso
 #
-__vm_iso(){
+core::iso(){
     local _url="$1"
 
     if [ -n "${_url}" ]; then
@@ -601,7 +601,7 @@ __vm_iso(){
 # show a list of available passthrough devices
 # and their device number
 #
-__vm_passthru(){
+core::passthru(){
     local _dev _sbf _desc _ready
     local _format="%-10s %-12s %-12s %s\n"
 
@@ -628,7 +628,7 @@ __vm_passthru(){
 # @param string _value value
 # @param int _skip_newline_check skip the check for newline
 #
-__vm_config_set(){
+core::guest_config_set(){
     local _name="$1"
     local _key="$2"
     local _value="$3"

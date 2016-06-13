@@ -57,7 +57,6 @@ cmd::parse(){
         datastore) cmd::parse_datastore "$@" ;;
         image)     cmd::parse_image "$@" ;;
         list)      core::list ;;
-        info)      info::guest "$@" ;;
         create)    core::create "$@" ;;
         destroy)   core::destroy "$@" ;;
         rename)    core::rename "$@" ;;
@@ -70,10 +69,11 @@ cmd::parse(){
         startall)  core::startall ;;
         stopall)   core::stopall ;;
         console)   core::console "$@" ;;
-        _run)      vm::run "$@" ;;
         iso)       core::iso "$@" ;;
         configure) core::configure "$@" ;;
         passthru)  core::passthru ;;
+        _run)      vm::run "$@" ;;
+        info)      info::guest "$@" ;;
         clone)     zfs::clone "$@" ;;
         snapshot)  zfs::snapshot "$@" ;;
         rollback)  zfs::rollback "$@" ;;
@@ -95,13 +95,13 @@ cmd::parse_switch(){
     case "${_cmd}" in
         create)  switch::create "$@" ;;
         list)    switch::list ;;
-        info)    info::switch "$@" ;;
         destroy) switch::remove "$@" ;;
         import)  switch::import "$@" ;;
         add)     switch::add_member "$@" ;;
         remove)  switch::remove_member "$@" ;;
         vlan)    switch::vlan "$@" ;;
         nat)     switch::nat "$@" ;;
+        info)    info::switch "$@" ;;
         *)       util::usage ;;
     esac
 }

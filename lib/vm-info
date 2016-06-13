@@ -177,7 +177,7 @@ info::guest_show(){
     echo "${_INDENT}datastore: ${VM_DS_NAME}"
 
     # basic guest configuration
-    info::__output_config "loader" "" "default"
+    info::__output_config "loader" "" "none"
     info::__output_config "uuid" "" "auto"
     info::__output_config "uefi" "" "no"
     info::__output_config "cpu"
@@ -223,10 +223,8 @@ info::guest_disks(){
     while [ 1 ]; do
         config::get "_disk" "disk${_num}_name"
         config::get "_type" "disk${_num}_type"
-        config::get "_dev" "disk${_num}_dev"
+        config::get "_dev" "disk${_num}_dev" "file"
         [ -z "${_disk}" -o -z "${_type}" ] && break
-
-        : ${_dev:=file}
 
         vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 

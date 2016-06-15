@@ -42,7 +42,6 @@
 # @modifies VM_ZFS VM_ZFS_DATASET vm_dir
 #
 zfs::init(){
-    local _zfs
 
     # check for zfs storage location
     # user should specify "zfs:pool/dataset" if they want ZFS support
@@ -305,7 +304,7 @@ zfs::clone(){
 
     # update mac addresses and uuid
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    core::guest_config_set "${_name}" "uuid" "${_uuid}"
+    config::set "${_name}" "uuid" "${_uuid}"
 
     # find all network interfaces and change mac
     while [ 1 ]; do
@@ -445,7 +444,7 @@ zfs::image_provision(){
     _uuid=$(uuidgen)
 
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    core::guest_config_set "${_name}" "uuid" "${_uuid}"
+    config::set "${_name}" "uuid" "${_uuid}"
 
     # find all network interfaces and change mac
     while [ 1 ]; do

@@ -753,7 +753,7 @@ vm::generate_static_mac(){
     _mac="58:9c:fc:0${_part}"
 
     util::log "guest" "${_name}" "generated static mac ${_mac} (based on '${_key}')"
-    core::guest_config_set "${_name}" "network${_num}_mac" "${_mac}"
+    config::set "${_name}" "network${_num}_mac" "${_mac}"
 }
 
 # try to find an available network port to listen on

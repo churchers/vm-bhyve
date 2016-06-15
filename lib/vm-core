@@ -152,7 +152,7 @@ core::create(){
     # generate a uuid
     # jump through some hoops to make sure it gets its own line (but no gap)
     _uuid=$(uuidgen)
-    core::guest_config_set "${_name}" "uuid" "${_uuid}"
+    config::set "${_name}" "uuid" "${_uuid}"
 
     # get any zvol options
     config::get "_zfs_opts" "zfs_zvol_opts"
@@ -273,9 +273,9 @@ core::add_disk(){
     esac
 
     # update configuration
-    core::guest_config_set "${_name}" "disk${_num}_name" "${_diskname}"
-    core::guest_config_set "${_name}" "disk${_num}_type" "${_emulation}" "1"
-    core::guest_config_set "${_name}" "disk${_num}_dev" "${_device}" "1"
+    config::set "${_name}" "disk${_num}_name" "${_diskname}"
+    config::set "${_name}" "disk${_num}_type" "${_emulation}" "1"
+    config::set "${_name}" "disk${_num}_dev" "${_device}" "1"
     [ $? -ne 0 ] && util::err "disk image created but errors while updating guest configuration"
 }
 
@@ -305,8 +305,8 @@ core::add_network(){
     : ${_emulation:=virtio-net}
 
     # update configuration
-    core::guest_config_set "${_name}" "network${_num}_type" "${_emulation}"
-    core::guest_config_set "${_name}" "network${_num}_switch" "${_switch}" "1"
+    config::set "${_name}" "network${_num}_type" "${_emulation}"
+    config::set "${_name}" "network${_num}_switch" "${_switch}" "1"
     [ $? -ne 0 ] && util::err "errors encountered while updating guest configuration"
 }
 
@@ -616,30 +616,4 @@ core::passthru(){
         _desc=$(pciconf -lv | grep -A2 "^${_dev}@" | tail -n1 | grep device | cut -d\' -f2)
         printf "${_format}" "${_dev}" "${_sbf}" "${_ready:-No}" "${_desc:--}"
     done
-}
-
-# set a value in vm configuration file
-# we check for newline at the end as sysrc won't add it
-# and that will mess up the new key and the existing one
-# from the end of the file
-#
-# @param string _name guest name
-# @param string _key config key to set
-# @param string _value value
-# @param int _skip_newline_check skip the check for newline
-#
-core::guest_config_set(){
-    local _name="$1"
-    local _key="$2"
-    local _value="$3"
-    local _skip_newline_check="$4"
-    local _newline
-
-    if [ -z "${_skip_newline_check}" ]; then
-        _newline=$(tail -1 "${VM_DS_PATH}/${_name}/${_name}.conf" | wc -l | tr -d " ")
-        [ "${_newline}" -eq "0" ] && echo "" >> "${VM_DS_PATH}/${_name}/${_name}.conf"
-    fi
-
-    sysrc -inqf "${VM_DS_PATH}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
-    return $?
 }

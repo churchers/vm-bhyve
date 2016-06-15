@@ -69,6 +69,33 @@ config::get(){
     return 1
 }
 
+# set a value in guest configuration file
+# we check for newline at the end as sysrc won't add it
+# and that will mess up the new key and the existing one
+# from the end of the file
+#
+# @param string _name guest name
+# @param string _key config key to set
+# @param string _value value
+# @param int _skip_newline_check skip the check for newline
+# @return true if sysrc successful
+#
+config::set(){
+    local _name="$1"
+    local _key="$2"
+    local _value="$3"
+    local _skip_newline_check="$4"
+    local _newline
+
+    if [ -z "${_skip_newline_check}" ]; then
+        _newline=$(tail -1 "${VM_DS_PATH}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+        [ "${_newline}" -eq "0" ] && echo "" >> "${VM_DS_PATH}/${_name}/${_name}.conf"
+    fi
+
+    sysrc -inqf "${VM_DS_PATH}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
+    return $?
+}
+
 # load core configuration file
 #
 config::core_load(){

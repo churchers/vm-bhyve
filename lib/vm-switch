@@ -424,6 +424,8 @@ switch::nat(){
             config::core_remove "nat_${_switch}"
             ;;
         on)
+            load_rc_config "pf"
+
             if ! checkyesno pf_enable; then
                 util::err "pf needs to be enabled for nat functionality"
             fi

@@ -563,12 +563,13 @@ core::console(){
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
 
     if [ -e "${VM_DS_PATH}/${_name}/console" ]; then
+
         # did user specify a com port?
         # if not, get first in the file (the first will also be the console used for loader)
         if [ -n "${_port}" ]; then
             _console=$(grep "${_port}=" "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
         else
-            _console=$(head -n 1 "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
+            _console=$(head -n 1 "${VM_DS_PATH}/${_name}/console" | grep "^com" | cut -d= -f2)
         fi
     fi
 

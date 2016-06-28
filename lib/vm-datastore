@@ -29,7 +29,7 @@
 #
 datastore::list(){
     local _format="%-15s %-11s %-25s %s"
-    local _name _type _dataset _path _ds _spec
+    local _name _type _dataset _path _spec
 
     # headings
     printf "${_format}\n" "NAME" "TYPE" "PATH" "ZFS DATASET"
@@ -48,9 +48,6 @@ datastore::list(){
     fi
 
     printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
-
-    # load the rest
-    config::core_get "_ds" "datastore_list"
 
     for _name in ${VM_DATASTORE_LIST}; do
         [ "${_name}" = "default" ] && continue

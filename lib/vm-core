@@ -577,10 +577,10 @@ core::console(){
         _tmux_cmd=$(which tmux)
 
         if [ -n "${_tmux_cmd}" ]; then
-            _tmux=$(tmux ls |grep "^${_name}:")
+            _tmux=$("${_tmux_cmd}" ls |grep "^${_name}:")
 
             if [ -n "${_tmux}" ]; then
-                tmux attach -t ${_name}
+                ${_tmux_cmd} attach -t ${_name}
                 exit
             fi
         fi

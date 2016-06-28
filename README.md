@@ -14,7 +14,9 @@ Some of the main features include:
 * Integration with rc.d startup/shutdown
 * Guest reboot handling
 * Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
-* Multiple datastores
+
+* Multiple datastores (1.1 only)
+* VNC graphics & tmux support (1.1 only. See wiki for instructions)
 
 ##### See the GitHub wiki for more information and examples.
 

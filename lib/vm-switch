@@ -313,9 +313,9 @@ switch::__configure_port(){
         switch::get_ident "_vid" "vlan-${_member}-${_vlan}"
 
         if [ -z "${_vid}" ]; then
-            _vid=$(ifconfig vlan create up)
+            _vid=$(ifconfig vlan create)
             [ $? -ne 0 ] && util::err "failed to create vlan interface"
-            ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}"
+            ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}" up
         fi
 
         ifconfig ${_id} addm ${_vid} >/dev/null 2>&1

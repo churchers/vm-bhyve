@@ -52,7 +52,9 @@ datastore::list(){
     # load the rest
     config::core_get "_ds" "datastore_list"
 
-    for _name in ${_ds}; do
+    for _name in ${VM_DATASTORE_LIST}; do
+        [ "${_name}" = "default" ] && continue
+
         config::core_get "_spec" "path_${_name}"
         [ -z "${_spec}" ] && continue
 

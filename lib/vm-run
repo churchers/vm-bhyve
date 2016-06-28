@@ -478,15 +478,17 @@ vm::bhyve_device_fbuf(){
     local _graphics _port _listen _res _wait
     local _fbuf_conf
 
+    # only works in uefi mode
+    [ -z "${_uefi}" ] && return 0
+
+    # check graphics enabled
     config::get "_graphics" "graphics"
+    ! util::checkyesno "${_graphics}" && return 0
+
     config::get "_port" "graphics_port"
     config::get "_listen" "graphics_listen"
     config::get "_res" "graphics_res"
     config::get "_wait" "graphics_wait" "auto"
-
-    # return if graphics disabled
-    ! util::checkyesno "${_graphics}" && return 0
-    [ -z "${_uefi}" ] && return 0
 
     # check if graphics_wait is auto
     # auto will count as yes so we need to unset it if we're not in an install.

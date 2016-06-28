@@ -370,7 +370,7 @@ core::stopall(){
 core::start(){
     local _name="$1"
     local _iso="$2"
-    local _cpu _memory _disk _guest _loader
+    local _cpu _memory _disk _guest _loader _console _tmux_cmd
 
     [ -z "${_name}" ] && util::usage
 
@@ -402,10 +402,21 @@ core::start(){
         return 1
     fi
 
+    # check for tmux
+    config::core_get "_console" "console" "nmdm"
+    _tmux_cmd=$(which tmux)
+
+    if [ "${_console}" = "tmux" -a -z "${_tmux_cmd}" ]; then
+        util::warn "tmux support enabled but misc/tmux not found"
+        return 1
+    fi
+
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
     if [ -n "${VM_FOREGROUND}" ]; then
         $0 -f _run "${_name}" "${_iso}"
+    elif [ "${_console}" = "tmux" ]; then
+        ${_tmux_cmd} new -ds "${_name}" $0 -f _run "${_name}" "${_iso}"
     else
         $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
     fi
@@ -544,20 +555,35 @@ core::rename(){
 core::console(){
     local _name="$1"
     local _port="$2"
-    local _console
+    local _console _tmux _tmux_cmd
 
     [ -z "${_name}" ] && util::usage
 
     datastore::get_guest "${_name}" || util::err "${_name} doesn't appear to be a valid virtual machine"
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
-    [ ! -e "${VM_DS_PATH}/${_name}/console" ] && util::err "can't locate console data for ${_name}"
 
-    # did user specify a com port?
-    # if not, get first in the file (the first will also be the console used for loader)
-    if [ -n "${_port}" ]; then
-        _console=$(grep "${_port}=" "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
-    else
-        _console=$(head -n 1 "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
+    if [ -e "${VM_DS_PATH}/${_name}/console" ]; then
+        # did user specify a com port?
+        # if not, get first in the file (the first will also be the console used for loader)
+        if [ -n "${_port}" ]; then
+            _console=$(grep "${_port}=" "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
+        else
+            _console=$(head -n 1 "${VM_DS_PATH}/${_name}/console" | cut -d= -f2)
+        fi
+    fi
+
+    # check tmux if we don't have a console
+    if [ -z "${_console}" ]; then
+        _tmux_cmd=$(which tmux)
+
+        if [ -n "${_tmux_cmd}" ]; then
+            _tmux=$(tmux ls |grep "^${_name}:")
+
+            if [ -n "${_tmux}" ]; then
+                tmux attach -t ${_name}
+                exit
+            fi
+        fi
     fi
 
     [ -z "${_console}" ] && util::err "unable to locate console device for this virtual machine"

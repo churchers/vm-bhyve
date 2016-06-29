@@ -192,7 +192,7 @@ vm::run(){
             _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run
-        [ "${_run}" -gt "1" ] && vm::bhyve_device_fbuf_clear_wait
+        [ "${_run}" -eq "2" ] && vm::bhyve_device_fbuf_clear_wait
 
         # load guest
         if [ -n "${_loader}" ]; then

@@ -38,7 +38,7 @@ vm::run(){
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
-    local _com _comports _comstring _logpath="/dev/null" _bootrom
+    local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
 
     # try to load datstore details
     datastore::get_guest "${_name}" || exit 5
@@ -191,6 +191,9 @@ vm::run(){
         [ -z "${_iso}" -a -n "${_uefi}" -a "${_uefi}" != "csm" ] && \
             _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
 
+        # reasonably ugly hack to remove wait option after first run
+        [ "${_run}" -gt "1" ] && vm::bhyve_device_fbuf_clear_wait
+
         # load guest
         if [ -n "${_loader}" ]; then
             guest::load "${_iso}"
@@ -207,7 +210,7 @@ vm::run(){
         util::log "guest" "${_name}" " [bhyve devices: ${_devices}]"
         util::log "guest" "${_name}" " [bhyve console: ${_comstring}]"
         [ -n "${_iso_dev}" ] && util::log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
-        util::log "guest" "${_name}" "starting bhyve"
+        util::log "guest" "${_name}" "starting bhyve (run ${_run})"
 
         # call rctl now as next line will block until bhyve exits
         rctl::set_limits &
@@ -233,6 +236,7 @@ vm::run(){
         # after install non-uefi guests will still get install cd until a full shutdown+restart
         # as we don't reset _iso_dev
         _iso=""
+        _run=$((_run + 1))
     done
 
     # destroy taps
@@ -520,6 +524,22 @@ vm::bhyve_device_fbuf(){
     # add device
     _devices="${_devices} -s ${_slot}:0,fbuf,${_fbuf_conf}"
     _slot=$((_slot + 1))
+}
+
+# remove wait option if we're in auto mode
+# fairly ugly code that uses sed to look for ",wait{word boundary}"
+# and removes it. Hopefully this will never match anything else in
+# the device string...
+#
+# @modifies _devices
+#
+vm::bhyve_device_fbuf_clear_wait(){
+    local _wait
+
+    [ -z "${_uefi}" ] && return
+
+    config::get "_wait" "graphics_wait" "auto"
+    [ "${_wait}" = "auto" ] &&_devices=$(echo "${_devices}" | sed 's@,wait[[:>:]]@@')
 }
 
 # add a xhci mouse device

@@ -489,6 +489,12 @@ vm::bhyve_device_fbuf(){
     config::get "_graphics" "graphics"
     ! util::checkyesno "${_graphics}" && return 0
 
+    # only available in 11+
+    if [ ${VERSION_BSD} -lt 1100000 ]; then
+        util::log "guest" "${_name}" "warning; UEFI graphics is only available in FreeBSD 11 and newer"
+        return 1
+    fi
+
     config::get "_port" "graphics_port"
     config::get "_listen" "graphics_listen"
     config::get "_res" "graphics_res"
@@ -551,6 +557,8 @@ vm::bhyve_device_mouse(){
 
     # add a tablet device if enabled
     if util::checkyesno "${_mouse}"; then
+        [ ${VERSION_BSD} -lt 1100000 ] && return 1
+
         _devices="${_devices} -s ${_slot}:0,xhci,tablet"
         _slot=$((_slot + 1))
     fi
@@ -619,7 +627,6 @@ vm::get_disk_path(){
         zvol)
             ;&
         sparse-zvol)
-            # need to look at this, don't really want to reference VM_ZFS* variables here
             setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}"
             ;;
         custom)

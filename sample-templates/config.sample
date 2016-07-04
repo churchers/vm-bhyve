@@ -262,9 +262,9 @@ graphics_res="800x600"
 # that require immediate keyboard input (such as a timed 'enter setup'
 # screen). The default setting of auto will add the wait option
 # if the guest is run in install mode. Note that in auto mode
-# the wait option will continue to be present if a guest is rebooted
-# after an install. The guest will need to be shutdown and restarted
-# fully for the wait option to be discarded. 
+# the wait option will only be present on the first boot. If you
+# need the guest to wait on every boot during install, the yes
+# option should be used.
 #
 # Valid Options: no,yes,auto
 #

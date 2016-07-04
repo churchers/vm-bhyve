@@ -479,7 +479,7 @@ vm::bhyve_device_rand(){
 # add frame buffer output
 #
 vm::bhyve_device_fbuf(){
-    local _graphics _port _listen _res _wait
+    local _graphics _port _listen _res _wait _pass
     local _fbuf_conf
 
     # only works in uefi mode
@@ -499,6 +499,7 @@ vm::bhyve_device_fbuf(){
     config::get "_listen" "graphics_listen"
     config::get "_res" "graphics_res"
     config::get "_wait" "graphics_wait" "auto"
+    config::get "_pass" "vnc_password"
 
     # check if graphics_wait is auto
     # auto will count as yes so we need to unset it if we're not in an install.
@@ -522,6 +523,7 @@ vm::bhyve_device_fbuf(){
     # add ip, port, resolution, wait
     _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port}"
     [ -n "${_res}" ] && _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
+    [ -n "${_pass}" ] && _fbuf_conf="${_fbuf_conf},password=${_pass}"
     util::checkyesno "${_wait}" && _fbuf_conf="${_fbuf_conf},wait"
 
     # write vnc port to console data

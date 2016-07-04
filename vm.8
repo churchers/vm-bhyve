@@ -1035,8 +1035,10 @@ in order to completely disable this function.
 The default is
 .Sy auto ,
 in which case the console will wait if the guest is started in install mode.
-Note that after install, the wait option will continue to be present until the guest
-is fully shutdown and restarted.
+Note that after the first boot, the system will boot immediately as normal. To
+force the console to wait on each boot, the
+.Sy yes
+setting should be used.
 .It xhci_mouse
 Set this option to
 .Sy yes

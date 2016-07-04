@@ -553,12 +553,11 @@ vm::bhyve_device_fbuf_clear_wait(){
 vm::bhyve_device_mouse(){
     local _mouse
 
+    [ ${VERSION_BSD} -lt 1100000 ] && return 1
     config::get "_mouse" "xhci_mouse"
 
     # add a tablet device if enabled
     if util::checkyesno "${_mouse}"; then
-        [ ${VERSION_BSD} -lt 1100000 ] && return 1
-
         _devices="${_devices} -s ${_slot}:0,xhci,tablet"
         _slot=$((_slot + 1))
     fi
@@ -624,17 +623,10 @@ vm::get_disk_path(){
     local _disk_dev="$4"
 
     case "${_disk_dev}" in
-        zvol)
-            ;&
-        sparse-zvol)
-            setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}"
-            ;;
-        custom)
-            setvar "${_var}" "${_disk}"
-            ;;
-        *)
-            setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}"
-            ;;
+        zvol)        ;&
+        sparse-zvol) setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" ;;
+        custom)      setvar "${_var}" "${_disk}" ;;
+        *)           setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}" ;;
     esac
 }
 

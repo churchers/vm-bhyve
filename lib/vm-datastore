@@ -81,17 +81,14 @@ datastore::list(){
 datastore::add(){
     local _name="$1"
     local _spec="$2"
-    local _mount _num=0 _list _curr
+    local _mount _num=0 _curr
 
     [ -z "${_name}" -o -z "${_spec}" ] && util::usage
-    [ "${_name}" = "default" ] && util::err "additional datastore cannot be named 'default'"
     core::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
 
     # check name not in use
-    config::core_get "_list" "datastore_list"
-
-    for _curr in ${_list}; do
-        [ "${_curr}" = "${_name}" ] && util::err "datstore ${_name} already exists!"
+    for _curr in ${VM_DATASTORE_LIST}; do
+        [ "${_curr}" = "${_name}" ] && util::err "datstore '${_name}' already exists!"
     done
 
     # look for zfs

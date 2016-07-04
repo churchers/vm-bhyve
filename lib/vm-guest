@@ -88,7 +88,7 @@ guest::load(){
 
                 # if we have local grub config, we need to point grub-bhyve at the host.
                 # if not, just use defaults
-                if guest::write_config "install"; then
+                if guest::__write_config "install"; then
                     _args="${_args} -r host -d ${VM_DS_PATH}/${_name}"
                 else
                     _args="${_args} -r ${_root}"
@@ -102,7 +102,7 @@ guest::load(){
 
                 # if we have local config, point grub-bhyve at it
                 # otherwise we use defaults, or directory and file specified by user
-                if guest::write_config "run"; then
+                if guest::__write_config "run"; then
                     _args="${_args} -r host -d ${VM_DS_PATH}/${_name}"
                 else
                     _args="${_args} -r ${_root}"
@@ -133,7 +133,7 @@ guest::load(){
 # @param string _type=install|run which commands to load
 # @return int true (0) if commands were loaded
 #
-guest::write_config(){
+guest::__write_config(){
     local _type="$1"
     local _command _num=0
 

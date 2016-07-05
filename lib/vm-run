@@ -547,7 +547,7 @@ vm::bhyve_device_fbuf_clear_wait(){
     [ -z "${_uefi}" ] && return
 
     config::get "_wait" "graphics_wait" "auto"
-    [ "${_wait}" = "auto" ] &&_devices=$(echo "${_devices}" | sed 's@,wait[[:>:]]@@')
+    [ "${_wait}" = "auto" ] && _devices=$(echo "${_devices}" | sed 's@,wait[[:>:]]@@')
 }
 
 # add a xhci mouse device

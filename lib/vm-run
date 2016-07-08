@@ -107,13 +107,18 @@ vm::run(){
 
         case "${_uefi}" in
             csm)
-                _bootrom="${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+                _bootrom="BHYVE_UEFI_CSM.fd"
                 ;&
             *)
-                [ -z "${_bootrom}" ] && _bootrom="${vm_dir}/.config/BHYVE_UEFI.fd"
+                [ -z "${_bootrom}" ] && _bootrom="BHYVE_UEFI.fd"
 
-                if [ ! -e "${_bootrom}" ]; then
-                    util::log "guest" "${_name}" "fatal; please download relevant uefi firmware to ${_bootrom}"
+                # look in sysutils/uefi-edk2-bhyve install location and our own .config dir
+                if [ -e "${vm_dir}/.config/${_bootrom}" ]; then
+                    _bootrom="${vm_dir}/.config/${_bootrom}"
+                elif [ -e "/usr/local/share/uefi-firmwares/${_bootrom}" ]; then
+                    _bootrom="/usr/local/share/uefi-firmwares/${_bootrom}"
+                else
+                    util::log "guest" "${_name}" "fatal; unable to locate relevant uefi firmware"
                     exit 15
                 fi
 

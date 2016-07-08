@@ -1,4 +1,4 @@
-.Dd May 27, 2016
+.Dd July 8, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -256,7 +256,10 @@ support in
 As of April 2016, UEFI support should be available in FreeBSD 10.3+ and
 11-CURRENT.
 .Pp
-You will also need a copy of the UEFI firmware (see URL below), which needs to be placed in
+You will also need a copy of the UEFI firmware. This can either be installed
+using the
+.Pa sysutils/uefi-edk2-bhyve
+port, or you can manually download a copy (see URL below) to
 .Pa $vm_dir/.config/BHYVE_UEFI.fd .
 .Pp
 As there is no VGA console in
@@ -285,7 +288,7 @@ and press
 to see the IP address that has been assigned. The default unattended installation files
 should make RDP available, using Administrator and Test123 as the default login details.
 .Pp
-The UEFI firmware (BHYVE_UEFI_20151002.fd), as well as instructions for creating an
+A pre-compiled copy of the UEFI firmware (BHYVE_UEFI_20160526.fd), as well as instructions for creating an
 unattended installation ISO can currently be obtained from
 .Pa https://people.freebsd.org/~grehan/bhyve_uefi/
 .\" ============ GLOBAL OPTIONS =============

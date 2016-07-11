@@ -332,62 +332,6 @@ vm::bhyve_device_basic(){
 # we move through slots and stop at slot 6. For non-uefi we
 # step through all functions and just keep going
 #
-# @modifies _devices _slot
-#
-vm::bhyve_device_disks(){
-    local _disk _type _dev _path _opts _ahci_multi
-    local _num=0
-
-    # check if we want multiple ahci devices per controller
-    config::get "_ahci_multi" "ahci_multi_device"
-
-    if util::checkyesno "${_ahci_multi}" && [ ${VERSION_BSD} -ge 1200000 ]; then
-        vm::bhyve_device_disk_multi
-        return
-    fi
-
-    # get disks
-    while [ 1 ]; do
-        config::get "_disk" "disk${_num}_name"
-        config::get "_type" "disk${_num}_type"
-        [ -z "${_disk}" -o -z "${_type}" ] && break
-
-        config::get "_dev" "disk${_num}_dev"
-        config::get "_opts" "disk${_num}_opts"
-
-        # we need to move slot if we've hit function 8
-        if [ ${_func} -ge 8 ]; then
-            _func=0
-            _slot=$((_slot + 1))
-        fi
-
-        vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
-        _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
-        [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
-
-        if [ -n "${_uefi}" ]; then
-            _slot=$((_slot + 1))
-
-            # can't go past slot 6 with current UEFI firmware
-            if [ ${_slot} -ge 7 ]; then
-                util::log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
-                break
-            fi
-        else
-            _func=$((_func + 1))
-        fi
-
-        _num=$((_num + 1))
-    done
-
-    # if we have any disks, move next devices to new slot
-    # unless uefi mode, because we'll have incremented slot anyway
-    if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
-        _slot=$((_slot + 1))
-        _func=0
-    fi
-}
-
 # since r302459 the ahci controller supports
 # up to 32 devices per controller. if ahci_multi_device="yes"
 # we make use of this rather than having one controller per disk
@@ -396,10 +340,17 @@ vm::bhyve_device_disks(){
 #
 # @modifies _devices _slot
 #
-vm::bhyve_device_disk_multi(){
+vm::bhyve_device_disks(){
     local _disk _type _dev _path _opts _ahci _atype
-    local _ahci_num=0 _num=0 _add
+    local _ahci_num=0 _num=0 _add _ahci_multi
     local _ahci_limit=8
+
+    # check if we want multiple ahci devices per controller
+    config::get "_ahci_multi" "ahci_multi_device"
+
+    if ! util::checkyesno "${_ahci_multi}" || [ ${VERSION_BSD} -lt 1200000 ]; then
+        _ahci_multi=""
+    fi
 
     # get all disks
     while [ 1 ]; do
@@ -417,30 +368,37 @@ vm::bhyve_device_disk_multi(){
 
         vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 
-        # check device type
-        case "${_type}" in
-            ahci-cd)
-                _atype="cd"
-                ;&
-            ahci-hd)
-                _atype="hd"
-                _ahci="${_ahci},${_atype}:${_path}"
-                _ahci_num=$((_ahci_num + 1))
+        # ahci device and multi mode?
+        if [ -n "${_ahci_multi}" -a "${_type%%-*}" = "ahci" ]; then
 
-                # we need to move to another controller if we get to the limit
-                if [ ${_ahci_num} -ge ${_ahci_limit} ]; then
-                    _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
-                    _ahci=""
-                    _ahci_num=0
-                    _add=1
-                fi
-                ;;
-            *)
+            # check device type
+            case "${_type}" in
+                ahci-cd)
+                    _atype="cd"
+                    ;&
+                ahci-hd)
+                    [ -z "${_atype}" ] && _atype="hd"
+                    _ahci="${_ahci},${_atype}:${_path}"
+                    [ -n "${_opts}" ] && _ahci="${_ahci},${_opts}"
+                    _ahci_num=$((_ahci_num + 1))
 
-                _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
-                [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
-                ;;
-        esac
+                    # we need to move to another controller if we get to the limit
+                    if [ ${_ahci_num} -ge ${_ahci_limit} ]; then
+                        _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
+                        _ahci=""
+                        _ahci_num=0
+                        _add=1
+                    fi
+                    ;;
+            esac
+
+            _atype=""
+        else
+
+            _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+            [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
+            _add=1
+        fi
 
         # have we just added a device?
         if [ -n "${_add}" ]; then

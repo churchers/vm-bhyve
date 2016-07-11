@@ -115,8 +115,8 @@ vm::run(){
                 # look in sysutils/uefi-edk2-bhyve install location and our own .config dir
                 if [ -e "${vm_dir}/.config/${_bootrom}" ]; then
                     _bootrom="${vm_dir}/.config/${_bootrom}"
-                elif [ -e "/usr/local/share/uefi-firmwares/${_bootrom}" ]; then
-                    _bootrom="/usr/local/share/uefi-firmwares/${_bootrom}"
+                elif [ -e "/usr/local/share/uefi-firmware/${_bootrom}" ]; then
+                    _bootrom="/usr/local/share/uefi-firmware/${_bootrom}"
                 else
                     util::log "guest" "${_name}" "fatal; unable to locate relevant uefi firmware"
                     exit 15

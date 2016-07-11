@@ -442,9 +442,9 @@ core::stop(){
 
             if [ -n "${_pid}" ]; then
                 echo "Sending ACPI shutdown to ${_name}"
-                kill "${_pid}"
+                kill "${_pid}" >/dev/null 2>&1
                 sleep 1
-                kill "${_pid}"
+                kill "${_pid}" >/dev/null 2>&1
             elif [ -n "${_loadpid}" ]; then
                 if util::confirm "Guest ${_name} is in bootloader stage, do you wish to force exit"; then
                     echo "Killing ${_name}"

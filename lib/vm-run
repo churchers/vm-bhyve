@@ -333,23 +333,28 @@ vm::bhyve_device_basic(){
 # step through all functions and just keep going
 #
 # since r302459 the ahci controller supports
-# up to 32 devices per controller. if ahci_multi_device="yes"
-# we make use of this rather than having one controller per disk
-#
-# at the moment we only put 8 devices per controller
+# up to 32 devices per controller. by default we set
+# the device limit to 1 and use the original syntax, but
+# this can be overridden by setting the ahci_device_limit
+# guest option to an integer between 2 and 32.
 #
 # @modifies _devices _slot
 #
 vm::bhyve_device_disks(){
     local _disk _type _dev _path _opts _ahci _atype
     local _ahci_num=0 _num=0 _add _ahci_multi
-    local _ahci_limit=8
+    local _ahci_limit=1
 
-    # check if we want multiple ahci devices per controller
-    config::get "_ahci_multi" "ahci_multi_device"
+    # check if user has set a per-controller device limit
+    config::get "_ahci_multi" "ahci_device_limit"
 
-    if ! util::checkyesno "${_ahci_multi}" || [ ${VERSION_BSD} -lt 1200000 ]; then
-        _ahci_multi=""
+    if [ -n "${_ahci_multi}" -a ${VERSION_BSD} -ge 1200000 ]; then
+
+        # see if it's numeric
+        echo "${_ahci_multi}" | egrep -iqs '^[0-9]+$'
+
+        [ $? -eq 0 -a ${_ahci_multi} -gt 1 -a ${_ahci_multi} -le 32 ] && \
+            _ahci_limit="${_ahci_multi}"
     fi
 
     # get all disks
@@ -369,7 +374,7 @@ vm::bhyve_device_disks(){
         vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 
         # ahci device and multi mode?
-        if [ -n "${_ahci_multi}" -a "${_type%%-*}" = "ahci" ]; then
+        if [ ${_ahci_limit} -gt 1 -a "${_type%%-*}" = "ahci" ]; then
 
             # check device type
             case "${_type}" in

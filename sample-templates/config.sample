@@ -102,11 +102,22 @@ debug=""
 #
 uuid=""
 
+# ahci_device_limit
+# By default all ahci devices (ahci-hd/ahci-cd) are configured on independent
+# slots with their own controller. In FreeBSD 12 it's possible to put up
+# to 32 devices on each controller. This setting allows you to configure
+# the number of devices vm-bhyve will allocate on each controller.
+#
+# Valid Options: 2-32
+# Default: 1
+#
+ahci_device_limit="8"
+
 # disk0_type (required)
 # This specifies the emulation type for disk0. Please note that each disk requires
 # at least a type and name.
 #
-# Valid Options: virtio-blk,ahci-hd
+# Valid Options: virtio-blk,ahci-hd,ahci-cd
 #
 disk0_type="virtio-blk"
 

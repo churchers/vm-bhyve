@@ -1,4 +1,4 @@
-.Dd July 8, 2016
+.Dd July 13, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -373,7 +373,7 @@ commands are supported on manual switches.
 .Pp
 If a manual switch is destroyed using the
 .Pa destroy
-command, we remove all vm-bhvye configuration, but leave the
+command, we remove all vm-bhyve configuration, but leave the
 .Xr bridge 4
 interface intact.
 .It Cm switch vlan Ar name Ar vlan-id
@@ -381,7 +381,7 @@ Assign a VLAN number to a virtual switch. The VLAN number must be between 0-4094
 .Pp
 When adding an interface to a VLAN enabled virtual switch, a new
 .Xr vlan 4
-interface is created. This interface has the relevent parent interface and VLAN tag
+interface is created. This interface has the relevant parent interface and VLAN tag
 configured. This vlan interface is then added to the virtual switch. As such, all
 traffic between guests on the same switch is untagged and travels freely. However,
 all traffic exiting via physical interfaces is tagged.
@@ -399,7 +399,7 @@ is required for this functionality and must be enabled in
 .Pa /etc/rc.conf .
 If DHCP is desired, please install the
 .Xr dnsmasq
-pacakge. vm-bhyve will generate a sample dnsmasq configuration in
+package. vm-bhyve will generate a sample dnsmasq configuration in
 .Pa /usr/local/etc/dnsmasq.conf.bhyve ,
 but it is up to the user to either use this configuration directly, or merge with
 any existing dnsmasq settings you have configured.
@@ -460,7 +460,7 @@ storage location should be specified in
 .Sy zfs:pool/dataset
 format.
 .Pp
-Please note that the dircetory or dataset should already exist. We do not try to 
+Please note that the directory or dataset should already exist. We do not try to 
 create it.
 .It Cm datastore remove Ar name
 Remove the specified datastore from the list. This does not destroy the directory
@@ -510,8 +510,8 @@ Shows detailed information about the specified virtual machine. If no name is gi
 information for all virtual machines is displayed.
 .Pp
 This output includes detailed information about network and disk devices, including
-the space usage for all virtual disks (exluding custom disk devices). If the guest
-is running, the output also shows the amount of host memory curently in use,
+the space usage for all virtual disks (excluding custom disk devices). If the guest
+is running, the output also shows the amount of host memory currently in use,
 and additional network details including bytes sent/received for each virtual interface.
 .It Cm install Ar name Ar iso
 Start a guest installation for the named virtual machine, using the specified ISO file.
@@ -543,7 +543,7 @@ subcommand to connect to it if required.
 .Pp
 For each network adapter specified in the guest configuration, a
 .Xr tap 4
-interface will be created. If possible, the tap interface will be attached the relevent
+interface will be created. If possible, the tap interface will be attached the relevant
 .Xr bridge 4
 interface, based on the virtual switch specified in the guest configuration.
 .It Cm stop Ar name Ar ...
@@ -664,7 +664,7 @@ as long as it is currently powered off. The new machine will be called
 .Pa new-name ,
 and will be ready to boot with a newly assigned UUID and empty log file.
 .Pp
-If no snapshot name is given, a new snapshot will be taken of the guest and any descendent
+If no snapshot name is given, a new snapshot will be taken of the guest and any descendant
 datasets or ZVOLs. If you wish to use an existing snapshot as the source for the clone,
 please make sure the snapshot exists for the guest and any child ZVOLs, otherwise the clone
 will fail.
@@ -676,7 +676,7 @@ Please note that this function requires ZFS.
 .Ar name|name@snapshot
 .Xc
 Create a snapshot of the names virtual machine. This command is only supported with ZFS
-and will take a snapshot of the guest dataset and any descendent ZVOL devices.
+and will take a snapshot of the guest dataset and any descendant ZVOL devices.
 .Pp
 The guest and snapshot name can be specified in the normal
 .Pa name@snapshot
@@ -694,7 +694,7 @@ option.
 .Ar name@snapshot
 .Xc
 Rollback the guest to the specified snapshot. This will roll back the guest dataset and all
-descendent ZVOL devices.
+descendant ZVOL devices.
 .Pp
 Normally, ZFS will only allow you to roll back to the most recent snapshot.
 If the snapshot given is not the most recent, ZFS will produce a warning detailing that you
@@ -873,9 +873,10 @@ will generate a mac address.
 .It disk0_type
 The emulation type for the first virtual disk. At least one virtual disk is required.
 Valid options for this are currently
-.Sy virtio-blk
+.Sy virtio-blk ,
+.Sy ahci-hd
 and
-.Sy ahci-hd .
+.Sy ahci-cd .
 Additional disks can be added by adding additional
 .Sy diskX_type
 and
@@ -968,7 +969,7 @@ The sample templates contain examples of how the grub configuration variables ca
 .It grub_run_dir
 By default
 .Sy grub-bhyve
-will look in the dircetory
+will look in the directory
 .Sy /boot/grub
 for the grub configuration file. This option allows you to specify an alternate path
 to use when starting a guest.
@@ -1000,7 +1001,7 @@ if you want to create a
 .Sy virtio-rnd
 device for this guest.
 .It graphics
-If set to you, a frame buffer is added to the guest. This provides a graphical
+If set to yes, a frame buffer is added to the guest. This provides a graphical
 console that is accessible using VNC. By default the console is 800x600, and will
 listen on
 .Sy 0.0.0.0:5900 .

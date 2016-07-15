@@ -251,7 +251,8 @@ vm::run(){
     done
 
     util::log "guest" "${_name}" "stopped"
-    bhyvectl --destroy --vm=${_name}
+    [ -e "/dev/vmm/${_name}" ] && bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
+
     vm::unlock
     exit ${_exit}
 }

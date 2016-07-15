@@ -74,7 +74,7 @@ guest::load(){
 
             # check we have grub-bhyve
             if [ $? -ne 0 ]; then
-                util::log "guest" "${_name}" "grub requested but sysutils/grub2-bhyve not installed?"
+                util::log "guest" "${_name}" "fatal; grub requested but sysutils/grub2-bhyve not installed?"
                 return 15
             fi
 

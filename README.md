@@ -19,9 +19,8 @@ Some of the main features include:
 
 ##### See the GitHub wiki for more information and examples.
 
-For most users, I recommend using the version in ports (0.12+), or the 1.0 beta - available
-as a release on GitHub. Main development happens in the master branch and it may contain
-broken or incomplete features.
+For most users, I recommend using the version in ports (1.1+).
+Main development happens in the master branch on GitHub and it may contain broken or incomplete features.
 
 ## IMPORTANT - Note for Linux/NetBSD & OpenBSD users moving from 0.9 to 0.10+
 

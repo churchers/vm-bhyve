@@ -222,7 +222,7 @@ vm::run(){
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
-        bhyve ${_opts} \
+        /test/bhyve ${_opts} \
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \
@@ -291,7 +291,7 @@ vm::bhyve_device_comports(){
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 
     for _port in ${_comports}; do
-        if [ -n "${VM_FOREGROUND}" -a "${_num}" = "1" ]; then
+        if [ -n "${VM_OPT_FOREGROUND}" -a "${_num}" = "1" ]; then
             _comstring="-l ${_port},stdio"
             _num=$((_num + 1))
             continue

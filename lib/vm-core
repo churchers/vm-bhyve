@@ -336,7 +336,8 @@ core::startall(){
 
     # default to 5 second delay, and don't try starting multiple guests on stdio...
     : ${vm_delay:=5}
-    VM_FOREGROUND=""
+    VM_OPT_FOREGROUND=""
+    VM_OPT_INTERACTIVE=""
 
     for _vm in ${vm_list}; do
         [ -n "${_done}" ] && sleep ${vm_delay}
@@ -413,10 +414,16 @@ core::start(){
 
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
-    if [ -n "${VM_FOREGROUND}" ]; then
+    if [ -n "${VM_OPT_FOREGROUND}" ]; then
         $0 -f _run "${_name}" "${_iso}"
     elif [ "${_console}" = "tmux" ]; then
-        ${_tmux_cmd} new -ds "${_name}" $0 -f _run "${_name}" "${_iso}"
+
+        # start session and connect if in interactive mode
+        if [ -n "${VM_OPT_INTERACTIVE}" ]; then
+            ${_tmux_cmd} new -s "${_name}" $0 -f _run "${_name}" "${_iso}"
+        else
+            ${_tmux_cmd} new -ds "${_name}" $0 -f _run "${_name}" "${_iso}"
+        fi
     else
         $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
     fi

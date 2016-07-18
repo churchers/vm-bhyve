@@ -1,4 +1,4 @@
-.Dd July 12, 2016
+.Dd July 18, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -61,9 +61,11 @@
 .Cm info
 .Op Ar name
 .Nm
+.Op Fl fi
 .Cm install
 .Ar name iso
 .Nm
+.Op Fl fi
 .Cm start
 .Ar name
 .Nm
@@ -304,7 +306,16 @@ Run
 .Nm
 in the foreground. This option is primarily useful with the
 .Nm Cm start
+or
+.Nm Cm install
 command and runs the guest on stdio.
+.It Fl i
+Run the guest in interactive mode. This mode is only supported when using
+the
+.Sy tmux
+console setting. This starts the guest on a tmux session and then immediately
+connects to that session. You can detach the session, or shut the guest down
+to return to your original terminal.
 .El
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS

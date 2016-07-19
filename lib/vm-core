@@ -651,3 +651,63 @@ core::passthru(){
         printf "${_format}" "${_dev}" "${_sbf}" "${_ready:-No}" "${_desc:--}"
     done
 }
+
+# 'vm get'
+# get a core configuration setting
+#
+core::get(){
+    local _var="$1"
+    local _val _format="%-20s%s\n"
+    local IFS=";"
+
+    printf "${_format}" "SETTING" "VALUE"
+
+    if [ "${_var}" = "all" ]; then
+
+        for _var in ${VM_CONFIG_USER}; do
+            config::core_get "_val" "${_var}"
+            printf "${_format}" "${_var}" "${_val:--}"
+        done
+    else
+        while [ -n "${_var}" ]; do
+            if core::__valid_config_setting "${_var}"; then
+                config::core_get "_val" "${_var}"
+                printf "${_format}" "${_var}" "${_val:--}"
+            fi
+
+            shift
+            _var="$1"
+        done
+    fi
+}
+
+# 'vm set'
+# set a core configuration setting
+#
+core::set(){
+    local _pair="$1"
+    local _key _val
+
+    while [ -n "${_pair}" ]; do
+        _key="${_pair%%=*}"
+        _val="${_pair#*=}"
+
+        if core::__valid_config_setting "${_key}"; then
+            config::core_set "${_key}" "${_val}"
+        else
+            util::err "invalid configuration setting - '${_key}'"
+        fi
+
+        shift
+        _pair="$1"
+    done
+}
+
+# check if the specified string is a valid core configuration
+# setting that the user can change
+#
+# @param string the setting name to look for
+#
+core::__valid_config_setting(){
+    echo "${VM_CONFIG_USER}" | grep -iqs "${1};"
+}

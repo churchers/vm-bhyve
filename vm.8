@@ -11,6 +11,16 @@
 .Cm init
 .Pp
 .Nm
+.Cm get
+.Ar all
+.Op Ar setting
+.Op Ar ...
+.Nm
+.Cm set
+.Ar setting=value
+.Op Ar ...
+.Pp
+.Nm
 .Cm switch list
 .Nm
 .Cm switch info
@@ -335,6 +345,20 @@ o Load all necessary kernel modules if not already loaded
 o Set tap devices to come up automatically when opened
 .br
 o Create any configured virtual switches
+.It Cm get Ar all|setting
+Get a global configuration setting. These are settings that affect the functionality
+of vm-bhyve, such as configuring the type of serial console to use. The keyword
+.Sy all
+can be used to retrieve all user configurable settings, or you can specify one or 
+more settings by name, separated by a space.
+.It Cm set Ar setting=value
+Sets the value of a global configuration setting. Multiple settings can be changed
+at the same time by seperating the 
+.Sy setting=value
+pairs with a space.
+.Pp
+These settings are stored in
+.Pa $vm_dir/.config/system.conf
 .It Cm switch list
 List virtual switches. This reads all configured virtual switches from the
 .Pa $vm_dir/.config/switch

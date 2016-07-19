@@ -56,6 +56,8 @@ cmd::parse(){
         switch)    cmd::parse_switch "$@" ;;
         datastore) cmd::parse_datastore "$@" ;;
         image)     cmd::parse_image "$@" ;;
+        get)       core::get "$@" ;;
+        set)       core::set "$@" ;;
         list)      core::list ;;
         create)    core::create "$@" ;;
         destroy)   core::destroy "$@" ;;

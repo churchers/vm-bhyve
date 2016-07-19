@@ -222,7 +222,7 @@ vm::run(){
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
-        /test/bhyve ${_opts} \
+        bhyve ${_opts} \
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \

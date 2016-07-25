@@ -237,6 +237,7 @@ switch::vlan(){
     fi
 
     # put interfaces back in
+    config::core_load
     switch::__add_allmembers "${_switch}"
 }
 
@@ -461,6 +462,9 @@ switch::nat_init(){
     local _havenat=0
     local _grep _switchlist _nat _net24 _if
     local _gw _bnum
+
+    # reload configuration in case it's just been changed
+    config::core_load
 
     # get default gateway
     _gw=$(netstat -4rn | grep default | awk '{print $4}')

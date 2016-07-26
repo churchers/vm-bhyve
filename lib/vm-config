@@ -40,7 +40,7 @@ config::load(){
     # read config file
     # we kick out any lines that don't start with a letter,
     # scrap anything after a # character, and remove double-quotes
-    VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
+    VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | sed -e 's@ *$@@' | tr -d '"')
 }
 
 # get a configuration value from the current config file
@@ -106,7 +106,7 @@ config::core_load(){
         cat "${vm_dir}/.config/datastore" >> "${vm_dir}/.config/system.conf" 2>/dev/null
     fi
 
-    VM_CORE_CONFIG=$(grep '^[a-z]' "${vm_dir}/.config/system.conf" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
+    VM_CORE_CONFIG=$(grep '^[a-z]' "${vm_dir}/.config/system.conf" 2>/dev/null | awk -F# '{print $1}' | sed -e 's@ *$@@' | tr -d '"')
 }
 
 # get a value from core config

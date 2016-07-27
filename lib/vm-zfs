@@ -298,7 +298,7 @@ zfs::clone(){
     if [ $? -ne 0 ]; then
         echo "Unable to rename configuration file to ${_name}.conf"
         echo "This will need to be renamed manually"
-        echo "Please also remove and uuid or mac address settings, these will be regenerated automatically"
+        echo "Please also remove any uuid or mac address settings, these will be regenerated automatically"
         exit 1
     fi
 

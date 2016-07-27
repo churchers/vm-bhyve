@@ -105,7 +105,7 @@ core::check_name(){
 # @param string _name the name of the guest to create
 #
 core::create(){
-    local _name _opt _size _vmdir _disk _disk_dev _uuid _num=0
+    local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path
 
     while getopts d:t:s: _opt ; do
@@ -150,9 +150,7 @@ core::create(){
     [ $? -ne 0 ] && util::err "unable to copy template to virtual machine directory"
 
     # generate a uuid
-    # jump through some hoops to make sure it gets its own line (but no gap)
-    _uuid=$(uuidgen)
-    config::set "${_name}" "uuid" "${_uuid}"
+    config::set "${_name}" "uuid" $(uuidgen)
 
     # get any zvol options
     config::get "_zfs_opts" "zfs_zvol_opts"

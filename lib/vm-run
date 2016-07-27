@@ -59,6 +59,12 @@ vm::run(){
     config::get "_utc" "utctime" "no"
     config::get "_debug" "debug" "no"
 
+    # generate a uuid if we don't have one already
+    if [ -z "${_uuid}" ]; then
+        _uuid=$(uuidgen)
+        config::set "${_name}" "uuid" "${_uuid}"
+    fi
+
     util::log_rotate "guest" "${_name}"
     util::log "guest" "${_name}" "initialising"
     util::log "guest" "${_name}" " [loader: ${_loader:-none}]"
@@ -67,7 +73,7 @@ vm::run(){
     util::log "guest" "${_name}" " [memory: ${_memory}]"
     util::log "guest" "${_name}" " [hostbridge: ${_hostbridge}]"
     util::log "guest" "${_name}" " [com ports: ${_comports}]"
-    util::log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
+    util::log "guest" "${_name}" " [uuid: ${_uuid}]"
     util::log "guest" "${_name}" " [utctime: ${_utc}]"
     util::log "guest" "${_name}" " [debug mode: ${_debug}]"
     util::log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
@@ -568,8 +574,6 @@ vm::bhyve_device_fbuf(){
 
     # check if graphics_wait is auto
     # auto will count as yes so we need to unset it if we're not in an install.
-    # note that we only build _devices once, so after install
-    # boot will continue to wait on every reboot until guest is fully shutdown/restarted
     [ "${_wait}" = "auto" -a -z "${_iso}" ] && _wait="no"
 
     # try to get port

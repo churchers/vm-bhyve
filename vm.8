@@ -1199,7 +1199,18 @@ Limit guest disk write iops to the specified number of operations per second.
 .Xr rctl 8 ,
 .Xr tmux 1
 .\" ============ BUGS =============
-.Sh BUGS
+.Sh KNOWN BUGS
+If a guest is renamed, and then cloned using a snapshot taken before the rename,
+vm-bhyve is unable to find the guest configuration file. This is because the configuration
+file in the snapshot still refers to the old guest name. In this circumstance, vm-bhyve will
+output an error during cloning detailing that the configuration file in the new guest will
+need to be renamed and updated manually.
+.Pp
+On some systems it has been observed that bridging can cause interfaces to go down for up to
+10 seconds, which is enough to stall ssh sessions. This is noticable when the first guest is 
+started or when the last guest is stopped. Once there are at least 2 interfaces bridged 
+(one real interface and a tap interface), further guests can be started/stopped without issue.
+.Pp
 Please report all bugs/issues/feature requests to the github project at
 https://github.com/churchers/vm-bhyve
 .\" ============ AUTHOR =============

@@ -321,29 +321,15 @@ core::install(){
     [ -z "${_name}" -o -z "${_iso}" ] && util::usage
 
     # just run start with an iso
-    core::start "$1" "$2"
+    core::__start "$1" "$2"
 }
 
 # 'vm startall'
 # start all virtual machines listed in rc.conf:$vm_list
 #
 core::startall(){
-    local _vm _done _conf
-
     [ -z "${vm_list}" ] && exit
-
-    # default to 5 second delay, and don't try starting multiple guests on stdio...
-    : ${vm_delay:=5}
-    VM_OPT_FOREGROUND=""
-    VM_OPT_INTERACTIVE=""
-
-    for _vm in ${vm_list}; do
-        [ -n "${_done}" ] && sleep ${vm_delay}
-
-        echo "Starting ${_vm}..."
-        core::start "${_vm}"
-        _done=1
-    done
+    core::start ${vm_list}
 }
 
 # 'vm stopall'
@@ -363,24 +349,57 @@ core::stopall(){
 # 'vm start'
 # start a virtual machine
 #
+# @param string[multiple] _name the name of the guest(s) to start
+#
+core::start(){
+    local _name="$1"
+    local _done
+
+    [ -z "${_name}" ] && util::usage
+    : ${vm_delay:=5}
+
+    # disable foreground/interactive if we're starting more than one
+    if [ $# -ge 2 ]; then
+        VM_OPT_FOREGROUND=""
+        VM_OPT_INTERACTIVE=""
+    fi
+
+    while [ -n "${_name}" ]; do
+        [ -n "${_done}" ] && echo "Waiting ${vm_delay} second(s)" && sleep ${vm_delay}
+        core::__start "${_name}"
+        shift
+        _name="$1"
+        _done="1"
+    done
+}
+
+# actually start a virtual machine
+#
 # @param string _name the name of the guest to start
 # @param optional string _iso iso file is this is an install (can only be provided through 'vm install' command)
 #
-core::start(){
+core::__start(){
     local _name="$1"
     local _iso="$2"
     local _cpu _memory _disk _guest _loader _console _tmux_cmd
 
     [ -z "${_name}" ] && util::usage
 
+    echo "Starting ${_name}"
+
     # try to find guest
     if ! datastore::get_guest "${_name}"; then
-        util::warn "${_name} does not seem to be a valid virtual machine"
+        echo "  ! ${_name} does not seem to be a valid virtual machine"
         return 1
     fi
 
+    echo "  * found guest in ${VM_DS_PATH}/${_name}"
+
     # confirm we aren't running
-    vm::confirm_stopped "${_name}" "1" || return 1
+    if ! vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1; then
+        echo "  ! guest appears to be running already"
+        return 1;
+    fi
 
     # check basic settings before going into background mode
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
@@ -391,13 +410,13 @@ core::start(){
 
     # check minimum configuration
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
-        util::warn "incomplete virtual machine configuration"
+        echo "  ! incomplete virtual machine configuration"
         return 1
     fi
 
     # we can only load freebsd without unrestricted guest support
     if [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ]; then
-        util::warn "no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
+        echo "  ! no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
         return 1
     fi
 
@@ -406,9 +425,11 @@ core::start(){
     _tmux_cmd=$(which tmux)
 
     if [ "${_console}" = "tmux" -a -z "${_tmux_cmd}" ]; then
-        util::warn "tmux support enabled but misc/tmux not found"
+        echo "  ! tmux support enabled but misc/tmux not found"
         return 1
     fi
+
+    echo "  * booting..."
 
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
@@ -430,7 +451,7 @@ core::start(){
 # 'vm stop'
 # send a kill signal to the specified guest
 #
-# @param string _name name of the guest to stop
+# @param string[multiple] _name name of the guest to stop
 #
 core::stop(){
     local _name="$1"

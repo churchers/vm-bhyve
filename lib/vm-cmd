@@ -63,7 +63,7 @@ cmd::parse(){
         destroy)   core::destroy "$@" ;;
         rename)    core::rename "$@" ;;
         install)   core::install "$@" ;;
-        start)     core::start "$1" ;;
+        start)     core::start "$@" ;;
         stop)      core::stop "$@" ;;
         add)       core::add "$@" ;;
         reset)     core::reset "$@" ;;

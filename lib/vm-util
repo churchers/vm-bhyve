@@ -133,6 +133,8 @@ util::usage(){
 Usage: vm ...
     version
     init
+    set [setting=value] [...]
+    get [all|setting] [...]
     switch list
     switch info [name]
     switch create <name>
@@ -148,8 +150,8 @@ Usage: vm ...
     list
     info [name]
     create [-d datastore] [-t template] [-s size] <name>
-    [-f] install <name> <iso>
-    [-f] start <name>
+    [-fi] install <name> <iso>
+    [-fi] start <name> [...]
     stop <name> [...]
     console <name> [com1|com2]
     rename <name> <new-name>

@@ -1,4 +1,4 @@
-.Dd July 18, 2016
+.Dd July 28, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -78,6 +78,7 @@
 .Op Fl fi
 .Cm start
 .Ar name
+.Ar ...
 .Nm
 .Cm stop
 .Ar name
@@ -274,11 +275,22 @@ using the
 port, or you can manually download a copy (see URL below) to
 .Pa $vm_dir/.config/BHYVE_UEFI.fd .
 .Pp
-As there is no VGA console in
+If you are running FreeBSD 10, there is no VGA console in
 .Xr bhyve 8 ,
-an unattended installation ISO is required which allows Windows to install and
+and so an unattended installation ISO is required which allows Windows to install and
 boot without any user interaction. Instructions for creating a suitable ISO can
 be found at the URL below.
+.Pp
+.Pp
+On FreeBSD 11, VGA access can be enabled by setting the 
+.Sy graphics="yes"
+option in the guest configuration file. Once the guest has started, vnc IP & port details 
+can be seen in
+.Sy vm list
+output. See the configuration format documentation below for more detailed information on configuring graphics.
+If network drivers are required, I recommend re-running the 
+.Sy vm install
+command once the guest has been installed, but providing an ISO of the virtio-net drivers instead.
 .Pp
 Once the installation ISO is ready, has been placed in the
 .Pa $vm_dir/.iso
@@ -548,7 +560,10 @@ This output includes detailed information about network and disk devices, includ
 the space usage for all virtual disks (excluding custom disk devices). If the guest
 is running, the output also shows the amount of host memory currently in use,
 and additional network details including bytes sent/received for each virtual interface.
-.It Cm install Ar name Ar iso
+.It Xo
+.Op Fl fi
+.Cm install Ar name Ar iso
+.Xc
 Start a guest installation for the named virtual machine, using the specified ISO file.
 The
 .Ar iso
@@ -570,8 +585,20 @@ After installation, the guest can be rebooted and will restart using its own dis
 At this point the installation ISO file is still attached, allowing you to use the CD/DVD image
 for any post installation tasks. The ISO file will remain attached after each reboot until the
 guest is fully stopped.
-.It Cm start Ar name
-Start the named virtual machine. The guest will boot and run completely in the background. Use
+.Pp
+If the
+.Ar -f
+option is specified, the guest will be started in the foreground on stdio. The
+.Ar -i
+option starts the guest in interactive mode. This requires tmux, and the global
+.Sy console
+setting must be set likewise. In interactive mode the guest is started on a foreground
+tmux session, but this can be detached using the standard tmux commands.
+.It Xo
+.Op Fl fi
+.Cm start Ar name Ar ...
+.Xc
+Start the named virtual machine(s). The guests will boot and run completely in the background. Use
 the
 .Ar console
 subcommand to connect to it if required.
@@ -581,6 +608,15 @@ For each network adapter specified in the guest configuration, a
 interface will be created. If possible, the tap interface will be attached the relevant
 .Xr bridge 4
 interface, based on the virtual switch specified in the guest configuration.
+.Pp
+If the 
+.Ar -f
+option is specified, the guest will be started in the foreground on stdio. The
+.Ar -i
+option starts the guest in interactive mode. This requires tmux, and the global
+.Sy console
+setting must be set likewise. In interactive mode the guest is started on a foreground
+tmux session, but this can be detached using the standard tmux commands.
 .It Cm stop Ar name Ar ...
 Stop a named virtual machine. All
 .Xr tap 4
@@ -792,8 +828,26 @@ datastore unless specified otherwise.
 .It Cm image destroy Ar uuid
 Destroy the specified image.
 .El
+.\" ============ GLOBAL CONFIGURATION ===========
+.Sh GLOBAL CONFIGURATION
+These configuration options are stored in 
+.Pa $vm_dir/.config/system.conf ,
+and affect the global functionality of vm-bhyve. These settings can be changed by
+either editing the configuration file manually, or using the
+.Sy vm set
+and
+.Sy vm get
+commands.
+.Bl -tag -width 17n
+.It console
+Set the type of console to use, which defaults to
+.Sy nmdm .
+If you have the tmux port installed and would prefer to use that for guest
+console access, you can set this option to
+.Sy tmux .
+.El
 .\" ============ CONFIGURATION FORMAT ===========
-.Sh CONFIGURATION FORMAT
+.Sh GUEST CONFIGURATION FORMAT
 Each virtual machine has a configuration file that specifies the hardware configuration. This
 uses a similar format to the
 .Sy rc
@@ -1142,7 +1196,8 @@ Limit guest disk write iops to the specified number of operations per second.
 .Xr fetch 1 ,
 .Xr truncate 1 ,
 .Xr zfs 8 ,
-.Xr rctl 8
+.Xr rctl 8 ,
+.Xr tmux 1
 .\" ============ BUGS =============
 .Sh BUGS
 Please report all bugs/issues/feature requests to the github project at

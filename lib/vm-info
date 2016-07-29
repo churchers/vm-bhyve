@@ -27,7 +27,7 @@
 # 'vm info'
 # display a wealth of information about all guests, or one specified
 #
-# @param optional string _name name of the guest to display
+# @param optional string[multiple] _name name of the guest to display
 #
 info::guest(){
     local _name="$1"
@@ -36,10 +36,16 @@ info::guest(){
 
     vm::running_load
 
-    # see if one guest provided
+    # see if guest name(s) provided
     if [ -n "${_name}" ]; then
-        datastore::get_guest "${_name}" || util::err "unable to locate virtual machine '${_name}'"
-        info::guest_show "${_name}"
+        while [ -n "${_name}" ]; do
+            datastore::get_guest "${_name}" || util::err "unable to locate virtual machine '${_name}'"
+            info::guest_show "${_name}"
+
+            shift
+            _name="$1"
+        done
+
         exit
     fi
 
@@ -57,7 +63,7 @@ info::guest(){
 # 'vm switch info'
 # display config of each virtual switch as well as stats and connected guests
 #
-# @param optional string _switch name of switch to display
+# @param optional string[multiple] _switch name of switch to display
 #
 info::switch(){
     local _switch="$1"
@@ -69,7 +75,13 @@ info::switch(){
     config::get "_list" "switch_list"
 
     if [ -n "${_switch}" ]; then
-        info::switch_show "${_switch}"
+        while [ -n "${_switch}" ]; do
+            info::switch_show "${_switch}"
+
+            shift
+            _switch="$1"
+        done
+
         exit
     fi
 

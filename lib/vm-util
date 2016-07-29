@@ -136,7 +136,7 @@ Usage: vm ...
     set [setting=value] [...]
     get [all|setting] [...]
     switch list
-    switch info [name]
+    switch info [name] [...]
     switch create <name>
     switch import <name> <bridge>
     switch vlan <name> <vlan|0>
@@ -148,7 +148,7 @@ Usage: vm ...
     datastore add <name> <spec>
     datastore remove <name>
     list
-    info [name]
+    info [name] [...]
     create [-d datastore] [-t template] [-s size] <name>
     [-fi] install <name> <iso>
     [-fi] start <name> [...]

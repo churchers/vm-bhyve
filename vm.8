@@ -25,6 +25,7 @@
 .Nm
 .Cm switch info
 .Op Ar name
+.Op Ar ...
 .Nm
 .Cm switch create
 .Ar name
@@ -70,6 +71,7 @@
 .Nm
 .Cm info
 .Op Ar name
+.Op Ar ...
 .Nm
 .Op Fl fi
 .Cm install
@@ -378,9 +380,9 @@ file and displays them. If the virtual switches are loaded, it also tries
 to display the
 .Xr bridge 4
 interface that has been assigned to each one.
-.It Cm switch info Op Ar name
-This command shows detailed information about the specified virtual switch.
-If no switch name is provided, information is output for all configured switches.
+.It Cm switch info Op Ar name Op Ar ...
+This command shows detailed information about the specified virtual switch(es).
+If no switch names are provided, information is output for all configured switches.
 Information displayed includes the following:
 .Pp
 o Basic switch settings
@@ -552,8 +554,8 @@ List all the virtual machines in the
 .Pa $vm_dir
 directory. This will show the basic configuration for each virtual machine, and whether
 they are currently running.
-.It Cm info Op Ar name
-Shows detailed information about the specified virtual machine. If no name is given,
+.It Cm info Op Ar name Op Ar ...
+Shows detailed information about the specified virtual machine(s). If no names are given,
 information for all virtual machines is displayed.
 .Pp
 This output includes detailed information about network and disk devices, including

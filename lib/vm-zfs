@@ -367,7 +367,7 @@ zfs::image_create(){
         _filename="${_uuid}.zfs.xz"
 
         echo "Creating a compressed image, this may take some time..."
-        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | xz > "${vm_dir}/images/${_filename}"
+        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | xz -T0 > "${vm_dir}/images/${_filename}"
     fi
 
     [ $? -ne 0 ] && exit 1

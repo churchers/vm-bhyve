@@ -59,6 +59,10 @@ datastore::list(){
             _type="zfs"
             _dataset="${_spec#*:}"
             datastore::__resolve_path "_path" "${_spec}"
+        elif [ "${_spec%%:*}" = "iso" ]; then
+            _type="iso"
+            _path="${_spec#*:}"
+            _dataset="-"
         else
             _type="directory"
             _path="${_spec}"
@@ -119,10 +123,16 @@ datastore::add(){
 #
 datastore::remove(){
     local _name="$1"
+    local _ds _found
 
     [ "${_name}" = "default" ] && util::err "cannot remove default datastore"
 
-    datastore::get "${_name}" || util::err "unable to locate the specified dataset"
+    for _ds in ${VM_DATASTORE_LIST}; do
+        [ "${_ds}" = "${_name}" ] && _found="1"
+    done
+
+    # found the dataset?
+    [ -z "${_found}" ] && util::err "unable to locate the specified dataset"
 
     config::core_remove "datastore_list" "${_name}"
     config::core_remove "path_${_name}"
@@ -147,6 +157,9 @@ datastore::__resolve_path(){
             setvar "${_var}" "${_mount}"
             return 0
         fi
+    elif [ "${_spec%%:*}" = "iso" ]; then
+        setvar "${_var}" "${_spec#*:}"
+        return 0
     else
         if [ -d "${_spec}" ]; then
             setvar "${_var}" "${_spec}"
@@ -193,7 +206,10 @@ datastore::get_guest(){
     if [ -z "${_found}" ]; then
         for _ds in ${VM_DATASTORE_LIST}; do
             [ "${_ds}" = "default" ] && continue
+
             config::core_get "_spec" "path_${_ds}"
+            [ "${_spec%%:*}" = "iso" ] && continue
+
             datastore::__resolve_path "_path" "${_spec}"
 
             if [ -f "${_path}/${_guest}/${_guest}.conf" ]; then
@@ -238,6 +254,9 @@ datastore::get(){
     config::core_get "_spec" "path_${_ds}"
     [ -z "${_spec}" ] && return 1
 
+    # don't find iso stores
+    [ "${_spec%%:*}" = "iso" ] && return 1
+
     datastore::__resolve_path "_path" "${_spec}" || return 1
     [ "${_spec%%:*}" = "zfs" ] && _zfs="1" && _dataset="${_spec#*:}"
 
@@ -246,4 +265,92 @@ datastore::get(){
     VM_DS_PATH="${_path}"
     VM_DS_ZFS="${_zfs}"
     VM_DS_ZFS_DATASET="${_dataset}"
+}
+
+# add a datastore for iso files
+#
+# @param string _name the name of the datastore
+# @param string _path filesystem path
+#
+datastore::iso(){
+    local _name="$1"
+    local _path="$2"
+
+    [ -z "${_name}" -o -z "${_path}" ] && util::usage
+    core::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
+
+    # check name not in use
+    for _curr in ${VM_DATASTORE_LIST}; do
+        [ "${_curr}" = "${_name}" ] && util::err "datstore '${_name}' already exists!"
+    done
+
+    # make sure directory exists
+    [ ! -d "${_path}" ] && util::err "specified directory does not appear to be valid"
+
+    # save
+    config::core_set "datastore_list" "${_name}" "1"
+    config::core_set "path_${_name}" "iso:${_path}"
+    [ $? -ne 0 ] && util::err "error saving settings to configuration file"
+}
+
+# find an iso file by looking in the default location
+# and any "iso" datastores
+#
+# @param string _var variable name to put full iso path into
+# @param string _file iso filename to look for
+# @return int success if found
+#
+datastore::iso_find(){
+    local _var="$1"
+    local _file="$2"
+    local _ds _spec
+
+    # given a full path?
+    if [ -z "${_file%%/*}" ] && [ -r "${_file}" ]; then
+        setvar "${_var}" "${_file}"
+        return 0
+    fi
+
+    # file exists in current dir?
+    if [ -r "$(pwd)/${_file}" ]; then
+        setvar "${_var}" "$(pwd)/${_file}"
+        return 0
+    fi
+
+    # look in default store
+    if [ -r "${vm_dir}/.iso/${_file}" ]; then
+        setvar "${_var}" "${vm_dir}/.iso/${_file}"
+        return 0
+    fi
+
+    for _ds in ${VM_DATASTORE_LIST}; do
+            config::core_get "_spec" "path_${_ds}"
+            [ "${_spec%%:*}" != "iso" ] && continue
+
+            if [ -r "${_spec#*:}/${_file}" ]; then
+                setvar "${_var}" "${_spec#*:}/${_file}"
+                return 0
+            fi
+    done
+
+    return 1
+}
+
+# list iso files
+#
+datastore::iso_list(){
+    local _ds _spec _format="%-20s%s\n"
+
+    printf "${_format}" "DATASTORE" "FILENAME"
+
+    # look for default iso location
+    [ -d "${vm_dir}/.iso" ] && ls -1 "${vm_dir}/.iso" | awk '{printf "'${_format}'","default",$1}'
+
+    # look for iso datastores
+    for _ds in ${VM_DATASTORE_LIST}; do
+        config::core_get "_spec" "path_${_ds}"
+        [ "${_spec%%:*}" != "iso" ] && continue
+
+        [ -d "${_spec#*:}" ] && ls -1 ${_spec#*:} | awk '{printf "'${_format}'","'${_ds}'",$1}'
+    done
 }

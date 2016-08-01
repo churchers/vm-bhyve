@@ -122,6 +122,7 @@ cmd::parse_datastore(){
         list)   datastore::list ;;
         add)    datastore::add "$@" ;;
         remove) datastore::remove "$@" ;;
+        iso)    datastore::iso "$@" ;;
         *)      util::usage ;;
     esac
 }

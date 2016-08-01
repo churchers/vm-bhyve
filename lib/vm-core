@@ -317,11 +317,13 @@ core::add_network(){
 core::install(){
     local _name="$1"
     local _iso="$2"
+    local _fulliso
 
     [ -z "${_name}" -o -z "${_iso}" ] && util::usage
 
     # just run start with an iso
-    core::__start "$1" "$2"
+    datastore::iso_find "_fulliso" "${_iso}" || util::err "unable to locate iso file - '${_iso}'"
+    core::__start "${_name}" "${_fulliso}"
 }
 
 # 'vm startall'
@@ -645,8 +647,7 @@ core::iso(){
     if [ -n "${_url}" ]; then
         fetch -o "${vm_dir}/.iso" "${_url}"
     else
-        echo "FILENAME"
-        ls -1 "${vm_dir}/.iso"
+        datastore::iso_list
     fi
 }
 

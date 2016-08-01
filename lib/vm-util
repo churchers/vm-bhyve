@@ -147,6 +147,7 @@ Usage: vm ...
     datastore list
     datastore add <name> <spec>
     datastore remove <name>
+    datastore add <name> <path>
     list
     info [name] [...]
     create [-d datastore] [-t template] [-s size] <name>

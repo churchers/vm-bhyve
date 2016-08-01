@@ -56,6 +56,9 @@
 .Nm
 .Cm datastore remove
 .Ar name
+.Nm
+.Cm datastore iso
+.Ar name path
 .Pp
 .Nm
 .Cm create
@@ -514,6 +517,10 @@ create it.
 .It Cm datastore remove Ar name
 Remove the specified datastore from the list. This does not destroy the directory
 or dataset, leaving all files intact.
+.It Cm datastore iso Ar name path
+Adds a new datastore location for storing iso files. Guests cannot be created in an
+iso store, but this provides an easy way to configure vm-bhyve to look in any arbitrary
+location on your system (or mounted network share) where you may want to store iso images.
 .It Xo
 .Cm create
 .Op Fl d Ar datastore

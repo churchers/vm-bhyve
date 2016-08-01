@@ -64,7 +64,7 @@ guest::load(){
             _args="${_args}${_args:+ }-m ${_memory} -e autoboot_delay=${_timeout}"
 
             if [ -n "${_iso}" ]; then
-                _args="${_args} -d ${vm_dir}/.iso/${_iso}"
+                _args="${_args} -d ${_iso}"
             else
                 _args="${_args} -d ${_bootdisk}"
             fi
@@ -84,7 +84,7 @@ guest::load(){
             if [ -n "${_iso}" ]; then
                 _root="cd0"
                 util::log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-                util::log_and_write "appnd" "${_name}" "device.map" "(cd0) ${vm_dir}/.iso/${_iso}"
+                util::log_and_write "appnd" "${_name}" "device.map" "(cd0) ${_iso}"
 
                 # if we have local grub config, we need to point grub-bhyve at the host.
                 # if not, just use defaults

@@ -578,17 +578,14 @@ The
 .Ar iso
 argument should be the filename of an ISO file already downloaded into the
 .Pa $vm_dir/.iso
-directory. ISO files in this directory can be managed using the
+directory (or any media datastore), a full path, or a file in the current directory.
+ISO files in the default .iso store can be downloaded using the
 .Ar iso
 subcommand described below.
 .Pp
-Once started, the guest loader will be booted in the foreground. This allows you to choose
-the
-.Sy Install
-boot option for guests that require it. Once the loader has completed, you will be returned
-to the shell and bhyve will continue running in the background. Use the
+By default the installation is started in the background. Use the 
 .Ar console
-subcommand to connect to the guest and complete installation.
+command to connect and begin the installation.
 .Pp
 After installation, the guest can be rebooted and will restart using its own disk image to boot.
 At this point the installation ISO file is still attached, allowing you to use the CD/DVD image

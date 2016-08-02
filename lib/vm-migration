@@ -77,7 +77,7 @@ migration::send(){
     local IFS=$'\n'
 
     [ -z "${_name}" -o -z "${_host}" ] && util::usage
-    datastore::get_guest "${_name}" || util::err "unable to locate guest - '$[_name}'"
+    datastore::get_guest "${_name}" || util::err "unable to locate guest - '${_name}'"
     [ -z "${VM_DS_ZFS}" ] && util::err "${VM_DS_NAME} datastore must be on ZFS to support migration"
 
     # check if vm is running

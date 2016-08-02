@@ -1,0 +1,140 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# vm recv ...
+# recieve a guest that is being sent from another host
+#
+# @param string _name name of the new guest to recieve into
+#
+migration::recv(){
+    local _name="$1"
+    local _ds="default"
+    local _conf
+
+    [ -z "${_name}" ] && util::usage
+    core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
+    [ -z "${VM_DS_ZFS}" ] && util::err "${_ds} datastore must be on ZFS to support migration"
+    [ -d "${VM_DS_PATH}/${_name}" ] && util::err "directory ${VM_DS_PATH}/${_name} already exists"
+
+    echo "Recieving guest to ${VM_DS_PATH}/${_name}"
+
+    # try to recieve the first snapshot
+    echo "  * waiting for initial full snapshot"
+    socat TCP-LISTEN:8000 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    [ $? -ne 0 ] && util::err "detected error recieving full snapshot"
+    echo "  * first stage completed"
+
+    # wait for changes since first snapshot
+    echo "  * waiting for incremental snapshot"
+    socat TCP-LISTEN:8001 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    [ $? -ne 0 ] && util::err "detected error recieving incremental snapshot"
+    echo "  * second stage completed"
+
+    # try to find the config file
+    echo "  * updating configuration file"
+    _conf=$(find "${VM_DS_PATH}/${_name}/" -name "*.conf" | awk -F"/" '{print $NF}')
+    [ -z "${_conf}" ] && util::err "unable to locate guest configuration file"
+    mv "${VM_DS_PATH}/${_name}/${_conf}" "${VM_DS_PATH}/${_name}/${_name}.conf"
+
+    echo "  * attempting to start ${_name}"
+    core::__start "${_name}"
+}
+
+# vm send ...
+# send a guest to another system
+#
+# @param string _name name of the guest to send
+# @param string _host host to send to
+#
+migration::send(){
+    local _name="$1"
+    local _host="$2"
+    local _snap1 _snap2 _state _running _pid _vm _count=0
+    local IFS=$'\n'
+
+    [ -z "${_name}" -o -z "${_host}" ] && util::usage
+    datastore::get_guest "${_name}" || util::err "unable to locate guest - '$[_name}'"
+    [ -z "${VM_DS_ZFS}" ] && util::err "${VM_DS_NAME} datastore must be on ZFS to support migration"
+
+    # check if vm is running
+    vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1
+    _state="$?"
+    [ ${_state} -eq 2 ] && util::err "guest is powered up on another host"
+    [ ${_state} -eq 1 ] && _running="1"
+
+    # try to get pid if it is running
+    if [ -n "${_running}" ]; then
+        vm::running_load
+
+        for _vm in ${VM_RUN_BHYVE}; do
+            [ "${_vm##* }" = "${_name}" ] && _pid="${_vm%% *}"
+        done
+
+        [ -z "${_pid}" ] && util::err "guest seems to be running but can't find its pid"
+    fi
+
+    echo "Sending ${_name} to ${_host}"
+
+    # take first snapshot
+    echo "  * taking initial snapshot"
+    _snap1="$(date +'%Y%m%d%H%M%S')"
+    zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
+
+    echo "  * sending full snapshot to remote host"
+    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" | socat - "TCP4:${_host}:8000"
+    echo "  * first stage completed"
+
+    echo "  * giving time for remote socket to close"
+    sleep 10
+
+    # if it's running, try and stop it
+    if [ -n "${_running}" ]; then
+        echo "  * attempting to stop guest locally"
+        while [ ${_count} -le 60 ]; do
+            kill ${_pid} >/dev/null 2>&1
+            sleep 2
+            kill -0 ${_pid} >/dev/null 2>&1 || break
+        done
+    fi
+
+    # has it stopped?
+    kill -0 ${_pid} >/dev/null 2>&1 && util::err "failed to stop guest"
+    echo "  * guest powered off"
+
+    echo "  * taking second snapshot"
+    _snap2="$(date +'%Y%m%d%H%M%S')"
+    zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
+
+    echo "  * sending incrmental changes to remote host"
+    zfs send -Ri "${_snap1}" "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" | socat - "TCP4:${_host}:8001"
+    echo "  * second stage completed"
+
+    echo "  * removing snapshots"
+    zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
+    zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
+    echo "  * done"
+}

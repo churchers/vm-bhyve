@@ -805,7 +805,7 @@ vm::confirm_stopped(){
 
         if [ "${_host}" != "${_our_host}" -o "${_skip_lock}" != "1" ]; then
             util::warn "${_name} appears to be running on ${_host} (locked)"
-            return 1
+            return 2
         fi
     fi
 

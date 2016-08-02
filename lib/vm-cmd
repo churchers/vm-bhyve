@@ -79,6 +79,8 @@ cmd::parse(){
         clone)     zfs::clone "$@" ;;
         snapshot)  zfs::snapshot "$@" ;;
         rollback)  zfs::rollback "$@" ;;
+        send)      migration::send "$@" ;;
+        recv)      migration::recv "$@" ;;
         *)         util::usage ;;
     esac
 }

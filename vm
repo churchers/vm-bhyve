@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.2-alpha
-VERSION_INT=102014
+VERSION_INT=102015
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -49,6 +49,7 @@ fi
 . "${LIB}/vm-datastore"
 . "${LIB}/vm-guest"
 . "${LIB}/vm-info"
+. "${LIB}/vm-migration"
 . "${LIB}/vm-rctl"
 . "${LIB}/vm-run"
 . "${LIB}/vm-switch"

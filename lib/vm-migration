@@ -44,13 +44,13 @@ migration::recv(){
 
     # try to recieve the first snapshot
     echo "  * waiting for initial full snapshot"
-    socat TCP-LISTEN:8000 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    socat TCP-LISTEN:12000 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
     [ $? -ne 0 ] && util::err "detected error recieving full snapshot"
     echo "  * first stage completed"
 
     # wait for changes since first snapshot
     echo "  * waiting for incremental snapshot"
-    socat TCP-LISTEN:8001 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    socat TCP-LISTEN:12001 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
     [ $? -ne 0 ] && util::err "detected error recieving incremental snapshot"
     echo "  * second stage completed"
 
@@ -105,7 +105,7 @@ migration::send(){
     zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
 
     echo "  * sending full snapshot to remote host"
-    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" | socat - "TCP4:${_host}:8000"
+    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" | socat - "TCP4:${_host}:12000"
     echo "  * first stage completed"
 
     echo "  * giving time for remote socket to close"
@@ -130,7 +130,7 @@ migration::send(){
     zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
 
     echo "  * sending incrmental changes to remote host"
-    zfs send -Ri "${_snap1}" "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" | socat - "TCP4:${_host}:8001"
+    zfs send -Ri "${_snap1}" "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" | socat - "TCP4:${_host}:12001"
     echo "  * second stage completed"
 
     echo "  * removing snapshots"

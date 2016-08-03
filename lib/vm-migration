@@ -93,7 +93,7 @@ migration::send(){
     local _name="$1"
     local _host="$2"
     local _port
-    local _snap1 _snap2 _state _running _pid _vm _count=0
+    local _snap1 _snap2 _state _running _pid _count=0
     local IFS=$'\n'
 
     [ -z "${_name}" -o -z "${_host}" ] && util::usage
@@ -108,8 +108,8 @@ migration::send(){
 
     # look for passthru
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    config::get "_vm" "passthru0"
-    [ -n "${_vm}" ] && util::err "migration is not supported for this guest (pci pass-through enabled)"
+    config::get "_state" "passthru0"
+    [ -n "${_state}" ] && util::err "migration is not supported for this guest (pci pass-through enabled)"
 
     # check if vm is running
     vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1
@@ -119,12 +119,7 @@ migration::send(){
 
     # try to get pid if it is running
     if [ -n "${_running}" ]; then
-        vm::running_load
-
-        for _vm in ${VM_RUN_BHYVE}; do
-            [ "${_vm##* }" = "${_name}" ] && _pid="${_vm%% *}"
-        done
-
+        _pid=$(pgrep -fx "bhyve: ${_name}")
         [ -z "${_pid}" ] && util::err "guest seems to be running but can't find its pid"
     fi
 
@@ -140,7 +135,7 @@ migration::send(){
     echo "  * first stage completed"
 
     echo "  * giving time for remote socket to close"
-    sleep 10
+    sleep 5
 
     # if it's running, try and stop it
     if [ -n "${_running}" ]; then

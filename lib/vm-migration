@@ -1,6 +1,6 @@
 #!/bin/sh
 #-------------------------------------------------------------------------+
-# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,20 @@
 # @param string _name name of the new guest to recieve into
 #
 migration::recv(){
-    local _name="$1"
+    local _name
     local _ds="default"
-    local _conf _port
+    local _conf _port _opt _start
+
+    while getopts d:s _opt; do
+        case $_opt in
+            d) _ds=${OPTARG} ;;
+            s) _start="1" ;;
+            *) util::usage ;;
+        esac
+    done
+
+    shift $((OPTIND - 1))
+    _name="$1"
 
     [ -z "${_name}" ] && util::usage
     core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
@@ -64,8 +75,12 @@ migration::recv(){
     [ -z "${_conf}" ] && util::err "unable to locate guest configuration file"
     mv "${VM_DS_PATH}/${_name}/${_conf}" "${VM_DS_PATH}/${_name}/${_name}.conf"
 
-    echo "  * attempting to start ${_name}"
-    core::__start "${_name}"
+    if [ -n "${_start}" ]; then
+        echo "  * attempting to start ${_name}"
+        core::__start "${_name}"
+    else
+        echo "  * done"
+    fi
 }
 
 # vm send ...
@@ -131,8 +146,11 @@ migration::send(){
     if [ -n "${_running}" ]; then
         echo -n "  * attempting to stop guest locally"
 
+        kill ${_pid} >/dev/null 2>&1
+        sleep 1
+        kill ${_pid} >/dev/null 2>&1
+
         while [ ${_count} -lt 60 ]; do
-            kill ${_pid} >/dev/null 2>&1
             sleep 2
             kill -0 ${_pid} >/dev/null 2>&1 || break
             echo -n "."

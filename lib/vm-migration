@@ -91,6 +91,11 @@ migration::send(){
     _port="${_host##*:}"
     _host="${_host%%:*}"
 
+    # look for passthru
+    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+    config::get "_vm" "passthru0"
+    [ -n "${_vm}" ] && util::err "migration is not supported for this guest (pci pass-through enabled)"
+
     # check if vm is running
     vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1
     _state="$?"

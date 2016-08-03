@@ -32,7 +32,7 @@
 migration::recv(){
     local _name="$1"
     local _ds="default"
-    local _conf
+    local _conf _port
 
     [ -z "${_name}" ] && util::usage
     core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
@@ -40,17 +40,21 @@ migration::recv(){
     [ -z "${VM_DS_ZFS}" ] && util::err "${_ds} datastore must be on ZFS to support migration"
     [ -d "${VM_DS_PATH}/${_name}" ] && util::err "directory ${VM_DS_PATH}/${_name} already exists"
 
-    echo "Recieving guest to ${VM_DS_PATH}/${_name}"
+    # find a port to use
+    vm::find_available_net_port "_port" "12000"
+    [ -z "${_port}" ] && util::err "unable to allocate a port to recieve on"
+
+    echo "Recieving guest into ${VM_DS_PATH}/${_name}"
 
     # try to recieve the first snapshot
-    echo "  * waiting for initial full snapshot"
-    socat TCP-LISTEN:12000 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    echo "  * waiting for initial full snapshot on port ${_port}"
+    socat "TCP-LISTEN:${_port}" - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
     [ $? -ne 0 ] && util::err "detected error recieving full snapshot"
     echo "  * first stage completed"
 
     # wait for changes since first snapshot
     echo "  * waiting for incremental snapshot"
-    socat TCP-LISTEN:12001 - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    socat "TCP-LISTEN:${_port}" - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
     [ $? -ne 0 ] && util::err "detected error recieving incremental snapshot"
     echo "  * second stage completed"
 
@@ -73,12 +77,19 @@ migration::recv(){
 migration::send(){
     local _name="$1"
     local _host="$2"
+    local _port
     local _snap1 _snap2 _state _running _pid _vm _count=0
     local IFS=$'\n'
 
     [ -z "${_name}" -o -z "${_host}" ] && util::usage
     datastore::get_guest "${_name}" || util::err "unable to locate guest - '${_name}'"
     [ -z "${VM_DS_ZFS}" ] && util::err "${VM_DS_NAME} datastore must be on ZFS to support migration"
+
+    # split host & port
+    echo "${_host}" | egrep -iqs '^.+:[0-9]+$'
+    [ $? -ne 0 ] && util::err "destination must be specifie in host:port format"
+    _port="${_host##*:}"
+    _host="${_host%%:*}"
 
     # check if vm is running
     vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1
@@ -104,8 +115,8 @@ migration::send(){
     _snap1="$(date +'%Y%m%d%H%M%S')"
     zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
 
-    echo "  * sending full snapshot to remote host"
-    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" | socat - "TCP4:${_host}:12000"
+    echo "  * sending full snapshot to ${_host}:${_port}"
+    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" | socat - "TCP4:${_host}:${_port}"
     echo "  * first stage completed"
 
     echo "  * giving time for remote socket to close"
@@ -130,8 +141,8 @@ migration::send(){
     _snap2="$(date +'%Y%m%d%H%M%S')"
     zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
 
-    echo "  * sending incrmental changes to remote host"
-    zfs send -Ri "${_snap1}" "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" | socat - "TCP4:${_host}:12001"
+    echo "  * sending incrmental changes to ${_host}:${_port}"
+    zfs send -Ri "${_snap1}" "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" | socat - "TCP4:${_host}:${_port}"
     echo "  * second stage completed"
 
     echo "  * removing snapshots"

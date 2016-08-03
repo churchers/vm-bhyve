@@ -441,9 +441,9 @@ core::__start(){
 
         # start session and connect if in interactive mode
         if [ -n "${VM_OPT_INTERACTIVE}" ]; then
-            ${_tmux_cmd} new -s "${_name}" $0 -f _run "${_name}" "${_iso}"
+            ${_tmux_cmd} new -s "${_name}" $0 -tf _run "${_name}" "${_iso}"
         else
-            ${_tmux_cmd} new -ds "${_name}" $0 -f _run "${_name}" "${_iso}"
+            ${_tmux_cmd} new -ds "${_name}" $0 -tf _run "${_name}" "${_iso}"
         fi
     else
         $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
@@ -601,8 +601,8 @@ core::console(){
         fi
     fi
 
-    # check tmux if we don't have a console
-    if [ -z "${_console}" ]; then
+    # is this a tmux console?
+    if [ "${_console%%/*}" = "tmux" ]; then
         _tmux_cmd=$(which tmux)
 
         if [ -n "${_tmux_cmd}" ]; then

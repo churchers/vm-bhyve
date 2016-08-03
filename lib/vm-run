@@ -298,10 +298,18 @@ vm::bhyve_device_comports(){
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 
     for _port in ${_comports}; do
-        if [ -n "${VM_OPT_FOREGROUND}" -a "${_num}" = "1" ]; then
-            _comstring="-l ${_port},stdio"
-            _num=$((_num + 1))
-            continue
+        if [ ${_num} = 1 ]; then
+            # if tmux mode, log this to the console data
+            if [ -n "${VM_OPT_TMUX}" ]; then
+                echo "${_port}=tmux/${_name}" >> "${VM_DS_PATH}/${_name}/console"
+            fi
+
+            # if foreground mode, we don't configure a serial port
+            if [ -n "${VM_OPT_FOREGROUND}" ]; then
+                _comstring="-l ${_port},stdio"
+                _num=$((_num + 1))
+                continue
+            fi
         fi
 
         vm::find_console "_nmdm" "${_nmdm}"

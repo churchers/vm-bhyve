@@ -56,7 +56,7 @@ vm::run(){
     config::get "_hostbridge" "hostbridge" "standard"
     config::get "_comports" "comports" "com1"
     config::get "_uuid" "uuid"
-    config::get "_utc" "utctime" "no"
+    config::get "_utc" "utctime" "yes"
     config::get "_debug" "debug" "no"
 
     # generate a uuid if we don't have one already

@@ -129,13 +129,16 @@ migration::send(){
 
     # if it's running, try and stop it
     if [ -n "${_running}" ]; then
-        echo "  * attempting to stop guest locally"
+        echo -n "  * attempting to stop guest locally"
+
         while [ ${_count} -lt 60 ]; do
             kill ${_pid} >/dev/null 2>&1
             sleep 2
             kill -0 ${_pid} >/dev/null 2>&1 || break
+            echo -n "."
             _count=$((_count + 1))
         done
+        echo ""
     fi
 
     # has it stopped?

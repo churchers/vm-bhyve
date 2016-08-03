@@ -77,12 +77,24 @@ hostbridge=""
 comports=""
 
 # utctime
-# Set to any value other than [empty]/no/off/false/0 if you want the guest
-# clock to use UTC time.
+# bhyve normally sets the guests RTC to the host's localtime. The utctime
+# option causes bhyve the try and configure the guests RTC to UTC.
 #
-# Default: no
+# As of vm-bhyve 1.2, this setting defaults to yes, giving the guest a
+# UTC realtime clock. I consider this more consistent, and is actually
+# expected by some guests. The guest should show correct time as long as
+# its timezone is configured correctly. Note that the following command
+# is useful to verify the time of a guest's "hardware" RTC:
+# bhyvectl --vm={guestname} --get-rtc-time
 #
-utctime=""
+# To revert to the default bhyve behaviour, explicitly set this to off/no/false/0
+#
+# Additionally it is generally advised to run a time sync daemon, such as ntpd
+# in the guest, as each OS will have it's own clock that will inevitably drift.
+#
+# Default: yes
+#
+utctime="no"
 
 # debug
 # Set to a value other than [empty]/no/off/false/0 to run vm-bhyve in debug mode.

@@ -916,9 +916,16 @@ and
 .Sy com2 .
 You can also connect two com ports by specifying both, separated by a space.
 .It utctime
-Set this option to
+As of version 1.2, vm-bhyve defaults to
 .Sy yes
-if the guest RTC should keep UTC time.
+for this option. This causes bhyve to try and set the guests RTC clock to UTC rather
+than the host's time. I consider this more consistent, and should produce the correct
+time in the guest as long as the timezone is correctly set. Additionally, some guests actually 
+expect a UTC realtime clock.
+.Pp
+If you require bhyve to use the host's time, as it would by default, explicitly set this
+to
+.Sy no .
 .It debug
 If this is set to
 .Sy yes ,

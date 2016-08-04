@@ -78,7 +78,7 @@ comports=""
 
 # utctime
 # bhyve normally sets the guests RTC to the host's localtime. The utctime
-# option causes bhyve the try and configure the guests RTC to UTC.
+# option causes bhyve to try and configure the guests RTC to UTC.
 #
 # As of vm-bhyve 1.2, this setting defaults to yes, giving the guest a
 # UTC realtime clock. I consider this more consistent, and is actually
@@ -90,7 +90,7 @@ comports=""
 # To revert to the default bhyve behaviour, explicitly set this to off/no/false/0
 #
 # Additionally it is generally advised to run a time sync daemon, such as ntpd
-# in the guest, as each OS will have it's own clock that will inevitably drift.
+# in the guest, as each OS will have its own clock that will inevitably drift.
 #
 # Default: yes
 #

@@ -106,10 +106,9 @@ migration::send(){
     _port="${_host##*:}"
     _host="${_host%%:*}"
 
-    # look for passthru
+    # check compatability
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    config::get "_state" "passthru0"
-    [ -n "${_state}" ] && util::err "migration is not supported for this guest (pci pass-through enabled)"
+    migration::__check_compat
 
     # check if vm is running
     vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1
@@ -170,4 +169,28 @@ migration::send(){
     zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
     zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
     echo "  * done"
+}
+
+# see if a guest can be migrated.
+# there are a few guest settings that are likely to
+# cause the guest to break if it's moved to another host
+#
+migration::__check_compat(){
+    local _setting _err _num=0
+
+    # check pass through
+    config::get "_setting" "passthru0"
+    [ -n "${_setting}" ] && _err="pci pass-through enabled"
+
+    # check for custom disks
+    # file/zvol are under guest dataset and should go across ok
+    # custom disks could be anywhere
+    while [ 1 ]; do
+        config::get "_setting" "disk${_num}_type"
+        [ -z "${_setting}" ] && break
+        [ "${_setting}" = "custom" ] && _err="custom disk(s) configured" && break
+        _num=$((_num+1))
+    done
+
+    [ -n "${_err}" ] && util::err "migration is not supported for this guest (${_err})"
 }

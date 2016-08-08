@@ -176,13 +176,23 @@ EOT
     exit 1
 }
 
-# error
+# err
 # display an error message and exit immediately
 #
 # @param string - the message to display
 #
 util::err(){
     echo "${0}: ERROR: $1" >&2
+    exit 1
+}
+
+# err_inline
+# display an error inline with informational output
+#
+# @param string - message to display
+#
+util::err_inline(){
+    echo "  ! $1"
     exit 1
 }
 

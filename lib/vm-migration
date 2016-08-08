@@ -32,12 +32,15 @@
 migration::recv(){
     local _name
     local _ds="default"
-    local _conf _port _opt _start
+    local _conf _port _opt _start _stage _triple
 
-    while getopts d:s _opt; do
+    while getopts d:s12t _opt; do
         case $_opt in
-            d) _ds=${OPTARG} ;;
+            d) _ds="${OPTARG}" ;;
             s) _start="1" ;;
+            1) _stage="1" ;;
+            2) _stage="2" ;;
+            t) _triple="1" ;;
             *) util::usage ;;
         esac
     done
@@ -49,7 +52,7 @@ migration::recv(){
     core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
     datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
     [ -z "${VM_DS_ZFS}" ] && util::err "${_ds} datastore must be on ZFS to support migration"
-    [ -d "${VM_DS_PATH}/${_name}" ] && util::err "directory ${VM_DS_PATH}/${_name} already exists"
+    [ -n "${_stage}" -a -n "${_triple}" ] && util::err "single stage and triple stage are mutually exclusive "
 
     # find a port to use
     vm::find_available_net_port "_port" "12000"
@@ -57,30 +60,50 @@ migration::recv(){
 
     echo "Recieving guest into ${VM_DS_PATH}/${_name}"
 
-    # try to recieve the first snapshot
-    echo "  * waiting for initial full snapshot on port ${_port}"
-    socat "TCP-LISTEN:${_port}" - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err "detected error recieving full snapshot"
-    echo "  * first stage completed"
+    # STAGE 1
+    # full send by default although user can specify an incremental snapshot
+    # on sending side.
+    [ -z "${_stage}" -o "${_stage}" = "1" ] && migration::__recv_snapshot "1"
 
-    # wait for changes since first snapshot
-    echo "  * waiting for incremental snapshot"
-    socat "TCP-LISTEN:${_port}" - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err "detected error recieving incremental snapshot"
-    echo "  * second stage completed"
+    # STAGE 1b
+    # only performed with the -t (triple stage) option
+    # this is useful for large guests as it performs an incremental send while
+    # the guest is still running. this should hopefully be much smaller than a full send
+    # and so complete quicker, allowing the guest to be off for less time
+    [ -n "${_triple}" ] && migration::__recv_snapshot "1b"
 
-    # try to find the config file
-    echo "  * updating configuration file"
-    _conf=$(find "${VM_DS_PATH}/${_name}/" -name "*.conf" | awk -F"/" '{print $NF}')
-    [ -z "${_conf}" ] && util::err "unable to locate guest configuration file"
-    mv "${VM_DS_PATH}/${_name}/${_conf}" "${VM_DS_PATH}/${_name}/${_name}.conf"
+    # STAGE 2
+    # this is the stage when the guest is shutdown
+    # receive a snapshot, then start the guest if requested
+    if [ -z "${_stage}" -o "${_stage}" = "2" ]; then
+        migration::__recv_snapshot "2"
 
-    if [ -n "${_start}" ]; then
-        echo "  * attempting to start ${_name}"
-        core::__start "${_name}"
-    else
-        echo "  * done"
+        # update config file
+        echo "  * updating configuration file"
+        _conf=$(find "${VM_DS_PATH}/${_name}/" -name "*.conf" | awk -F"/" '{print $NF}')
+        [ -z "${_conf}" ] && util::err "unable to locate guest configuration file"
+        mv "${VM_DS_PATH}/${_name}/${_conf}" "${VM_DS_PATH}/${_name}/${_name}.conf"
+
+        if [ -n "${_start}" ]; then
+            echo "  * attempting to start ${_name}"
+            core::__start "${_name}"
+        else
+            echo "  * done"
+       fi
     fi
+}
+
+# receive a snapshot over the network
+#
+# @param string _state the migration stage to display
+#
+migration::__recv_snapshot(){
+    local _stage="$1"
+
+    echo "  * stage ${_stage}: waiting for snapshot on port ${_port}"
+    socat "TCP-LISTEN:${_port}" - | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
+    [ $? -ne 0 ] && util::err "detected error recieving snapshot"
+    echo "  * stage ${_stage}: complete"
 }
 
 # vm send ...
@@ -90,15 +113,29 @@ migration::recv(){
 # @param string _host host to send to
 #
 migration::send(){
-    local _name="$1"
-    local _host="$2"
-    local _port
-    local _snap1 _snap2 _state _running _pid _count=0
+    local _name _host _port _stage _triple _inc
+    local _snap1 _snap2 _snap3 _state _running _pid _count=0
     local IFS=$'\n'
+
+    while getopts i:12t _opt; do
+        case $_opt in
+            i) _inc="${OPTARG}" ;;
+            1) _stage="1" ;;
+            2) _stage="2" ;;
+            t) _triple="1" ;;
+            *) util::usage ;;
+        esac
+    done
+
+    shift $((OPTIND - 1))
+    _name="$1"
+    _host="$2"
 
     [ -z "${_name}" -o -z "${_host}" ] && util::usage
     datastore::get_guest "${_name}" || util::err "unable to locate guest - '${_name}'"
     [ -z "${VM_DS_ZFS}" ] && util::err "${VM_DS_NAME} datastore must be on ZFS to support migration"
+    [ -n "${_stage}" -a -n "${_triple}" ] && util::err "single stage and triple stage are mutually exclusive "
+    [ "${_stage}" = "2" -a -z "${_inc}" ] && util::err "source snapshot must be given when running stage 2"
 
     # split host & port
     echo "${_host}" | egrep -iqs '^.+:[0-9]+$'
@@ -124,21 +161,43 @@ migration::send(){
 
     echo "Sending ${_name} to ${_host}"
 
-    # take first snapshot
-    echo "  * taking initial snapshot"
-    _snap1="$(date +'%Y%m%d%H%M%S')"
-    zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
+    # STAGE 1
+    # send the first snapshot
+    if [ -z "${_stage}" -o "${_stage}" = "1" ]; then
+        _snap1="$(date +'%Y%m%d%H%M%S')"
+        echo "  * stage 1: taking snapshot - ${_snap1}"
+        zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
 
-    echo "  * sending full snapshot to ${_host}:${_port}"
-    zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" | socat - "TCP4:${_host}:${_port}"
-    echo "  * first stage completed"
+        # send the first snapshot
+        migration::__send_snapshot "1" "${_snap1}" "${_inc}"
 
-    echo "  * giving time for remote socket to close"
-    sleep 5
+        echo "  * stage 1: giving time for remote socket to close"
+        sleep 5
+    fi
+
+    # STAGE 1b
+    # do it again if in triple stage
+    if [ -n "${_triple}" ]; then
+        _snap2="$(date +'%Y%m%d%H%M%S')"
+        echo "  * stage 1b: taking snapshot - ${_snap2}"
+        zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
+
+        # send the middle snapshot
+        migration::__send_snapshot "1b" "${_snap2}" "${_snap1}"
+
+        echo "  * stage 1b: giving time for remote socket to close"
+        sleep 5
+    fi
+
+    # do we need to run stage2?
+    if [ "${_stage}" = "1" ]; then
+        echo "  * done"
+        exit
+    fi
 
     # if it's running, try and stop it
     if [ -n "${_running}" ]; then
-        echo -n "  * attempting to stop guest locally"
+        echo -n "  * stage 2: attempting to stop guest locally"
 
         kill ${_pid} >/dev/null 2>&1
         sleep 1
@@ -155,20 +214,50 @@ migration::send(){
 
     # has it stopped?
     kill -0 ${_pid} >/dev/null 2>&1 && util::err "failed to stop guest"
-    echo "  * guest powered off"
+    echo "  * stage 2: guest powered off"
 
-    echo "  * taking second snapshot"
-    _snap2="$(date +'%Y%m%d%H%M%S')"
-    zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
+    _snap3="$(date +'%Y%m%d%H%M%S')"
+    echo "  * stage 2: taking snapshot - ${_snap3}"
+    zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap3}"
 
-    echo "  * sending incrmental changes to ${_host}:${_port}"
-    zfs send -Ri "${_snap1}" "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" | socat - "TCP4:${_host}:${_port}"
-    echo "  * second stage completed"
+    # triple stage use snap 2
+    # if single stage and snapshot given, use that
+    # otherwise snap1
+    if [ "${_triple}" = "1" ]; then
+        migration::__send_snapshot "2" "${_snap3}" "${_snap2}"
+    elif [ "${_stage}" = "2" ]; then
+        migration::__send_snapshot "2" "${_snap3}" "${_inc}"
+    else
+        migration::__send_snapshot "2" "${_snap3}" "${_snap1}"
+    fi
 
     echo "  * removing snapshots"
-    zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
-    zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
+    [ -n "${_snap1}" ] && zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}"
+    [ -n "${_snap2}" ] && zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}"
+    [ -n "${_snap3}" ] && zfs destroy "${VM_DS_ZFS_DATASET}/${_name}@${_snap3}"
     echo "  * done"
+}
+
+# send a snapshot to the remote host
+#
+# @param string _stage stage number to display
+# @param string _snapshot the snapshot to send
+# @param optional string _inc incremental source to use
+#
+migration::__send_snapshot(){
+    local _stage="$1"
+    local _snapshot="$2"
+    local _inc="$3"
+
+    if [ -n "${_inc}" ]; then
+        echo "  * stage ${_stage}: sending ${VM_DS_ZFS_DATASET}/${_name}@${_snapshot} (incremental source ${_inc})"
+        zfs send -Ri "${_inc}" "${VM_DS_ZFS_DATASET}/${_name}@${_snapshot}" | socat - "TCP4:${_host}:${_port}"
+    else
+        echo "  * stage ${_stage}: sending ${VM_DS_ZFS_DATASET}/${_name}@${_snapshot}"
+        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snapshot}" | socat - "TCP4:${_host}:${_port}"
+    fi
+
+    echo "  * stage ${_stage}: complete"
 }
 
 # see if a guest can be migrated.
@@ -189,7 +278,7 @@ migration::__check_compat(){
         config::get "_setting" "disk${_num}_type"
         [ -z "${_setting}" ] && break
         [ "${_setting}" = "custom" ] && _err="custom disk(s) configured" && break
-        _num=$((_num+1))
+        _num=$((_num + 1))
     done
 
     [ -n "${_err}" ] && util::err "migration is not supported for this guest (${_err})"

@@ -174,8 +174,11 @@ migration::send(){
         # send the first snapshot
         migration::__send_snapshot "1" "${_snap1}" "${_inc}"
 
-        echo "  * stage 1: giving time for remote socket to close"
-        sleep 5
+        # only wait if we have further stages
+        if [ "${_stage}" != "1" ]; then
+            echo "  * stage 1: giving time for remote socket to close"
+            sleep 5
+        fi
     fi
 
     # STAGE 1b

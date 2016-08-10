@@ -1,4 +1,4 @@
-.Dd August 8, 2016
+.Dd August 10, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -811,6 +811,12 @@ By default this is a two stage procedure. The first stage sends a full snapshot 
 Once this is complete the guest is shutdown using an ACPI shutdown (if required) and then
 an incremental snapshot is sent. If required, the guest can be automatically booted on the
 receiving host once completed.
+.Pp
+Please note that any virtual switches used by the guest should exist on both hosts, and
+if using UEFI, the firmware must be available on both. It is also advised that the receiver
+is running a matching or newer version of FreeBSD.
+.Pp
+The function is not supported if the guest has passthrough devices or custom disks.
 .Bl -tag -width 12n
 .It Fl i Ar snapshot
 If the receiving end already has a copy of the guest, use this to specify an existing snapshot

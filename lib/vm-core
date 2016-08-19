@@ -383,7 +383,7 @@ core::start(){
 core::__start(){
     local _name="$1"
     local _iso="$2"
-    local _cpu _memory _disk _guest _loader _console _tmux_cmd
+    local _cpu _memory _disk _guest _loader _console _tmux_cmd _tmux_name
 
     [ -z "${_name}" ] && util::usage
 
@@ -438,12 +438,15 @@ core::__start(){
     if [ -n "${VM_OPT_FOREGROUND}" ]; then
         $0 -f _run "${_name}" "${_iso}"
     elif [ "${_console}" = "tmux" ]; then
+        # can't have dots in tmux session :( (looks like it may use . to separate window.pane)
+        # use ~ which we don't normally allow
+        _tmux_name=$(echo "${_name}" | tr "." "~")
 
         # start session and connect if in interactive mode
         if [ -n "${VM_OPT_INTERACTIVE}" ]; then
-            ${_tmux_cmd} new -s "${_name}" $0 -tf _run "${_name}" "${_iso}"
+            ${_tmux_cmd} new -s "${_tmux_name}" $0 -tf _run "${_name}" "${_iso}"
         else
-            ${_tmux_cmd} new -ds "${_name}" $0 -tf _run "${_name}" "${_iso}"
+            ${_tmux_cmd} new -ds "${_tmux_name}" $0 -tf _run "${_name}" "${_iso}"
         fi
     else
         $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
@@ -609,7 +612,7 @@ core::console(){
             _tmux=$("${_tmux_cmd}" ls |grep "^${_name}:")
 
             if [ -n "${_tmux}" ]; then
-                ${_tmux_cmd} attach -t ${_name}
+                ${_tmux_cmd} attach -t ${_console##*/}
                 exit
             fi
         fi

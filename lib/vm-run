@@ -293,7 +293,7 @@ vm::unlock(){
 # @modifies _com _comstring
 #
 vm::bhyve_device_comports(){
-    local _port _num=1 _nmdm=""
+    local _port _num=1 _nmdm="" _tmux_name
 
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 
@@ -301,7 +301,8 @@ vm::bhyve_device_comports(){
         if [ ${_num} = 1 ]; then
             # if tmux mode, log this to the console data
             if [ -n "${VM_OPT_TMUX}" ]; then
-                echo "${_port}=tmux/${_name}" >> "${VM_DS_PATH}/${_name}/console"
+                _tmux_name=$(echo "${_name}" | tr "." "~")
+                echo "${_port}=tmux/${_tmux_name}" >> "${VM_DS_PATH}/${_name}/console"
             fi
 
             # if foreground mode, we don't configure a serial port

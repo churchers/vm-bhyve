@@ -465,7 +465,7 @@ vm::bhyve_device_disks(){
 # @modifies _devices _slot _taplist
 #
 vm::bhyve_device_networking(){
-    local _type _switch _mac _custom_tap _tap _sid _mtu
+    local _type _switch _mac _custom_tap _tap _sid _mtu _span
     local _num=0
 
     while [ 1 ]; do
@@ -475,6 +475,7 @@ vm::bhyve_device_networking(){
         config::get "_switch" "network${_num}_switch"
         config::get "_mac" "network${_num}_mac"
         config::get "_custom_tap" "network${_num}_device"
+        config::get "_span" "network${_num}_span"
 
         # set a static mac if we don't have one
         [ -z "${_mac}" ] && vm::generate_static_mac
@@ -502,6 +503,13 @@ vm::bhyve_device_networking(){
                 _tap=$(ifconfig tap create)
             fi
 
+            # Select span or member type
+            if [ -n "${_span}" ]; then
+				_span="span"
+			else
+				_span="addm"
+			fi
+
             if [ -n "${_tap}" ]; then
                 util::log "guest" "${_name}" "initialising network device ${_tap}"
                 ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}" >/dev/null 2>&1
@@ -517,8 +525,8 @@ vm::bhyve_device_networking(){
                     	    ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
                         fi
 
-                        util::log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch})"
-                        ifconfig "${_sid}" addm "${_tap}" >/dev/null 2>&1
+                        util::log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch} ${_span})"
+                        ifconfig "${_sid}" "${_span}" "${_tap}" >/dev/null 2>&1
                         [ $? -ne 0 ] && util::log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
                     else
                         util::log "guest" "${_name}" "failed to find virtual switch '${_switch}'"

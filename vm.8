@@ -1056,6 +1056,11 @@ This option allows you to specify a mac address to use for this interface. If no
 provided,
 .Xr bhyve 8
 will generate a mac address.
+.It network0_span
+Set this option to
+.Sy yes
+to instruct vm-bhyve to add the virtual network interface to the switch as a span port 
+on the bridge.  The default is to add the port to the switch as an ordinary bridge member.
 .It disk0_type
 The emulation type for the first virtual disk. At least one virtual disk is required.
 Valid options for this are currently

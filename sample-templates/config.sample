@@ -221,6 +221,14 @@ network0_device=""
 #
 network0_mac=""
 
+# network0_span
+# Set to any value other than [empty]/off/false/no/0 to create the specified
+# port as a SPAN port rather than as an ordinary bridge member.
+#
+# NOTE: Does not work with VALE switches yet.
+#
+network0_span="no"
+
 # passthru0
 # Add a pass-through PCI device to the virtual machine. This allows the guest
 # to access a hardware device no differently than if it was running on bare

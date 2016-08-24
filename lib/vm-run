@@ -466,7 +466,7 @@ vm::bhyve_device_disks(){
 #
 vm::bhyve_device_networking(){
     local _type _switch _mac _custom_tap _tap _sid _mtu _span
-    local _num=0 _member_type="addm"
+    local _num=0 _member_type
 
     while [ 1 ]; do
         config::get "_type" "network${_num}_type"
@@ -504,6 +504,7 @@ vm::bhyve_device_networking(){
             fi
 
             # should this be a span member?
+            _member_type="addm"
             util::checkyesno "${_span}" && _member_type="span"
 
             if [ -n "${_tap}" ]; then

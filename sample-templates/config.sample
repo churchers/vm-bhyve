@@ -108,7 +108,7 @@ debug=""
 
 # uuid
 # This is set automatically by vm-bhyve when creating a new guest. Normally
-# bhyve assigns a UUID at runtime based on host and guest name. This 
+# bhyve assigns a UUID at runtime based on host and guest name. This
 # option allows you to specify a fixed UUID that will always be used. Remove
 # this or leave blank to return to the normal bhyve behaviour.
 #
@@ -213,7 +213,7 @@ network0_device=""
 # network0_mac
 # This allows you to specify a fixed mac address for this interface inside the guest.
 # When a guest is run, vm-bhyve will automatically assign a mac address for each
-# interface if one is not specified. This mac address is then written to the 
+# interface if one is not specified. This mac address is then written to the
 # configuration file using this option. If we didn't do this guests might get
 # a different mac if the tap device changes (very possible in vm-bhyve as all
 # tap devices are dynamic by default). Guests like Windows treat an interface
@@ -264,7 +264,7 @@ graphics="yes"
 
 # graphics_port
 # Use this option to specify a fixed network port that the vnc service
-# should listen on. If specifying port numbers manually, please make 
+# should listen on. If specifying port numbers manually, please make
 # sure all guests have a unique port.
 #
 graphics_port="5999"

@@ -30,62 +30,66 @@
 core::list(){
     local _name _loader _cpu _our_host
     local _memory _run _vm _auto _num _uefi _graphics _vnc
-    local _format="%-15s %-15s %-11s %-6s %-9s %-20s %-12s %s\n"
+    local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
 
     _our_host=$(hostname)
 
     vm::running_load
-    printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
 
-    for _ds in ${VM_DATASTORE_LIST}; do
-        datastore::get "${_ds}" || continue
+    # pass everything below here to column(1)
+    {
+        printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
 
-        ls -1 "${VM_DS_PATH}" 2>/dev/null | \
-        while read _name; do
-            [ ! -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && continue
+        for _ds in ${VM_DATASTORE_LIST}; do
+            datastore::get "${_ds}" || continue
 
-            config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-            config::get "_loader" "loader" "none"
-            config::get "_cpu" "cpu"
-            config::get "_memory" "memory"
-            config::get "_uefi" "uefi"
-            config::get "_graphics" "graphics"
+            ls -1 "${VM_DS_PATH}" 2>/dev/null | \
+            while read _name; do
+                [ ! -e "${VM_DS_PATH}/${_name}/${_name}.conf" ] && continue
 
-            # show uefi in loader column if it's a uefi guest
-            util::checkyesno "${_uefi}" && _loader="uefi"
+                config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+                config::get "_loader" "loader" "none"
+                config::get "_cpu" "cpu"
+                config::get "_memory" "memory"
+                config::get "_uefi" "uefi"
+                config::get "_graphics" "graphics"
 
-            # defaults
-            _vnc="-"
+                # show uefi in loader column if it's a uefi guest
+                util::checkyesno "${_uefi}" && _loader="uefi"
 
-            # check if the guest is running
-            if vm::running_check "_run" "${_name}" || \
-               [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
+                # defaults
+                _vnc="-"
 
-                # if running and graphics, try to get vnc port
-                if util::checkyesno "${_graphics}"; then
-                    _vnc=$(grep vnc "${VM_DS_PATH}/${_name}/console" 2>/dev/null |cut -d= -f2)
-                    [ -z "${_vnc}" ] && _vnc="-"
+                # check if the guest is running
+                if vm::running_check "_run" "${_name}" || \
+                    [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
+
+                    # if running and graphics, try to get vnc port
+                    if util::checkyesno "${_graphics}"; then
+                        _vnc=$(grep vnc "${VM_DS_PATH}/${_name}/console" 2>/dev/null |cut -d= -f2)
+                        [ -z "${_vnc}" ] && _vnc="-"
+                    fi
                 fi
-            fi
 
-            _num=1
-            _auto="No"
+                _num=1
+                _auto="No"
 
-            # find out if we auto-start this vm, and get sequence number
-            for _vm in ${vm_list}; do
-                [ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
-                _num=$(($_num + 1))
+                # find out if we auto-start this vm, and get sequence number
+                for _vm in ${vm_list}; do
+                    [ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
+                    _num=$(($_num + 1))
+                done
+
+                # if stopped, see if it's locked by another host
+                if [ "${_run}" = "Stopped" -a -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
+                    _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
+                    _run="Locked (${_run})"
+                fi
+
+                printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
             done
-
-            # if stopped, see if it's locked by another host
-            if [ "${_run}" = "Stopped" -a -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
-                _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
-                _run="Locked (${_run})"
-            fi
-
-            printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
         done
-    done
+    } | column -ts^
 }
 
 # 'vm check name'

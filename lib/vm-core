@@ -35,6 +35,8 @@ core::list(){
     _our_host=$(hostname)
 
     vm::running_load
+
+    {
     printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
 
     for _ds in ${VM_DATASTORE_LIST}; do
@@ -80,12 +82,13 @@ core::list(){
             # if stopped, see if it's locked by another host
             if [ "${_run}" = "Stopped" -a -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
                 _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
-                _run="Locked (${_run})"
+                _run="Locked(${_run})"
             fi
 
             printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
         done
     done
+    } | column -t
 }
 
 # 'vm check name'

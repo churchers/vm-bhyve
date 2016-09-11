@@ -465,23 +465,25 @@ zfs::image_provision(){
 #
 zfs::image_list(){
     local _file _uuid _ext
-    local _format="%-38s %-16s %-30s %s\n"
+    local _format="%s^%s^%s^%s\n"
 
-    printf "${_format}" "UUID" "NAME" "CREATED" "DESCRIPTION"
+    {
+        printf "${_format}" "UUID" "NAME" "CREATED" "DESCRIPTION"
 
-    [ ! -e "${vm_dir}/images" ] && exit
+        [ ! -e "${vm_dir}/images" ] && exit
 
-    ls -1 ${vm_dir}/images/ | \
-    while read _file; do
-        if [ "${_file##*.}" = "manifest" ]; then
-            _uuid=${_file%.*}
-            _desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" description)
-            _created=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" created)
-            _name=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
+        ls -1 ${vm_dir}/images/ | \
+        while read _file; do
+            if [ "${_file##*.}" = "manifest" ]; then
+                _uuid=${_file%.*}
+                _desc=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" description)
+                _created=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" created)
+                _name=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" name)
 
-            printf "${_format}" "${_uuid}" "${_name}" "${_created}" "${_desc}"
-        fi
-    done
+                printf "${_format}" "${_uuid}" "${_name}" "${_created}" "${_desc}"
+            fi
+        done
+    } | column -ts^
 }
 
 # 'vm image destroy'

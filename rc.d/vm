@@ -3,7 +3,7 @@
 # $FreeBSD$
 
 # PROVIDE: vm
-# REQUIRE: NETWORKING SERVERS
+# REQUIRE: NETWORKING SERVERS dmesg
 # BEFORE: dnsmasq
 # KEYWORD: shutdown nojail
 

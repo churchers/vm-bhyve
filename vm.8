@@ -29,10 +29,11 @@
 .Op Ar ...
 .Nm
 .Cm switch create
+.Op Fl t Ar type
+.Op Fl i Ar interface
+.Op Fl n Ar vlanid
+.Op Fl b Ar bridge
 .Ar name
-.Nm
-.Cm switch import
-.Ar name bridge
 .Nm
 .Cm switch vlan
 .Ar name vlan-id
@@ -408,15 +409,60 @@ o Physical ports connected
 .br
 o Virtual ports, including the associated virtual machine
 .br
-.It Cm switch create Ar name
+.It Xo
+.Cm switch create
+.Op Fl t Ar type
+.Op Fl i Ar interface
+.Op Fl n Ar vlanid
+.Op Fl b Ar bridge
+.Ar name
+.Xc
 Create a new virtual switch. The name must be supplied and may only contain
 letters, numbers and dashes. However, it may not contain a dash at the beginning
 or end.
 .Pp
-When a new virtual switch is created, the persistent configuration file is updated
-and a new
+There are currently 4 types of virtual switch that can be created. These are
+.Sy standard ,
+.Sy manual ,
+.Sy vale
+and
+.Sy vxlan .
+The default type is
+.Sy standard ,
+which creates a basic
 .Xr bridge 4
-interface is provisioned.
+interface and bridges clients to it.
+.Sy manual
+allows you to attach guests to a bridge that you have created and configured manually.
+.Sy vale
+switches use the netmap VALE system to create a virtual switch connecting guests.
+.Sy vxlan
+allows you to create virtual LANs (similar to a VLAN) which tunnel L2 guest traffic
+over L3.
+.Bl -tag -width 12n
+.It Fl t Ar type
+The type of virtual switch to create. The available types are listed above. This defaults
+to
+.Sy standard
+if not specified.
+.It Fl i Ar interface
+For
+.Sy standard
+and
+.Sy vxlan
+switches you can attach a physical interface at creation time. This option is required
+for vxlan switches.
+.It Fl n Ar vlanid
+Allows you to specify a VLAN ID for
+.Sy standard
+and
+.Sy vxlan
+switches. This option is required for vxlan switches.
+.It Fl b Ar bridge
+If creating a manual switch using an existing bridge on your system, this option allows
+you to specify the name of the bridge interface you would like to use. This option is
+required for manual switches.
+.El
 .It Cm switch import Ar name Ar bridge
 This command allows you to import an existing bridge interface that has been created
 manually and use it for virtual machines. Once a bridge is imported, you can use

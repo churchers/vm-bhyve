@@ -365,13 +365,18 @@ vm::bhyve_device_disks(){
     # check if user has set a per-controller device limit
     config::get "_ahci_multi" "ahci_device_limit"
 
-    if [ -n "${_ahci_multi}" -a ${VERSION_BSD} -ge 1200000 ]; then
+    if [ ${VERSION_BSD} -ge 1200000 ] || \
+       [ ${VERSION_BSD} -ge 1101000 ] || \
+       [ ${VERSION_BSD} -ge 1004000 ]; then
 
-        # see if it's numeric
-        echo "${_ahci_multi}" | egrep -iqs '^[0-9]+$'
+       if [ -n "${_ahci_multi}" ]; then
 
-        [ $? -eq 0 -a ${_ahci_multi} -gt 1 -a ${_ahci_multi} -le 32 ] && \
-            _ahci_limit="${_ahci_multi}"
+            # see if it's numeric
+            echo "${_ahci_multi}" | egrep -iqs '^[0-9]+$'
+
+            [ $? -eq 0 -a ${_ahci_multi} -gt 1 -a ${_ahci_multi} -le 32 ] && \
+                _ahci_limit="${_ahci_multi}"
+        fi
     fi
 
     # get all disks
@@ -466,7 +471,7 @@ vm::bhyve_device_disks(){
 #
 vm::bhyve_device_networking(){
     local _type _switch _mac _custom_tap _tap _sid _mtu _span
-    local _num=0 _member_type
+    local _num=0 _member_type _sw_type
 
     while [ 1 ]; do
         config::get "_type" "network${_num}_type"
@@ -486,9 +491,12 @@ vm::bhyve_device_networking(){
             _slot=$((_slot + 1))
         fi
 
-        if switch::is_vale "${_switch}"; then
+        # get type of switch
+        switch::type "_sw_type" "${_switch}"
+
+        if [ "${_sw_type}" = "vale" ]; then
             # create a vale port id
-            switch::vale_id "_tap" "${_switch}" "${_mac}"
+            switch::vale::id "_tap" "${_switch}" "${_mac}"
 
             util::log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
             _devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
@@ -512,7 +520,7 @@ vm::bhyve_device_networking(){
                 ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}" >/dev/null 2>&1
 
                 if [ -n "${_switch}" ]; then
-                    switch::get_ident "_sid" "${_switch}"
+                    switch::id "_sid" "${_switch}"
 
                     if [ -n "${_sid}" ]; then
                         _mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')

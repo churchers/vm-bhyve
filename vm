@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.2-alpha
-VERSION_INT=102032
+VERSION_INT=102033
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -53,6 +53,10 @@ fi
 . "${LIB}/vm-rctl"
 . "${LIB}/vm-run"
 . "${LIB}/vm-switch"
+. "${LIB}/vm-switch-manual"
+. "${LIB}/vm-switch-standard"
+. "${LIB}/vm-switch-vale"
+. "${LIB}/vm-switch-vxlan"
 . "${LIB}/vm-util"
 . "${LIB}/vm-zfs"
 

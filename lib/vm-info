@@ -96,11 +96,12 @@ info::switch(){
 #
 info::switch_show(){
     local _switch="$1"
-    local _bridge _vale _id
+    local _type _bridge _vale _id
     local _INDENT="  "
 
     [ -z "${_switch}" ] && return 1
 
+    config::get "_type" "type_${_switch}" "standard"
     config::get "_bridge" "bridge_${_switch}"
     config::get "_vale" "vale_${_switch}"
 
@@ -108,17 +109,11 @@ info::switch_show(){
     echo "Virtual Switch: ${_switch}"
     echo "------------------------"
 
-    if util::checkyesno "${_vale}"; then
-        echo "${_INDENT}type: vale"
-        switch::vale_id "_id" "${_switch}"
-    elif [ -n "${_bridge}" ]; then
-        echo "${_INDENT}type: manual"
-        _id="${_bridge}"
-    else
-        echo "${_INDENT}type: auto"
-        switch::get_ident "_bridge" "${_switch}"
-        _id="${_bridge}"
-    fi
+    echo "${_INDENT}type: ${_type}"
+    switch::id "_id" "${_switch}"
+
+    # we don't have a bridge for vale switches
+    [ "${_type}" != "vale" ] && _bridge="${_id}"
 
     echo "${_INDENT}ident: ${_id:--}"
 
@@ -348,7 +343,7 @@ info::__output_config(){
 }
 
 # try and find the bridge an interface is a member of.
-# we do this rather than just use switch::get_ident as
+# we do this rather than just use switch::id as
 # this should be able to locate the bridge even for devices
 # that have been bridged manually and have no switch name configured
 #

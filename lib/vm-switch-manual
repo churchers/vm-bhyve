@@ -1,0 +1,129 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# for a manual switch the bridge interface should already exist
+# we just assign our description to existing interface so switch::id can find it
+#
+# @param string _name name of the switch
+#
+switch::manual::init(){
+    local _name="$1"
+    local _id _bridge
+
+    # get bridge
+    config::core_get "_bridge" "bridge_${_name}"
+    [ -z "${_bridge}" ] && return 1
+
+    ifconfig "${_bridge}" description "vm-${_name}" up >/dev/null 2>&1
+}
+
+# show the configuration details for a manual switch
+#
+# @param string _name the switch name
+# @param string _format output format
+#
+switch::manual::show(){
+    local _name="$1"
+    local _format="$2"
+    local _bridge
+
+    config::core_get "_bridge" "bridge_${_name}"
+    printf "${_format}" "${_name}" "manual" "${_bridge}" "n/a" "n/a" "n/a"
+}
+
+# create a manual switch
+# we just assign our switch name to the existing bridge
+#
+# @param string _switch the switch name
+# @param string _bridge the bridge to import
+#
+switch::manual::create(){
+    local _switch="$1"
+    local _bridge="$2"
+    local _exists
+
+    # we need to have a bridge
+    [ -z "${_bridge}" ] && util::err "you must specify a bridge to import when creating a manual switch"
+
+    # check we can find this bridge on the system
+    _exists=$(ifconfig | grep "^${_bridge}: ")
+    [ -z "${_exists}" ] && util::err "${_bridge} does not appear to be a valid existing bridge"
+
+    # store configuration
+    config::core_set "switch_list" "${_switch}" "1"
+    config::core_set "type_${_switch}" "manual"
+    config::core_set "bridge_${_switch}" "${_bridge}"
+
+    # import
+    ifconfig "${_bridge}" description "vm-${_switch}" up
+}
+
+# remove a manual switch
+#
+# @param string _switch the name of the switch
+#
+switch::manual::remove(){
+    local _switch="$1"
+    local _id
+
+    switch::standard::id "_id" "${_switch}"
+    [ -z "${_id}" ] && return 0
+
+    # try to remove our description
+    ifconfig ${_id} description "" >/dev/null 2>&1
+    return 0
+}
+
+# add a new interface to this switch
+# manual switches should be managed by the user
+# using rc.conf, hence "manual"
+#
+# @param string _switch name of the switch
+# @param string _if the interface to add
+#
+switch::manual::add_member(){
+    util::err "manual switches and member interfaces should be configured using /etc/rc.conf"
+}
+
+# remove an interface
+# manual switches should be managed by the user
+# using rc.conf, hence "manual"
+#
+# @param string _switch name of the switch
+# @param string _if the interface to remove
+#
+switch::manual::remove_member(){
+    util::err "manual switches and member interfaces should be configured using /etc/rc.conf"
+}
+
+# set vlan id
+#
+# @param string _switch name of switch
+# @param int _vlan vlan id to set
+#
+switch::manual::vlan(){
+    util::err "manual switches and member interfaces should be configured using /etc/rc.conf"
+}

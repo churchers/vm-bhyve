@@ -100,7 +100,6 @@ cmd::parse_switch(){
         create)  switch::create "$@" ;;
         list)    switch::list ;;
         destroy) switch::remove "$@" ;;
-        import)  switch::import "$@" ;;
         add)     switch::add_member "$@" ;;
         remove)  switch::remove_member "$@" ;;
         vlan)    switch::vlan "$@" ;;

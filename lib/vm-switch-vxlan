@@ -37,8 +37,8 @@ switch::vxlan::init(){
     switch::standard::id "_id" "${_name}" && return 0
 
     # need a vlan id and interface
-    config::core_get "_vlan" "vlan_${_name}"
-    config::core_get "_if" "ports_${_name}"
+    config::core::get "_vlan" "vlan_${_name}"
+    config::core::get "_if" "ports_${_name}"
     [ -z "${_vlan}" -o -z "${_if}" ] && return 1
 
     # create a bridge for this switch
@@ -74,8 +74,8 @@ switch::vxlan::show(){
     local _id _vlan _port
 
     switch::standard::id "_id" "${_name}"
-    config::core_get "_vlan" "vlan_${_name}"
-    config::core_get "_port" "ports_${_name}"
+    config::core::get "_vlan" "vlan_${_name}"
+    config::core::get "_port" "ports_${_name}"
 
     printf "${_format}" "${_name}" "vxlan" "${_id}" "${_vlan}" "n/a" "${_port}"
 }
@@ -95,12 +95,12 @@ switch::vxlan::create(){
     [ -z "${_if}" -o -z "${_vlan}" ] && util::err "vxlan switches must be created with an interface and vlan id specified"
 
     # store configuration
-    config::core_set "switch_list" "${_switch}" "1"
-    config::core_set "type_${_switch}" "vxlan"
-    config::core_set "vlan_${_switch}" "${_vlan}"
-    config::core_set "ports_${_switch}" "${_if}"
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "vxlan"
+    config::core::set "vlan_${_switch}" "${_vlan}"
+    config::core::set "ports_${_switch}" "${_if}"
 
-    config::core_load
+    config::core::load
     switch::vxlan::init "${_switch}"
 }
 
@@ -114,7 +114,7 @@ switch::vxlan::remove(){
     
     # try to get guest bridge and vxlan id
     switch::standard::id "_id" "${_switch}"
-    config::core_get "_vlan" "vlan_${_switch}"
+    config::core::get "_vlan" "vlan_${_switch}"
     [ -z "${_id}" -o -z "${_vlan}" ] && return 1
 
     # get the multicast address we used for this switch

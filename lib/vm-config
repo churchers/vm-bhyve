@@ -100,7 +100,7 @@ config::set(){
 #
 # @modifies VM_CORE_CONFIG VM_CONFIG_USER
 #
-config::core_load(){
+config::core::load(){
     VM_CONFIG_USER="console;"
 
     # check config file exists
@@ -120,7 +120,7 @@ config::core_load(){
 # @param string _c_def default value if not value
 # @return 0 if found
 #
-config::core_get(){
+config::core::get(){
     local _c_var="$1"
     local _c_key="$2"
     local _c_def="$3"
@@ -145,7 +145,7 @@ config::core_get(){
 # @param string _value new value
 # @param string _append non-empty to append to existing value
 #
-config::core_set(){
+config::core::set(){
     local _var="$1"
     local _value="$2"
     local _append="$3"
@@ -165,7 +165,7 @@ config::core_set(){
 # @param string _value if non-empty we will try to remove just this value from setting
 # @return non-zero on error
 #
-config::core_remove(){
+config::core::remove(){
     local _var="$1"
     local _value="$2"
 

@@ -427,7 +427,7 @@ core::__start(){
     fi
 
     # check for tmux
-    config::core_get "_console" "console" "nmdm"
+    config::core::get "_console" "console" "nmdm"
     _tmux_cmd=$(which tmux)
 
     if [ "${_console}" = "tmux" -a -z "${_tmux_cmd}" ]; then
@@ -692,13 +692,13 @@ core::get(){
     if [ "${_var}" = "all" ]; then
 
         for _var in ${VM_CONFIG_USER}; do
-            config::core_get "_val" "${_var}"
+            config::core::get "_val" "${_var}"
             printf "${_format}" "${_var}" "${_val:--}"
         done
     else
         while [ -n "${_var}" ]; do
             if core::__valid_config_setting "${_var}"; then
-                config::core_get "_val" "${_var}"
+                config::core::get "_val" "${_var}"
                 printf "${_format}" "${_var}" "${_val:--}"
             fi
 
@@ -720,7 +720,7 @@ core::set(){
         _val="${_pair#*=}"
 
         if core::__valid_config_setting "${_key}"; then
-            config::core_set "${_key}" "${_val}"
+            config::core::set "${_key}" "${_val}"
         else
             util::err "invalid configuration setting - '${_key}'"
         fi

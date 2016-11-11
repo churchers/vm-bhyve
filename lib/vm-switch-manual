@@ -34,7 +34,7 @@ switch::manual::init(){
     local _id _bridge
 
     # get bridge
-    config::core_get "_bridge" "bridge_${_name}"
+    config::core::get "_bridge" "bridge_${_name}"
     [ -z "${_bridge}" ] && return 1
 
     ifconfig "${_bridge}" description "vm-${_name}" up >/dev/null 2>&1
@@ -50,7 +50,7 @@ switch::manual::show(){
     local _format="$2"
     local _bridge
 
-    config::core_get "_bridge" "bridge_${_name}"
+    config::core::get "_bridge" "bridge_${_name}"
     printf "${_format}" "${_name}" "manual" "${_bridge}" "n/a" "n/a" "n/a"
 }
 
@@ -73,9 +73,9 @@ switch::manual::create(){
     [ -z "${_exists}" ] && util::err "${_bridge} does not appear to be a valid existing bridge"
 
     # store configuration
-    config::core_set "switch_list" "${_switch}" "1"
-    config::core_set "type_${_switch}" "manual"
-    config::core_set "bridge_${_switch}" "${_bridge}"
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "manual"
+    config::core::set "bridge_${_switch}" "${_bridge}"
 
     # import
     ifconfig "${_bridge}" description "vm-${_switch}" up

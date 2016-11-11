@@ -309,6 +309,13 @@ graphics_wait="auto"
 #
 xhci_mouse="yes"
 
+# virt_consoles
+# specify a number between 1-16 to create virtio_console ports
+# for the guest. Each port will correspond to a vconsoleX.sock
+# unix socket on the host, which is created inside the guest directory.
+#
+virt_consoles="2"
+
 # grub_install0
 # use this to specify grub commands that should be run inside the
 # guest when installing.

@@ -33,12 +33,12 @@ switch::init(){
     local _switchlist _switch _type
 
     switch::__migrate
-    config::core_get "_switchlist" "switch_list"
+    config::core::get "_switchlist" "switch_list"
 
     if [ -n "${_switchlist}" ]; then
         for _switch in ${_switchlist}; do
             # get the switch type
-            config::core_get "_type" "type_${_switch}"
+            config::core::get "_type" "type_${_switch}"
 
             case "${_type}" in
                 vxlan)  switch::vxlan::init "${_switch}" ;;
@@ -56,14 +56,14 @@ switch::list(){
     local _switchlist _switch _type
     local _id _format="%-15s %-10s %-11s %-9s %-12s %s\n"
 
-    config::core_get "_switchlist" "switch_list"
+    config::core::get "_switchlist" "switch_list"
 
     printf "${_format}" "NAME" "TYPE" "IDENT" "VLAN" "NAT" "PORTS"
 
     if [ -n "${_switchlist}" ]; then
         for _switch in ${_switchlist}; do
             # get the switch type
-            config::core_get "_type" "type_${_switch}"
+            config::core::get "_type" "type_${_switch}"
 
             case "${_type}" in
                 vale)   switch::vale::show "${_switch}" "${_format}" ;;
@@ -102,7 +102,7 @@ switch::create(){
     core::check_name "${_switch}" || util::err "invalid switch name - '${_name}'"
 
     # make sure it's not an existing name
-    config::core_get "_list" "switch_list"
+    config::core::get "_list" "switch_list"
 
     for _curr in ${_list}; do
         [ "${_switch}" = "${_curr}" ] && util::err "switch ${_switch} already exists"
@@ -137,7 +137,7 @@ switch::remove(){
     [ -z "${_switch}" ] && util::usage
 
     # get the type of switch
-    config::core_get "_type" "type_${_switch}"
+    config::core::get "_type" "type_${_switch}"
 
     case "${_type}" in
         standard) switch::standard::remove "${_switch}" ;;
@@ -149,8 +149,8 @@ switch::remove(){
 
     # remove all configuration if there's no error
     if [ $? -eq 0 ]; then
-        config::core_remove "switch_list" "${_switch}"
-        config::core_remove "ports_${_switch} vlan_${_switch} nat_${_switch} type_${_switch}"
+        config::core::remove "switch_list" "${_switch}"
+        config::core::remove "ports_${_switch} vlan_${_switch} nat_${_switch} type_${_switch}"
     else
         util::err "failed to remove virtual switch"
     fi
@@ -169,7 +169,7 @@ switch::add_member(){
     [ -z "${_switch}" -o -z "${_if}" ] && util::usage
 
     # get the type of switch
-    config::core_get "_type" "type_${_switch}"
+    config::core::get "_type" "type_${_switch}"
 
     case "${_type}" in
         standard) switch::standard::add_member "${_switch}" "${_if}" ;;
@@ -193,7 +193,7 @@ switch::remove_member(){
     [ -z "${_switch}" -o -z "${_if}" ] && util::usage
 
     # get the type of switch
-    config::core_get "_type" "type_${_switch}"
+    config::core::get "_type" "type_${_switch}"
 
     case "${_type}" in
         standard) switch::standard::remove_member "${_switch}" "${_if}" ;;
@@ -251,7 +251,7 @@ switch::type(){
     local _var="$1"
     local _switch="$2"
 
-    config::core_get "${_var}" "type_${_switch}"
+    config::core::get "${_var}" "type_${_switch}"
 }
 
 # get the bridge id for a virtual switch
@@ -265,7 +265,7 @@ switch::id(){
     local _type
 
     # get switch type
-    config::core_get "_type" "type_${_switch}"
+    config::core::get "_type" "type_${_switch}"
 
     case "${_type}" in
         vale) switch::vale::id "${_var}" "${_switch}" ;;
@@ -281,31 +281,31 @@ switch::id(){
 switch::__migrate(){
     local _list _switch _type _bridge _vale _update
 
-    config::core_get "_list" "switch_list"
+    config::core::get "_list" "switch_list"
 
     for _switch in ${_list}; do
-        config::core_get "_type" "type_${_switch}"
+        config::core::get "_type" "type_${_switch}"
         [ -n "${_type}" ] && continue
 
         _type="standard"
 
         # try to determine switch type using old method
-        config::core_get "_bridge" "bridge_${_switch}"
-        config::core_get "_vale" "vale_${_switch}"
+        config::core::get "_bridge" "bridge_${_switch}"
+        config::core::get "_vale" "vale_${_switch}"
 
         # manually specified bridge interface?
         [ -n "${_bridge}" ] && _type="manual"
 
         # vale flag present?
         if util::checkyesno "${_vale}"; then
-            config::core_remove "vale_${_switch}"
+            config::core::remove "vale_${_switch}"
             _type="vale"
         fi
 
-        config::core_set "type_${_switch}" "${_type}"
+        config::core::set "type_${_switch}" "${_type}"
         _update="1"
     done
 
     # reload configuration
-    [ -n "${_update}" ] && config::core_load
+    [ -n "${_update}" ] && config::core::load
 }

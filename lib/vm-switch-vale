@@ -45,8 +45,8 @@ switch::vale::show(){
 switch::vale::create(){
     local _switch="$1"
 
-    config::core_set "switch_list" "${_switch}" "1"
-    config::core_set "type_${_switch}" "vale"
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "vale"
 }
 
 # remove a vale switch

@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 VERSION=1.2-alpha
-VERSION_INT=102033
+VERSION_INT=102034
 VERSION_BSD=$(uname -K)
 PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -81,7 +81,7 @@ zfs::init
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
 
 # load core configuration
-config::core_load
+config::core::load
 datastore::load
 
 # run the requested command

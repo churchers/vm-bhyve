@@ -54,9 +54,9 @@ switch::standard::show(){
     local _id _vlan _ports _nat
 
     switch::standard::id "_id" "${_name}"
-    config::core_get "_ports" "ports_${_name}"
-    config::core_get "_vlan" "vlan_${_name}"
-    config::core_get "_nat" "nat_${_name}"
+    config::core::get "_ports" "ports_${_name}"
+    config::core::get "_vlan" "vlan_${_name}"
+    config::core::get "_nat" "nat_${_name}"
 
     printf "${_format}" "${_name}" "standard" "${_id}" "${_vlan:--}" "${_nat:--}" "${_ports:--}"
 }
@@ -73,13 +73,13 @@ switch::standard::create(){
     local _vlan="$3"
 
     # store configuration
-    config::core_set "switch_list" "${_switch}" "1"
-    config::core_set "type_${_switch}" "standard"
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "standard"
 
-    [ -n "${_if}" ] && config::core_set "ports_${_switch}" "${_if}"
-    [ -n "${_vlan}" ] && config::core_set "vlan_${_switch}" "${_vlan}"
+    [ -n "${_if}" ] && config::core::set "ports_${_switch}" "${_if}"
+    [ -n "${_vlan}" ] && config::core::set "vlan_${_switch}" "${_vlan}"
 
-    config::core_load
+    config::core::load
     switch::standard::init "${_switch}"
 }
 
@@ -114,7 +114,7 @@ switch::standard::add_member(){
     
     switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
     switch::standard::__configure_port "${_switch}" "${_id}" "${_if}"
-    config::core_set "ports_${_switch}" "${_if}" "1"
+    config::core::set "ports_${_switch}" "${_if}" "1"
 }
 
 # remove a member interface from this switch
@@ -128,7 +128,7 @@ switch::standard::remove_member(){
     local _id
 
     switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
-    config::core_remove "ports_${_switch}" "${_if}"
+    config::core::remove "ports_${_switch}" "${_if}"
     switch::standard::__unconfigure_port "${_switch}" "${_id}" "${_if}"
 }
 
@@ -147,12 +147,12 @@ switch::standard::vlan(){
 
     # update configuration
     if [ "${_vlan}" = "0" ]; then
-        config::core_remove "vlan_${_switch}"
+        config::core::remove "vlan_${_switch}"
     else
-        config::core_set "vlan_${_switch}" "${_vlan}"
+        config::core::set "vlan_${_switch}" "${_vlan}"
     fi
 
-    config::core_load
+    config::core::load
     switch::standard::__add_members "${_switch}" "${_id}"
 }
 
@@ -171,8 +171,8 @@ switch::standard::__add_members(){
         switch::standard::id "_id" "${_switch}" || util:err "failed to get switch id while adding members"
     fi
 
-    config::core_get "_ports" "ports_${_switch}"
-    config::core_get "_vlan" "vlan_${_switch}"
+    config::core::get "_ports" "ports_${_switch}"
+    config::core::get "_vlan" "vlan_${_switch}"
 
     if [ -n "${_ports}" ]; then
         for _port in ${_ports}; do
@@ -198,8 +198,8 @@ switch::standard::__remove_members(){
     fi
 
     # get full port list
-    config::core_get "_ports" "ports_${_switch}"
-    config::core_get "_vlan" "vlan_${_switch}"
+    config::core::get "_ports" "ports_${_switch}"
+    config::core::get "_vlan" "vlan_${_switch}"
 
     if [ -n "${_ports}" ]; then
         for _port in ${_ports}; do

@@ -1,4 +1,4 @@
-.Dd August 10, 2016
+.Dd November 11, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -1294,6 +1294,17 @@ Set this option to
 in order to provide an XHCI mouse device to the guest. This tracks much better than
 the default PS2 mouse in VNC settings, although this mouse may not supported by older
 guests.
+.It virt_consoles
+This can be used to specify a number of
+.Sy virtio_console
+ports to provide to the guest. This should be a number between 1 and 16, which is
+the maximum number of ports supported by the current virtio_console device.
+.Pp
+If enabled, each port will correspond to a unix socket named
+.Sy vconsoleX.sock
+in the guest's data/configuration directory, where
+.Sy X
+is the port number (1-16).
 .It zfs_dataset_opts
 This allows you to specify one or more ZFS properties to set on the dataset when a
 guest is created. Because properties are assigned as the dataset is created, this option

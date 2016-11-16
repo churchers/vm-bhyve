@@ -1,4 +1,4 @@
-.Dd November 11, 2016
+.Dd November 16, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
@@ -31,8 +31,11 @@
 .Cm switch create
 .Op Fl t Ar type
 .Op Fl i Ar interface
-.Op Fl n Ar vlanid
+.Op Fl n Ar vlan-id
 .Op Fl b Ar bridge
+.Op Fl m Ar mtu
+.Op Fl a Ar address
+.Op Fl p
 .Ar name
 .Nm
 .Cm switch vlan
@@ -413,8 +416,11 @@ o Virtual ports, including the associated virtual machine
 .Cm switch create
 .Op Fl t Ar type
 .Op Fl i Ar interface
-.Op Fl n Ar vlanid
+.Op Fl n Ar vlan-id
 .Op Fl b Ar bridge
+.Op Fl m Ar mtu
+.Op Fl a Ar address
+.Op Fl p
 .Ar name
 .Xc
 Create a new virtual switch. The name must be supplied and may only contain
@@ -452,7 +458,7 @@ and
 .Sy vxlan
 switches you can attach a physical interface at creation time. This option is required
 for vxlan switches.
-.It Fl n Ar vlanid
+.It Fl n Ar vlan-id
 Allows you to specify a VLAN ID for
 .Sy standard
 and
@@ -462,30 +468,18 @@ switches. This option is required for vxlan switches.
 If creating a manual switch using an existing bridge on your system, this option allows
 you to specify the name of the bridge interface you would like to use. This option is
 required for manual switches.
+.It Fl m Ar mtu
+Specify an mtu to use for the bridge interface.
+.It Fl a Ar address
+This allows you to specify an IP address that is assigned to the bridge interface.
+This should be specified in
+.Sy a.b.c.d/prefix-len
+CIDR notation.
+.It Fl p
+Use this option to create a private switch. If this is enabled, no traffic will
+be allowed between guests on the same switch, however then will all be able to
+communicate with any physical interfaces added to the switch.
 .El
-.It Cm switch import Ar name Ar bridge
-This command allows you to import an existing bridge interface that has been created
-manually and use it for virtual machines. Once a bridge is imported, you can use
-the switch
-.Pa name
-in guest configuration. Ideally the manual bridge should be configured in
-.Pa /etc/rc.conf ,
-so that it is available on each host boot.
-.Pp
-Please note that this creates a 'manual' switch and is designed to allow you to configure your
-own bridge. None of the
-.Pa add ,
-.Pa remove ,
-.Pa vlan
-or
-.Pa nat
-commands are supported on manual switches.
-.Pp
-If a manual switch is destroyed using the
-.Pa destroy
-command, we remove all vm-bhyve configuration, but leave the
-.Xr bridge 4
-interface intact.
 .It Cm switch vlan Ar name Ar vlan-id
 Assign a VLAN number to a virtual switch. The VLAN number must be between 0-4094.
 .Pp

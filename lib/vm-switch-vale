@@ -35,7 +35,7 @@ switch::vale::show(){
     local _id
 
     switch::vale::id "_id" "${_name}"
-    printf "${_format}" "${_name}" "vale" "${_id}" "n/a" "n/a" "n/a"
+    printf "${_format}" "${_name}" "vale" "${_id}" "n/a" "n/a" "n/a" "n/a" "n/a" "n/a"
 }
 
 # create a vale switch

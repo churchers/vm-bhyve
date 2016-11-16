@@ -54,25 +54,27 @@ switch::init(){
 #
 switch::list(){
     local _switchlist _switch _type
-    local _id _format="%-15s %-10s %-11s %-9s %-12s %s\n"
+    local _id _format="%s^%s^%s^%s^%s^%s^%s^%s^%s\n"
 
     config::core::get "_switchlist" "switch_list"
 
-    printf "${_format}" "NAME" "TYPE" "IDENT" "VLAN" "NAT" "PORTS"
+    {
+        printf "${_format}" "NAME" "TYPE" "IDENT" "ADDRESS" "PRIVATE" "MTU" "VLAN" "NAT" "PORTS"
 
-    if [ -n "${_switchlist}" ]; then
-        for _switch in ${_switchlist}; do
-            # get the switch type
-            config::core::get "_type" "type_${_switch}"
+        if [ -n "${_switchlist}" ]; then
+            for _switch in ${_switchlist}; do
+                # get the switch type
+                config::core::get "_type" "type_${_switch}"
 
-            case "${_type}" in
-                vale)   switch::vale::show "${_switch}" "${_format}" ;;
-                vxlan)  switch::vxlan::show "${_switch}" "${_format}" ;;
-                manual) switch::manual::show "${_switch}" "${_format}" ;;
-                *)      switch::standard::show "${_switch}" "${_format}" ;;
-            esac
-        done
-    fi
+                case "${_type}" in
+                    vale)   switch::vale::show "${_switch}" "${_format}" ;;
+                    vxlan)  switch::vxlan::show "${_switch}" "${_format}" ;;
+                    manual) switch::manual::show "${_switch}" "${_format}" ;;
+                    *)      switch::standard::show "${_switch}" "${_format}" ;;
+                esac
+            done
+        fi
+    } | column -ts^
 }
 
 # create a new virtual switch
@@ -82,15 +84,18 @@ switch::list(){
 switch::create(){
     local _switch
     local _type="standard"
-    local _list _curr _vlan _if _bridge
+    local _list _curr _vlan _if _bridge _addr _mtu _priv
 
     # process options
-    while getopts t:i:n:b: _opt; do
+    while getopts t:i:n:b:a:m:p _opt; do
         case ${_opt} in
             t) _type="${OPTARG}" ;;
             i) _if="${OPTARG}" ;;
             n) _vlan="${OPTARG}" ;;
             b) _bridge="${OPTARG}" ;;
+            a) _addr="${OPTARG}" ;;
+            m) _mtu="${OPTARG}" ;;
+            p) _priv="yes" ;;
             *) util::usage ;;
         esac
     done
@@ -110,17 +115,30 @@ switch::create(){
 
     # check vlan number
     if [ -n "${_vlan}" ]; then
-       echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
-       [ $? -ne 0 ] && util::err "invalid vlan number"
-       [ ${_vlan} -ge 4095 ] && util::err "invalid vlan number"
+        echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
+        [ $? -ne 0 ] && util::err "invalid vlan number"
+        [ ${_vlan} -ge 4095 ] && util::err "invalid vlan number"
+    fi
+
+    # check address
+    if [ -n "${_addr}" ]; then
+        echo "${_addr}" | egrep -qs '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$'
+        [ $? -ne 0 ] && util::err "address must be supplied in CIDR notation (a.b.c.d/prefix-len)"
+    fi
+
+    # check mtu
+    if [ -n "${_mtu}" ]; then
+        echo "${_mtu}" | egrep -qs '^[0-9]{3,4}$'
+        [ $? -ne 0 ] && util::err "invalid mtu"
+        [ ${_mtu} -gt 9000 ] && util::err "invalid mtu"
     fi
 
     # check switch type
     case "${_type}" in
-        standard) switch::standard::create "${_switch}" "${_if}" "${_vlan}" ;;
-        manual)   switch::manual::create "${_switch}" "${_bridge}" ;;
-        vale)     switch::vale::create "${_switch}" ;;
-        vxlan)    switch::vxlan::create "${_switch}" "${_if}" "${_vlan}" ;;
+        standard) switch::standard::create ;;
+        manual)   switch::manual::create ;;
+        vale)     switch::vale::create ;;
+        vxlan)    switch::vxlan::create ;;
         *)        util::err "invalid switch type - '${_type}'" ;;
     esac
 }
@@ -151,6 +169,7 @@ switch::remove(){
     if [ $? -eq 0 ]; then
         config::core::remove "switch_list" "${_switch}"
         config::core::remove "ports_${_switch} vlan_${_switch} nat_${_switch} type_${_switch}"
+        config::core::remove "addr_${_switch} private_${_switch} mtu_${_switch}"
     else
         util::err "failed to remove virtual switch"
     fi
@@ -251,7 +270,21 @@ switch::type(){
     local _var="$1"
     local _switch="$2"
 
+    [ -z "${_switch}" ] && return 1
     config::core::get "${_var}" "type_${_switch}"
+}
+
+# check if a switch is configured for private members
+#
+# @param string _switch switch name
+# @return succes (0) if it's private
+#
+switch::private(){
+    local _switch="$1"
+    local _priv
+
+    config::core::get "_priv" "private_${_switch}"
+    util::checkyesno "${_priv}"
 }
 
 # get the bridge id for a virtual switch
@@ -263,6 +296,8 @@ switch::id(){
     local _var="$1"
     local _switch="$2"
     local _type
+
+    [ -z "${_switch}" ] && return 1
 
     # get switch type
     config::core::get "_type" "type_${_switch}"

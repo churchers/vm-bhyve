@@ -31,7 +31,7 @@
 #
 switch::vxlan::init(){
     local _name="$1"
-    local _id _vlan _if _addr
+    local _id _vlan _if _maddr _addr
 
     # see if the bridge already exists
     switch::standard::id "_id" "${_name}" && return 0
@@ -41,26 +41,30 @@ switch::vxlan::init(){
     config::core::get "_if" "ports_${_name}"
     [ -z "${_vlan}" -o -z "${_if}" ] && return 1
 
-    # create a bridge for this switch
-    _id=$(ifconfig bridge create description "vm-${_name}" up 2>/dev/null)
-    [ $? -ne 0 ] && util::err "failed to create bridge interface for switch ${_name}"
-
     # get local address for this interface
     _local=$(ifconfig ${_if} | grep "inet " | cut -d" " -f 2)
     [ -z "${_local}" ] && return 1
 
     # come up with an ip address for multicast data
-    switch::vxlan::__multicast "_addr" "${_name}"
+    switch::vxlan::__multicast "_maddr" "${_name}"
 
     # create the vxlan interface
-    ifconfig "vxlan${_vlan}" create vxlanid "${_vlan}" vxlanlocal "${_local}" vxlangroup "${_addr}" \
+    ifconfig "vxlan${_vlan}" create vxlanid "${_vlan}" vxlanlocal "${_local}" vxlangroup "${_maddr}" \
       vxlandev "${_if}" description "vm-vxlan-${_switch}" up >/dev/null 2>&1
     [ $? -ne 0 ] && return 1
+
+    # create a bridge for this switch
+    _id=$(ifconfig bridge create description "vm-${_name}" up 2>/dev/null)
+    [ $? -ne 0 ] && util::err "failed to create bridge interface for switch ${_name}"
 
     # bridge vxlan to our guest switch
     # static route traffic for this multicast address via our specified interface
     ifconfig "${_id}" addm "vxlan${_vlan}"
-    route add -net ${_addr}/32 -iface ${_if} >/dev/null 2>&1
+    route add -net ${_maddr}/32 -iface ${_if} >/dev/null 2>&1
+
+    # custom address for bridge?
+    config::core::get "_addr" "addr_${_name}"
+    [ -n "${_addr}" ] && ifconfig "${_id}" inet ${_addr}
 }
 
 # show the configuration details for a vxlan switch
@@ -71,25 +75,20 @@ switch::vxlan::init(){
 switch::vxlan::show(){
     local _name="$1"
     local _format="$2"
-    local _id _vlan _port
+    local _id _vlan _port _addr _priv
 
     switch::standard::id "_id" "${_name}"
     config::core::get "_vlan" "vlan_${_name}"
     config::core::get "_port" "ports_${_name}"
+    config::core::get "_addr" "addr_${_name}"
+    config::core::get "_priv" "private_${_name}" "no"
 
-    printf "${_format}" "${_name}" "vxlan" "${_id}" "${_vlan}" "n/a" "${_port}"
+    printf "${_format}" "${_name}" "vxlan" "${_id}" "${_addr}" "${_priv}" "n/a" "${_vlan}" "n/a" "${_port}"
 }
 
 # create a vxlan switch
 #
-# @param string _switch the switch name
-# @param string _if interface to use for vxlan traffic
-# @param string _vlan vxlan id number
-#
 switch::vxlan::create(){
-    local _switch="$1"
-    local _if="$2"
-    local _vlan="$3"
 
     # we must have an interface and vlan to use
     [ -z "${_if}" -o -z "${_vlan}" ] && util::err "vxlan switches must be created with an interface and vlan id specified"
@@ -99,6 +98,9 @@ switch::vxlan::create(){
     config::core::set "type_${_switch}" "vxlan"
     config::core::set "vlan_${_switch}" "${_vlan}"
     config::core::set "ports_${_switch}" "${_if}"
+
+    [ -n "${_addr}" ] && config::core::set "addr_${_switch}" "${_addr}"
+    [ -n "${_priv}" ] && config::core::set "private_${_switch}" "${_priv}"
 
     config::core::load
     switch::vxlan::init "${_switch}"
@@ -110,7 +112,7 @@ switch::vxlan::create(){
 #
 switch::vxlan::remove(){
     local _switch="$1"
-    local _id _vlan _addr
+    local _id _vlan _maddr
     
     # try to get guest bridge and vxlan id
     switch::standard::id "_id" "${_switch}"
@@ -119,8 +121,8 @@ switch::vxlan::remove(){
 
     # get the multicast address we used for this switch
     # and try to remove any route we may have added
-    switch::vxlan::__multicast "_addr" "${_switch}"
-    route del -net "${_addr}/32" >/dev/null 2>&1
+    switch::vxlan::__multicast "_maddr" "${_switch}"
+    route del -net "${_maddr}/32" >/dev/null 2>&1
 
     # destroy the guest bridge
     ifconfig ${_id} destroy >/dev/null 2>&1

@@ -48,21 +48,17 @@ switch::manual::init(){
 switch::manual::show(){
     local _name="$1"
     local _format="$2"
-    local _bridge
+    local _bridge _priv
 
     config::core::get "_bridge" "bridge_${_name}"
-    printf "${_format}" "${_name}" "manual" "${_bridge}" "n/a" "n/a" "n/a"
+    config::core::get "_priv" "private_${_name}" "no"
+    printf "${_format}" "${_name}" "manual" "${_bridge}" "n/a" "${_priv}" "n/a" "n/a" "n/a" "n/a"
 }
 
 # create a manual switch
 # we just assign our switch name to the existing bridge
 #
-# @param string _switch the switch name
-# @param string _bridge the bridge to import
-#
 switch::manual::create(){
-    local _switch="$1"
-    local _bridge="$2"
     local _exists
 
     # we need to have a bridge
@@ -76,6 +72,8 @@ switch::manual::create(){
     config::core::set "switch_list" "${_switch}" "1"
     config::core::set "type_${_switch}" "manual"
     config::core::set "bridge_${_switch}" "${_bridge}"
+
+    [ -n "${_priv}" ] && config::core::set "private_${_switch}" "${_priv}"
 
     # import
     ifconfig "${_bridge}" description "vm-${_switch}" up

@@ -44,6 +44,9 @@
 .Cm switch nat
 .Ar name on|off
 .Nm
+.Cm switch private
+.Ar name on|off
+.Nm
 .Cm switch add
 .Ar name interface
 .Nm
@@ -526,6 +529,12 @@ rules are inserted to provide the NAT translation.
 .Pa /etc/pf.conf
 is created if it doesn't exist, and a single include statement is added. This
 include statement can be moved within the file if required.
+.It Cm switch private Ar on|off
+Enable of disable private mode for a virtual switch. In private mode, guests will
+only be able to communicate with the physical interface(s), not with each other.
+.Pp
+Please note that changing this setting does not affect guests that are already
+running, but will be applied to any guests started from cold-boot thereafter.
 .It Cm switch add Ar name Ar interface
 Add the specified interface to the named virtual switch.
 .Pp

@@ -539,7 +539,7 @@ vm::bhyve_device_networking(){
                         [ $? -ne 0 ] && util::log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
 
                         # set private if configured
-                        switch::private "${_switch}" && ifconfig "${_sid}" "private" "${_tap}" >/dev/null 2>&1
+                        switch::is_private "${_switch}" && ifconfig "${_sid}" "private" "${_tap}" >/dev/null 2>&1
                     else
                         util::log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
                     fi

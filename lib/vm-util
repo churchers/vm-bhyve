@@ -140,10 +140,10 @@ Usage: vm ...
     get [all|setting] [...]
     switch list
     switch info [name] [...]
-    switch create <name>
-    switch import <name> <bridge>
+    switch create [-t type] [-i interface] [-n vlan-id] [-m mtu] [-a address/prefix-len] [-b bridge] [-p] <name>
     switch vlan <name> <vlan|0>
     switch nat <name> <on|off>
+    switch private <name> <on|off>
     switch add <name> <interface>
     switch remove <name> <interface>
     switch destroy <name>

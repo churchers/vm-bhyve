@@ -252,6 +252,40 @@ switch::vlan(){
     esac
 }
 
+# enable or diable private flag on a switch
+# note that we don't update existing interfaces; this 
+# makes things easy for us and any guests booted after
+# will get the new setting
+#
+# @param string _switch the switch to update
+# @param string _priv on,yes|off,no
+#
+switch::private(){
+    local _switch="$1"
+    local _priv="$2"
+    local _type
+
+    # try to get switch type
+    [ -z "${_switch}" -o -z "${_priv}" ] && util::usage
+    switch::type "_type" "${_switch}" || util::err "specified switch does not appear to be valid"
+
+    case "${_type}" in
+        standard|manual|vxlan)
+            if util::checkyesno "${_priv}"; then
+                config::core::set "private_${_switch}" "yes"
+            else
+                config::core::set "private_${_switch}" "no"
+            fi
+            ;;
+        vale)
+            util::err "unable to configure private mode on vale switches"
+            ;;
+        *)
+            util::err "unable to configure switch of unknown type"
+            ;;
+    esac
+}
+
 # enable or disable nat functionality on a virtual switch
 #
 # @param string _switch name of the switch
@@ -279,7 +313,7 @@ switch::type(){
 # @param string _switch switch name
 # @return succes (0) if it's private
 #
-switch::private(){
+switch::is_private(){
     local _switch="$1"
     local _priv
 

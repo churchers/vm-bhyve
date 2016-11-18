@@ -104,6 +104,7 @@ cmd::parse_switch(){
         remove)  switch::remove_member "$@" ;;
         vlan)    switch::vlan "$@" ;;
         nat)     switch::nat "$@" ;;
+        private) switch::private "$@" ;;
         info)    info::switch "$@" ;;
         *)       util::usage ;;
     esac

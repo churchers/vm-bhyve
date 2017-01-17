@@ -55,7 +55,7 @@ util::load_module(){
 # @modifies VM_NO_UG
 #
 util::check_bhyve_support(){
-    local _mesg _result
+    local _mesg _mesg1 _mesg2 _result
 
     # basic checks
     [ `id -u` -ne 0 ] && util::err "virtual machines can only be managed by root"

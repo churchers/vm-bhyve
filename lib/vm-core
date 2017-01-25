@@ -321,6 +321,7 @@ core::install(){
     local _iso="$2"
 
     [ -z "${_name}" -o -z "${_iso}" ] && util::usage
+    [ ! -e "${vm_dir}/.iso/${_iso}" ] && util::err "${_iso} does not appear to be a valid iso file"
 
     # just run start with an iso
     core::start "$1" "$2"

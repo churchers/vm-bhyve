@@ -54,6 +54,7 @@ switch::init(){
             else
                 _id=$(ifconfig bridge create)
                 [ $? -ne 0 ] && util::err "failed to create bridge interface"
+                ifconfig "${_id}" priority 0
                 ifconfig "${_id}" description "vm-${_switch}" up
 
                 # add all member interfaces

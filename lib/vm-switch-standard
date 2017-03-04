@@ -36,8 +36,10 @@ switch::standard::init(){
     switch::standard::id "_id" "${_name}" && return 0
 
     # create a bridge for this switch
-    _id=$(ifconfig bridge create description "vm-${_name}" up 2>/dev/null)
+    _id=$(ifconfig bridge create up 2>/dev/null)
     [ $? -ne 0 ] && util::err "failed to create bridge interface for switch ${_name}"
+    $(ifconfig "${_id}" description "vm-${_name}")
+    [ $? -ne 0 ] && $(ifconfig "${_id}" destroy) && util::err "failed to describe bridge interface for switch ${_name}"
 
     # try to set ip address
     config::core::get "_addr" "addr_${_name}"

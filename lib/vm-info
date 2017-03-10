@@ -395,6 +395,6 @@ info::__bytes_human(){
         5) _ext="T" ;;
     esac
 
-    export LC_NUMERIC="C"
+    export LC_ALL="C"
     printf "%.3f%s" "${_val}" "${_ext}"
 }

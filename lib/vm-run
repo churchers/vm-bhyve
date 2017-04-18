@@ -241,7 +241,7 @@ vm::run(){
         util::log "guest" "${_name}" "bhyve exited with status ${_exit}"
 
         # remove any console sockets
-        rm ${VM_DS_PATH}/${_name}/vconsole*.sock
+        rm ${VM_DS_PATH}/${_name}/vconsole*.sock >/dev/null 2>&1
 
         # if 0, guest rebooted so continue loop
         # anything else we break and shutdown

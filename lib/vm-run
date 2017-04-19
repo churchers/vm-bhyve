@@ -58,6 +58,7 @@ vm::run(){
     config::get "_uuid" "uuid"
     config::get "_utc" "utctime" "yes"
     config::get "_debug" "debug" "no"
+    config::get "_nice" "nice" "0"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -230,7 +231,7 @@ vm::run(){
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
-        bhyve ${_opts} \
+        nice -n ${_nice} bhyve ${_opts} \
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \

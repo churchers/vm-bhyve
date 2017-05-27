@@ -1,11 +1,8 @@
 # This is a sample configuration file containing all supported options
-# Please do not try and use this for a guest
+# Please do not try and use this file itself for a guest
 # For any option that contains a number in the name, such as "network0_type",
 # you can add additional devices of that type by creating a new set of
 # variables using the next number in sequence, e.g "network1_type"
-# The only exception to this is that only one disk device is supported
-# in templates. If additional disks are required, they will need to be
-# added once the guest has been created.
 #
 # Please make sure all option names are specified in lowercase and
 # at the beginning of the line. If there is any whitespace before
@@ -15,11 +12,7 @@
 
 # loader
 # If the guest you are using requires either bhyveload or grub-bhyve,
-# specify the loader to use here. If the guest is freebsd or linux,
-# this is not required as the correct loader is used by default.
-#
-# If using guests such as netbsd, you can either set the guest to
-# linux, or set to generic and specify the grub loader here
+# specify the loader to use here.
 #
 # Valid Options: bhyveload,grub
 #
@@ -37,7 +30,10 @@ loader_timeout="3"
 # Tells bhyve that it should load the UEFI firmware. To use UEFI
 # this can be any value other than [empty]/off/false/no/0. If
 # it contains the string 'csm', the UEFI BIOS compatability (CSM)
-# firmware will be used
+# firmware will be used.
+#
+# Please note when using UEFI firmware, no loader is required
+# regardless of the guest operating system.
 #
 # Default: no
 #
@@ -81,12 +77,24 @@ hostbridge=""
 comports=""
 
 # utctime
-# Set to any value other than [empty]/no/off/false/0 if you want the guest
-# clock to use UTC time.
+# bhyve normally sets the guests RTC to the host's localtime. The utctime
+# option causes bhyve to try and configure the guests RTC to UTC.
 #
-# Default: no
+# As of vm-bhyve 1.2, this setting defaults to yes, giving the guest a
+# UTC realtime clock. I consider this more consistent, and is actually
+# expected by some guests. The guest should show correct time as long as
+# its timezone is configured correctly. Note that the following command
+# is useful to verify the time of a guest's "hardware" RTC:
+# bhyvectl --vm={guestname} --get-rtc-time
 #
-utctime=""
+# To revert to the default bhyve behaviour, explicitly set this to off/no/false/0
+#
+# Additionally it is generally advised to run a time sync daemon, such as ntpd
+# in the guest, as each OS will have its own clock that will inevitably drift.
+#
+# Default: yes
+#
+utctime="no"
 
 # debug
 # Set to a value other than [empty]/no/off/false/0 to run vm-bhyve in debug mode.
@@ -100,17 +108,28 @@ debug=""
 
 # uuid
 # This is set automatically by vm-bhyve when creating a new guest. Normally
-# bhyve assigns a UUID at runtime based on host and guest name. This 
+# bhyve assigns a UUID at runtime based on host and guest name. This
 # option allows you to specify a fixed UUID that will always be used. Remove
 # this or leave blank to return to the normal bhyve behaviour.
 #
 uuid=""
 
+# ahci_device_limit
+# By default all ahci devices (ahci-hd/ahci-cd) are configured on independent
+# slots with their own controller. In FreeBSD 12 it's possible to put up
+# to 32 devices on each controller. This setting allows you to configure
+# the number of devices vm-bhyve will allocate on each controller.
+#
+# Valid Options: 2-32
+# Default: 1
+#
+ahci_device_limit="8"
+
 # disk0_type (required)
 # This specifies the emulation type for disk0. Please note that each disk requires
 # at least a type and name.
 #
-# Valid Options: virtio-blk,ahci-hd
+# Valid Options: virtio-blk,ahci-hd,ahci-cd
 #
 disk0_type="virtio-blk"
 
@@ -194,13 +213,21 @@ network0_device=""
 # network0_mac
 # This allows you to specify a fixed mac address for this interface inside the guest.
 # When a guest is run, vm-bhyve will automatically assign a mac address for each
-# interface if one is not specified. This mac address is then written to the 
+# interface if one is not specified. This mac address is then written to the
 # configuration file using this option. If we didn't do this guests might get
 # a different mac if the tap device changes (very possible in vm-bhyve as all
 # tap devices are dynamic by default). Guests like Windows treat an interface
 # with a different mac as a new interface, with a new set of default settings.
 #
 network0_mac=""
+
+# network0_span
+# Set to any value other than [empty]/off/false/no/0 to create the specified
+# port as a SPAN port rather than as an ordinary bridge member.
+#
+# NOTE: Does not work with VALE switches yet.
+#
+network0_span="no"
 
 # passthru0
 # Add a pass-through PCI device to the virtual machine. This allows the guest
@@ -224,6 +251,70 @@ passthru0=""
 # a virtio-rnd device for the guest
 #
 virt_random=""
+
+# graphics
+# Set to a value other than [empty]/off/false/no/0 to enable
+# the bhyve frame buffer device. This creates a graphics console
+# in the guest, which is accessible using vnc
+#
+# By default this is set at 800x600, and we find an available vnc
+# port starting at 5900. The port can be seen in vm list|info output.
+#
+graphics="yes"
+
+# graphics_port
+# Use this option to specify a fixed network port that the vnc service
+# should listen on. If specifying port numbers manually, please make
+# sure all guests have a unique port.
+#
+graphics_port="5999"
+
+# graphics_listen
+# By default, the vnc service will listen on 0.0.0.0, so you can connect by
+# using an IP address assigned to the bhyve host. Use this option if you
+# want to specify a specific IP address that the service should bind to
+#
+# Default: 0.0.0.0
+#
+graphics_listen="10.0.0.1"
+
+# graphics_res
+# This allows you to specify a resolution for the graphical console.
+# Pleas note only the below options are supported
+#
+# Default: 800x600
+# Valid Options: 1920x1200,1920x1080,1600x1200,1600x900,1280x1024,1280x720,1024x768,800x600,640x480
+#
+graphics_res="800x600"
+
+# graphics_wait
+# Set to yes in order to make guest boot wait for the VNC console
+# to be opened. This can help when installing operating systems
+# that require immediate keyboard input (such as a timed 'enter setup'
+# screen). The default setting of auto will add the wait option
+# if the guest is run in install mode. Note that in auto mode
+# the wait option will only be present on the first boot. If you
+# need the guest to wait on every boot during install, the yes
+# option should be used.
+#
+# Valid Options: no,yes,auto
+#
+graphics_wait="auto"
+
+# xhci_mouse
+# When graphics are enabled, a PS2 mouse is created by default. This
+# doesn't track very well, and can be replaced with an XHCI mouse
+# by setting this option to yes. Please note only some guests support
+# this mouse
+#
+xhci_mouse="yes"
+
+# virt_consoles
+# specify a number between 1-16 to create virtio_console ports
+# for the guest. Each port will correspond to a vconsoleX.sock
+# unix socket on the host, which is created inside the guest directory.
+#
+virt_consoles="2"
 
 # grub_install0
 # use this to specify grub commands that should be run inside the

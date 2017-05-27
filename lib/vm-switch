@@ -1,6 +1,6 @@
 #!/bin/sh
 #-------------------------------------------------------------------------+
-# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,566 +27,354 @@
 # create switches from rc list on init
 # this should run once per boot to make sure switches from the
 # configuration file have bridge interfaces. If any new switches are
-# created, the bridge is done at the same time
+# created, the create function takes care of setting them up
 #
-__switch_init(){
-    local _switchlist _switch _id
-    local _nat _havenat=0 _bridge _vale
+switch::init(){
+    local _switchlist _switch _type
 
-    __config_core_get "_switchlist" "switch_list"
+    switch::__migrate
+    config::core::get "_switchlist" "switch_list"
 
-    # create bridges for each switch if they don't already exist
     if [ -n "${_switchlist}" ]; then
         for _switch in ${_switchlist}; do
-            # do nothing if it's a vale switch
-            __config_core_get "_vale" "vale_${_switch}"
-            __checkyesno "${_vale}" && continue
+            # get the switch type
+            config::core::get "_type" "type_${_switch}"
 
-            # do nothing if the bridge already exists
-            __switch_get_ident "_id" "${_switch}"
-            [ -n "${_id}" ] && continue
-
-            __config_core_get "_nat" "nat_${_switch}"
-            __config_core_get "_bridge" "bridge_${_switch}"
-
-            if [ -n "${_bridge}" ]; then
-                ifconfig "${_bridge}" description "vm-${_switch}" up >/dev/null 2>&1
-            else
-                _id=$(ifconfig bridge create)
-                [ $? -ne 0 ] && __err "failed to create bridge interface"
-                ifconfig "${_id}" description "vm-${_switch}" up
-
-                # add all member interfaces
-                __switch_add_allmembers "${_switch}" "${_id}"
-            fi
-
-            [ -n "${_nat}" ] &&_havenat="1"
+            case "${_type}" in
+                vxlan)  switch::vxlan::init "${_switch}" ;;
+                manual) switch::manual::init "${_switch}" ;;
+                vale)   ;;
+                *)      switch::standard::init "${_switch}" ;;
+            esac
         done
     fi
-
-    # only load dnsmasq/pf if we have a nat switch
-    [ "${_havenat}" = "1" ] && __switch_nat_init
 }
 
-# list switches, currently just from stored configuration
+# list switches configured
 #
-__switch_list(){
-    local _switchlist _portlist _switch _port
-    local _vlan _nat _bridge _type _vale
-    local _id _format="%-15s %-10s %-11s %-9s %-12s %s\n"
+switch::list(){
+    local _switchlist _switch _type
+    local _id _format="%s^%s^%s^%s^%s^%s^%s^%s^%s\n"
 
-    __config_core_get "_switchlist" "switch_list"
+    config::core::get "_switchlist" "switch_list"
 
-    printf "${_format}" "NAME" "TYPE" "IDENT" "VLAN" "NAT" "PORTS"
+    {
+        printf "${_format}" "NAME" "TYPE" "IDENT" "ADDRESS" "PRIVATE" "MTU" "VLAN" "NAT" "PORTS"
 
-    for _switch in ${_switchlist}; do
-        __switch_get_ident "_id" "${_switch}"
-        [ -z "${_id}" ] && _id="-"
+        if [ -n "${_switchlist}" ]; then
+            for _switch in ${_switchlist}; do
+                # get the switch type
+                config::core::get "_type" "type_${_switch}"
 
-        __config_core_get "_portlist" "ports_${_switch}"
-        __config_core_get "_vlan" "vlan_${_switch}"
-        __config_core_get "_nat" "nat_${_switch}"
-        __config_core_get "_bridge" "bridge_${_switch}"
-        __config_core_get "_vale" "vale_${_switch}"
-
-        if __checkyesno "${_vale}"; then
-            _type="vale"
-            __switch_vale_id "_id" "${_switch}"
-            : ${_portlist:=n/a}
-            : ${_vlan:=n/a}
-            : ${_nat:=n/a}
-        elif [ -z "${_bridge}" ]; then
-            _type="auto"
-            : ${_portlist:=-}
-            : ${_vlan:=-}
-            : ${_nat:=-}
-        else
-            _type="manual"
-            _portlist="n/a"
-            _vlan="n/a"
-            _nat="n/a"
+                case "${_type}" in
+                    vale)   switch::vale::show "${_switch}" "${_format}" ;;
+                    vxlan)  switch::vxlan::show "${_switch}" "${_format}" ;;
+                    manual) switch::manual::show "${_switch}" "${_format}" ;;
+                    *)      switch::standard::show "${_switch}" "${_format}" ;;
+                esac
+            done
         fi
-
-        printf "${_format}" "${_switch}" "${_type}" "${_id}" "${_vlan}" "${_nat}" "${_portlist}"
-    done
+    } | column -ts^
 }
 
-# 'vm switch create'
 # create a new virtual switch
 #
 # @param string _switch name of the switch to create
 #
-__switch_create(){
-    local _switch="$1"
-    local _id _curr_list _curr
+switch::create(){
+    local _switch
+    local _type="standard"
+    local _list _curr _vlan _if _bridge _addr _mtu _priv
 
-    __vm_check_name "${_switch}" || __err "invalid switch name - '${_name}'"
-    __config_core_get "_curr_list" "switch_list"
-
-    for _curr in $_curr_list; do
-        [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
+    # process options
+    while getopts t:i:n:b:a:m:p _opt; do
+        case ${_opt} in
+            t) _type="${OPTARG}" ;;
+            i) _if="${OPTARG}" ;;
+            n) _vlan="${OPTARG}" ;;
+            b) _bridge="${OPTARG}" ;;
+            a) _addr="${OPTARG}" ;;
+            m) _mtu="${OPTARG}" ;;
+            p) _priv="yes" ;;
+            *) util::usage ;;
+        esac
     done
 
-    __config_core_set "switch_list" "${_switch}" "1"
-    [ $? -ne 0 ] && __err "failed to add switch to configuration file"
+    shift $((OPTIND - 1))
+    _switch="$1"
 
-    _id=$(ifconfig bridge create)
-    [ $? -ne 0 ] && __err "failed to create bridge interface"
-    ifconfig "${_id}" description "vm-${_switch}" up
-}
+    # check for a valid switch name
+    core::check_name "${_switch}" || util::err "invalid switch name - '${_name}'"
 
-# 'vm switch import'
-# use an existing manually configured bridge
-#
-# @param string _switch name of the switch to create
-# @param string _bridge name of the bridge interface to import
-#
-__switch_import(){
-    local _switch="$1"
-    local _bridge="$2"
-    local _exists
+    # make sure it's not an existing name
+    config::core::get "_list" "switch_list"
 
-    [ -z "${_switch}" -o -z "${_bridge}" ] && __usage
-    __vm_check_name "${_switch}" || __err "invalid switch name - '${_name}'"
-    __config_core_get "_curr_list" "switch_list"
-
-    for _curr in $_curr_list; do
-        [ "${_switch}" = "${_curr}" ] && __err "switch ${_switch} already exists"
+    for _curr in ${_list}; do
+        [ "${_switch}" = "${_curr}" ] && util::err "switch ${_switch} already exists"
     done
 
-    _exists=$(ifconfig | grep "^${_bridge}: ")
-    [ -z "${_exists}" ] && __err "${_bridge} does not appear to be a valid existing bridge"
-
-    __config_core_set "switch_list" "${_switch}" "1"
-    __config_core_set "bridge_${_switch}" "${_bridge}"
-    [ $? -ne 0 ] && __err "failed to add switch to configuration file"
-
-    # attach our description to bridge
-    # this will allow vm-bhyve to find it and attach guests
-    ifconfig "${_bridge}" description "vm-${_switch}" up
-}
-
-# 'vm switch destroy'
-# remove a virtual switch
-#
-# @param string _switch name of the switch
-#
-__switch_remove(){
-    local _switch="$1"
-    local _id _nat _bridge _vale
-
-    __config_core_get "_bridge" "bridge_${_switch}"
-    __config_core_get "_nat" "nat_${_switch}"
-    __config_core_get "_vale" "vale_${_switch}"
-
-    # if manual, leave it there and just remove from our config
-    if [ -n "${_bridge}" ]; then
-        ifconfig "${_bridge}" description "" >/dev/null 2>&1
-        __config_core_remove "switch_list" "${_switch}"
-        __config_core_remove "bridge_${_switch}"
-        exit 0
-    fi	
-
-    if [ -z "${_vale}" ]; then
-        __switch_get_ident "_id" "${_switch}"
-        __switch_remove_allmembers "${_switch}" "${_id}"
-    fi
-
-    __config_core_remove "switch_list" "${_switch}" "1"
-    __config_core_remove "ports_${_switch} vlan_${_switch} nat_${_switch} vale_${_switch}"
-
-    if [ -z "${_vale}" ]; then
-        if [ -n "${_id}" ]; then
-            ifconfig "${_id}" destroy >/dev/null 2>&1
-            [ $? -ne 0 ] && __warn "removed configuration but failed to remove bridge"
-        else
-            __warn "removed configuration but failed to remove bridge"
-        fi
-
-        # reset nat if this switch had nat
-        [ -n "${_nat}" ] && __switch_nat_init
-    fi
-}
-
-# 'vm switch vlan'
-# set vlan number for a switch
-# all interfaces will be removed, vlan interfaces created, then re-added
-#
-# @param string _switch name of the switch
-# @param int _vlan vlan number (or 0 to switch vlan off)
-#
-__switch_vlan(){
-    local _switch="$1"
-    local _vlan="$2"
-
-    [ -z "${_switch}" -o -z "${_vlan}" ] && __usage
-    __switch_auto "${_switch}"
-
-    echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
-    [ $? -ne 0 ] && __err "invalid vlan number"
-    [ ${_vlan} -ge 4095 ] && __err "invalid vlan number"
-
-    # we need to remove everything and re-add as raw interfaces will
-    # change to vlan or visa-versa
-    __switch_remove_allmembers "${_switch}"
-
-    if [ "${_vlan}" = "0" ]; then
-        __config_core_remove "vlan_${_switch}"
-    else
-        __config_core_set "vlan_${_switch}" "${_vlan}"
-    fi
-
-    # put interfaces back in
-    __switch_add_allmembers "${_switch}"
-}
-
-# physically add switch member interfaces
-# this will add all configured interfaces to the bridge
-# if vlan specified, each real interface will be assigned to a vlan interface
-#
-# @private
-# @param string _switch the switch to configure
-# @param optional string _id switch id (eg bridge0) if already known
-#
-__switch_add_allmembers(){
-    local _switch="$1"
-    local _id="$2"
-    local _portlist _port
-
-    if [ -z "${_id}" ]; then
-        __switch_get_ident "_id" "${_switch}"
-        [ -z "${_id}" ] && __err "failed to get switch id while adding members"
-    fi
-
-    __config_core_get "_portlist" "ports_${_switch}"
-
-    if [ -n "${_portlist}" ]; then
-        for _port in ${_portlist}; do
-            __switch_configure_port "${_switch}" "${_id}" "${_port}"
-        done
-    fi
-}
-
-# physically remove all configured members from a switch
-#
-# @private
-# @param string _switch name of the switch
-# @param optional string _id switch id if already known
-#
-__switch_remove_allmembers(){
-    local _switch="$1"
-    local _id="$2"
-    local _portlist _port
-
-    if [ -z "${_id}" ]; then
-        __switch_get_ident "_id" "${_switch}"
-        [ -z "${_id}" ] && __err "failed to get switch id while removing members"
-    fi
-
-    __config_core_get "_portlist" "ports_${_switch}"
-
-    if [ -n "${_portlist}" ]; then
-        for _port in ${_portlist}; do
-            __switch_unconfigure_port "${_switch}" "${_id}" "${_port}"
-        done
-    fi
-}
-
-# physically adds a port to a virtual switch
-# if vlan is configured, we need to create the relevant vlan interface first,
-# then add that to the bridge
-#
-# @private
-# @param string _switch the switch to add port to
-# @param string _id the switch id
-# @param string _member name of the member interface to add
-#
-__switch_configure_port(){
-    local _switch="$1"
-    local _id="$2"
-    local _member="$3"
-    local _vlan _vid
-
-    __config_core_get "_vlan" "vlan_${_switch}"
-
+    # check vlan number
     if [ -n "${_vlan}" ]; then
-        __switch_get_ident "_vid" "vlan-${_member}-${_vlan}"
-
-        if [ -z "${_vid}" ]; then
-            _vid=$(ifconfig vlan create)
-            [ $? -ne 0 ] && __err "failed to create vlan interface"
-            ifconfig "${_vid}" vlandev "${_member}" vlan "${_vlan}" description "vm-vlan-${_member}-${_vlan}"
-        fi
-
-        ifconfig ${_id} addm ${_vid} >/dev/null 2>&1
-    else
-        ifconfig ${_id} addm ${_member} >/dev/null 2>&1
+        echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
+        [ $? -ne 0 ] && util::err "invalid vlan number"
+        [ ${_vlan} -ge 4095 ] && util::err "invalid vlan number"
     fi
 
-    [ $? -ne 0 ] && __err "failed to add member to the virtual switch"
-}
-
-# 'vm switch add'
-# configure a member interface to a "switch"
-# add the interface to bridge and update switch configuration
-#
-# @param string _switch name of the switch
-# @param string _member name of the interface to add
-#
-__switch_add_member(){
-    local _switch="$1"
-    local _member="$2"
-    local _id
-
-    [ -z "${_switch}" -o -z "${_member}" ] && __usage
-
-    __switch_auto "${_switch}"
-    __switch_get_ident "_id" "${_switch}"
-    [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
-
-    __switch_configure_port "${_switch}" "${_id}" "${_member}"
-    __config_core_set "ports_${_switch}" "${_member}" "1"
-}
-
-# physically remove a port from a virtual switch / bridge
-#
-# @private
-# @param string _switch the switch to update
-# @param string _id the switch id
-# @param string _member the interface to remove
-#
-__switch_unconfigure_port(){
-    local _switch="$1"
-    local _id="$2"
-    local _member="$3"
-    local _id _vlan _vid _usage
-
-    __config_core_get "_vlan" "vlan_${_switch}"
-
-    if [ -n "${_vlan}" ]; then
-        __switch_get_ident "_vid" "vlan-${_member}-${_vlan}"
-        [ -z "${_vid}" ] && __err "unable to find relevent vlan interface for ${_member}"
-
-        ifconfig ${_id} deletem ${_vid} >/dev/null 2>&1
-    else
-        ifconfig ${_id} deletem ${_member} >/dev/null 2>&1
+    # check address
+    if [ -n "${_addr}" ]; then
+        echo "${_addr}" | egrep -qs '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$'
+        [ $? -ne 0 ] && util::err "address must be supplied in CIDR notation (a.b.c.d/prefix-len)"
     fi
 
-    [ $? -ne 0 ] && __err "failed to remove member from the virtual switch"
-
-    # it's possible a vlan interface may be assigned to multiple switches
-    # we want to remove the vlan interface if possible, but not if it's
-    # still assigned to another switch
-    if [ -n "${_vlan}" -a -n "${_vid}" ]; then
-        _usage=$(ifconfig -a |grep "member: vm-vlan-${_member}-${_vlan}\$")
-        [ -z "${_usage}" ] && ifconfig "${_vid}" destroy >/dev/null 2>&1
+    # check mtu
+    if [ -n "${_mtu}" ]; then
+        echo "${_mtu}" | egrep -qs '^[0-9]{3,4}$'
+        [ $? -ne 0 ] && util::err "invalid mtu"
+        [ ${_mtu} -gt 9000 ] && util::err "invalid mtu"
     fi
+
+    # check switch type
+    case "${_type}" in
+        standard) switch::standard::create ;;
+        manual)   switch::manual::create ;;
+        vale)     switch::vale::create ;;
+        vxlan)    switch::vxlan::create ;;
+        *)        util::err "invalid switch type - '${_type}'" ;;
+    esac
 }
 
-# 'vm switch remove'
-# remove a member interface from a switch configuration
-# update configuration then remove device from bridge
+# destroy a switch
+# remove from configuration and unload any interfaces we created
 #
-# @param string _switch the switch to update
-# @param string _member the interface to remove
+# @param string _switch name of the switch to remove
 #
-__switch_remove_member(){
+switch::remove(){
     local _switch="$1"
-    local _member="$2"
-    local _id
+    local _type
 
-    [ -z "${_switch}" -o -z "${_member}" ] && __usage
+    [ -z "${_switch}" ] && util::usage
 
-    __switch_auto "${_switch}"
-    __switch_get_ident "_id" "${_switch}"
-    [ -z "${_id}" ] && __err "unable to locate virtual switch ${_id}"
+    # get the type of switch
+    config::core::get "_type" "type_${_switch}"
 
-    __config_core_remove "ports_${_switch}" "${_member}"
-    __switch_unconfigure_port "${_switch}" "${_id}" "${_member}"
-}
-
-# 'vm switch nat'
-# configure nat on a switch
-# this function just deals with the vm-bhyve configuration
-#
-# @param string _switch the name of the switch
-# @param string _nat=on|off whether to switch it on or off
-#
-__switch_nat(){
-    local _switch="$1"
-    local _nat="$2"
-
-    [ -z "${_switch}" ] && __usage
-    __switch_auto "${_switch}"
-
-    case "${_nat}" in
-        off)
-            __config_core_remove "nat_${_switch}"
-            ;;
-        on)
-            if ! checkyesno pf_enable; then
-                __err "pf needs to be enabled for nat functionality"
-            fi
-
-            __config_core_set "nat_${_switch}" "yes"
-            [ $? -ne 0 ] && __err "failed to store nat configuration"
-
-            echo "******"
-            echo "  NAT has been enabled on the specified switch"
-            echo "  A sample dnsmasq configuration has been created in /usr/local/etc/dnsmasq.conf.bhyve"
-            echo "  To enable DHCP on this switch, please install the dnsmasq confguration or merge with your existing."
-            echo "******"
-            ;;
-        *)
-            __err "last option should either be 'on' or 'off' to enable/disable nat functionality"
-            ;;
+    case "${_type}" in
+        standard) switch::standard::remove "${_switch}" ;;
+        manual)   switch::manual::remove "${_switch}" ;;
+        vale)     switch::vale::remove "${_switch}" ;;
+        vxlan)    switch::vxlan::remove "${_switch}" ;;
+        *)        util::err "unable to remove switch of unknown type" ;;
     esac
 
-    # reset nat configuration
-    __switch_nat_init
-}
-
-# set the system up for nat usage
-# do the actual nat work
-# we completely take over dnsmasq and assign it to the required interfaces
-# /etc/pf.conf gets an include statement added pointing to a file in
-# out .config directory. This file contains a nat rule for each nat switch
-#
-# @private
-#
-__switch_nat_init(){
-    local _pf_rules="${vm_dir}/.config/pf-nat.conf"
-    local _havenat=0
-    local _grep _switchlist _nat _net24 _if
-    local _gw _bnum
-
-    # get default gateway
-    _gw=$(netstat -4rn | grep default | awk '{print $4}')
-
-    # basic dnsmasq settings
-    echo "# vm-bhyve dhcp" > /usr/local/etc/dnsmasq.conf.bhyve
-    echo "port=0" >> /usr/local/etc/dnsmasq.conf.bhyve
-    echo "domain-needed" >> /usr/local/etc/dnsmasq.conf.bhyve
-    echo "no-resolv" >> /usr/local/etc/dnsmasq.conf.bhyve
-    echo "except-interface=lo0" >> /usr/local/etc/dnsmasq.conf.bhyve
-    echo "bind-interfaces" >> /usr/local/etc/dnsmasq.conf.bhyve
-    echo "local-service" >> /usr/local/etc/dnsmasq.conf.bhyve
-    echo "dhcp-authoritative" >> /usr/local/etc/dnsmasq.conf.bhyve
-
-    # reset our pf config and create /etc/pf.conf if needed
-    echo "# vm-bhyve nat" > "${vm_dir}/.config/pf-nat.conf"
-    [ ! -e "/etc/pf.conf" ] && touch /etc/pf.conf
-
-    # only add our include statement to /etc/pf.conf if it's not already in there somwhere
-    _grep=$(grep "${_pf_rules}" /etc/pf.conf)
-    [ -z "${_grep}" ] && echo "include \"${_pf_rules}\"" >> /etc/pf.conf
-
-    __config_core_get "_switchlist" "switch_list"
-
-    # add each nat switch to dnsmasq.conf and .config/pf-nat.conf
-    for _switch in ${_switchlist}; do
-        __config_core_get "_nat" "nat_${_switch}"
-        __switch_get_ident "_id" "${_switch}"
-
-        if [ "${_nat}" = "yes" -a -n "${_id}" ]; then
-            _bnum=$(echo "${_id}" |awk -F'bridge' '{print $2}')
-            _net24="172.16.${_bnum}"
-
-            echo "nat on ${_gw} from {${_net24}.0/24} to any -> (${_gw})" >> "${vm_dir}/.config/pf-nat.conf"
-            echo "" >> /usr/local/etc/dnsmasq.conf.bhyve
-            echo "interface=${_id}" >> /usr/local/etc/dnsmasq.conf.bhyve
-            echo "dhcp-range=${_net24}.10,${_net24}.254" >> /usr/local/etc/dnsmasq.conf.bhyve
-
-            # make sure interface has an ip
-            # this doesn't get removed when nat disabled but not a major issue
-            ifconfig "${_id}" ${_net24}.1/24
-
-            _havenat="1"
-        fi
-    done
-
-    # make sure forwarding enabled if we have any nat
-    [ "${_havenat}" = "1" ] && sysctl net.inet.ip.forwarding=1 >/dev/null 2>&1
-
-    # restart services regardless
-    # still need to restart if _havenat=0, in case we've just removed last nat switch
-    __restart_service "pf"
-}
-
-# check if a switch is a vale switch
-# if so, we don't need to actually create anything.
-# interfaces are created on demand when starting guests,
-# and vale switches are dynamic
-#
-# @return int 0 is switch is vale
-#
-__switch_is_vale(){
-    local _switch="$1"
-
-    __config_core_get "_is_vale" "vale_${_switch}"
-    [ -z "${_is_vale}" ] && return 1
-
-    __checkyesno "${_is_vale}"
-}
-
-# gets a unique port name for a vale interface
-# we need to make sure vale switch name is the same
-# for all interfaces on the same switch, but port is 
-# different
-# 
-# @param string _var name of variable to put port name into
-# @param string _switch the name of the switch
-# @param string _port unique port identifier (usually mac address)
-#
-__switch_vale_id(){
-    local _var="$1"
-    local _switch="$2"
-    local _port="$3"
-    local _id_s _id_p
-
-    # get a switch id
-    _id_s=$(md5 -qs "${_switch}" | awk '{print substr($0,0,5)}')
-
-    # given port?
-    if [ -n "${_port}" ]; then
-        _id_p=$(md5 -qs "${_port}" | awk '{print substr($0,0,5)}')
-        setvar "${_var}" "vale${_id_s}:${_id_p}"
+    # remove all configuration if there's no error
+    if [ $? -eq 0 ]; then
+        config::core::remove "switch_list" "${_switch}"
+        config::core::remove "ports_${_switch} vlan_${_switch} nat_${_switch} type_${_switch}"
+        config::core::remove "addr_${_switch} private_${_switch} mtu_${_switch}"
     else
-        setvar "${_var}" "vale${_id_s}"
+        util::err "failed to remove virtual switch"
     fi
 }
 
-# produce an error if the listed switch is not managed by vm-bhyve.
-# we allow users to import existing bridges which they configure themselves.
-# we don't allow vm-bhyve to mess with these, it's all up to the user
-# also don't mess with vale switches
+# add a new interface to a switch
 #
-# @param string _switch the name of the switch
+# @param string _switch name of the switch
+# @param string _if the interface to add
 #
-__switch_auto(){
+switch::add_member(){
     local _switch="$1"
-    local _bridge _vale
+    local _if="$2"
+    local _type
 
-    __config_core_get "_bridge" "bridge_${_switch}"
-    __config_core_get "_vale" "vale_${_switch}"
+    [ -z "${_switch}" -o -z "${_if}" ] && util::usage
 
-    [ -n "${_bridge}" ] && __err "this is a manual switch that is managed outside of vm-bhyve"
-    [ -n "${_vale}" ] && __err "this command is not currently supported on vale switches"
+    # get the type of switch
+    config::core::get "_type" "type_${_switch}"
+
+    case "${_type}" in
+        standard) switch::standard::add_member "${_switch}" "${_if}" ;;
+        manual)   switch::manual::add_member "${_switch}" "${_if}" ;;
+        vale)     switch::vale::add_member "${_switch}" "${_if}" ;;
+        vxlan)    switch::vxlan::add_member "${_switch}" "${_if}" ;;
+        *)        util::err "unable to configure switch of unknown type" ;;
+    esac
 }
 
-# get the interface name for a switch
-# the id will be the name of the bridge interface (eg. "bridge0")
-# ifconfig will have "description: vm-switchname" directly below the first interface line
+# remove a member interface from a virtual switch
 #
-# @param string _var variable to put id into
-# @param string _switch the switch to look for
+# @param string _switch name of the switch
+# @param string _if the interface to remove
 #
-__switch_get_ident(){
+switch::remove_member(){
+    local _switch="$1"
+    local _if="$2"
+    local _type
+
+    [ -z "${_switch}" -o -z "${_if}" ] && util::usage
+
+    # get the type of switch
+    config::core::get "_type" "type_${_switch}"
+
+    case "${_type}" in
+        standard) switch::standard::remove_member "${_switch}" "${_if}" ;;
+        manual)   switch::manual::remove_member "${_switch}" "${_if}" ;;
+        vale)     switch::vale::remove_member "${_switch}" "${_if}" ;;
+        vxlan)    switch::vxlan::remove_member "${_switch}" "${_if}" ;;
+        *)        util::err "unable to configure switch of unknown type" ;;
+    esac
+}
+
+# change the vlan number on a virtual switch
+#
+# @param string _switch name of the switch
+# @param int _vlan the vlan number (0 to turn vlan off)
+#
+switch::vlan(){
+    local _switch="$1"
+    local _vlan="$2"
+    local _id _type
+
+    [ -z "${_switch}" -o -z "${_vlan}" ] && util::usage
+
+    switch::id "_id" "${_switch}"
+    switch::type "_type" "${_switch}"
+    [ -z "${_id}" ] && util:err "unable to locate specified virtual switch"
+
+    echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
+    [ $? -ne 0 ] && util::err "invalid vlan number"
+    [ ${_vlan} -ge 4095 ] && util::err "invalid vlan number"
+
+    case "${_type}" in
+        standard) switch::standard::vlan "${_switch}" "${_vlan}" ;;
+        manual)   switch::manual::vlan "${_switch}" "${_vlan}" ;;
+        vale)     switch::vale::vlan "${_switch}" "${_vlan}" ;;
+        vxlan)    switch::vxlan::vlan "${_switch}" "${_vlan}" ;;
+        *)        util::err "unable to configure switch of unknown type" ;;
+    esac
+}
+
+# enable or diable private flag on a switch
+# note that we don't update existing interfaces; this 
+# makes things easy for us and any guests booted after
+# will get the new setting
+#
+# @param string _switch the switch to update
+# @param string _priv on,yes|off,no
+#
+switch::private(){
+    local _switch="$1"
+    local _priv="$2"
+    local _type
+
+    # try to get switch type
+    [ -z "${_switch}" -o -z "${_priv}" ] && util::usage
+    switch::type "_type" "${_switch}" || util::err "specified switch does not appear to be valid"
+
+    case "${_type}" in
+        standard|manual|vxlan)
+            if util::checkyesno "${_priv}"; then
+                config::core::set "private_${_switch}" "yes"
+            else
+                config::core::set "private_${_switch}" "no"
+            fi
+            ;;
+        vale)
+            util::err "unable to configure private mode on vale switches"
+            ;;
+        *)
+            util::err "unable to configure switch of unknown type"
+            ;;
+    esac
+}
+
+# enable or disable nat functionality on a virtual switch
+#
+# @param string _switch name of the switch
+# @param string _nat on|off
+#
+switch::nat(){
+    util::err "nat support is currently disabled"
+}
+
+# return the type for a switch
+#
+# @param string _var variable to put type into
+# @param string _switch the switch name
+#
+switch::type(){
     local _var="$1"
     local _switch="$2"
-    local _c_id
 
-    # search ifconfig for our switch id, and pull bridge interface name from preceeding line
-    _c_id=$(ifconfig -a | grep -B 1 "vm-${_switch}\$" | head -n 1 | awk -F: '{print $1}')
-    setvar "${_var}" "${_c_id}"
+    [ -z "${_switch}" ] && return 1
+    config::core::get "${_var}" "type_${_switch}"
+}
+
+# check if a switch is configured for private members
+#
+# @param string _switch switch name
+# @return succes (0) if it's private
+#
+switch::is_private(){
+    local _switch="$1"
+    local _priv
+
+    config::core::get "_priv" "private_${_switch}"
+    util::checkyesno "${_priv}"
+}
+
+# get the bridge id for a virtual switch
+#
+# @param string _var variable to put name into
+# @param string _switch the name of the switch
+#
+switch::id(){
+    local _var="$1"
+    local _switch="$2"
+    local _type
+
+    [ -z "${_switch}" ] && return 1
+
+    # get switch type
+    config::core::get "_type" "type_${_switch}"
+
+    case "${_type}" in
+        vale) switch::vale::id "${_var}" "${_switch}" ;;
+        *)    switch::standard::id "${_var}" "${_switch}" ;;
+    esac
+}
+
+# temporary function to migrate old switch configuration
+# to new style. we need the "type_{name}" config option to
+# be present for each switch, rather than the ugly way we 
+# used to use vale_* or bridge_* to determine switch type
+#
+switch::__migrate(){
+    local _list _switch _type _bridge _vale _update
+
+    config::core::get "_list" "switch_list"
+
+    for _switch in ${_list}; do
+        config::core::get "_type" "type_${_switch}"
+        [ -n "${_type}" ] && continue
+
+        _type="standard"
+
+        # try to determine switch type using old method
+        config::core::get "_bridge" "bridge_${_switch}"
+        config::core::get "_vale" "vale_${_switch}"
+
+        # manually specified bridge interface?
+        [ -n "${_bridge}" ] && _type="manual"
+
+        # vale flag present?
+        if util::checkyesno "${_vale}"; then
+            config::core::remove "vale_${_switch}"
+            _type="vale"
+        fi
+
+        config::core::set "type_${_switch}" "${_type}"
+        _update="1"
+    done
+
+    # reload configuration
+    [ -n "${_update}" ] && config::core::load
 }

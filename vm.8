@@ -1,9 +1,10 @@
-.Dd Apr 26, 2016
+.Dd November 16, 2016
 .Dt VM-BHYVE 8
 .Os
 .Sh NAME
 .Nm vm
 .Nd "utility to manage bhyve virtual machines"
+.Nd v1.2
 .Sh SYNOPSIS
 .Nm
 .Cm version
@@ -11,21 +12,39 @@
 .Cm init
 .Pp
 .Nm
+.Cm get
+.Ar all
+.Op Ar setting
+.Op Ar ...
+.Nm
+.Cm set
+.Ar setting=value
+.Op Ar ...
+.Pp
+.Nm
 .Cm switch list
 .Nm
 .Cm switch info
 .Op Ar name
+.Op Ar ...
 .Nm
 .Cm switch create
+.Op Fl t Ar type
+.Op Fl i Ar interface
+.Op Fl n Ar vlan-id
+.Op Fl b Ar bridge
+.Op Fl m Ar mtu
+.Op Fl a Ar address
+.Op Fl p
 .Ar name
-.Nm
-.Cm switch import
-.Ar name bridge
 .Nm
 .Cm switch vlan
 .Ar name vlan-id
 .Nm
 .Cm switch nat
+.Ar name on|off
+.Nm
+.Cm switch private
 .Ar name on|off
 .Nm
 .Cm switch add
@@ -45,6 +64,9 @@
 .Nm
 .Cm datastore remove
 .Ar name
+.Nm
+.Cm datastore iso
+.Ar name path
 .Pp
 .Nm
 .Cm create
@@ -60,12 +82,16 @@
 .Nm
 .Cm info
 .Op Ar name
+.Op Ar ...
 .Nm
+.Op Fl fi
 .Cm install
 .Ar name iso
 .Nm
+.Op Fl fi
 .Cm start
 .Ar name
+.Ar ...
 .Nm
 .Cm stop
 .Ar name
@@ -111,6 +137,17 @@
 .Cm rollback
 .Op Fl r
 .Ar name@snapshot
+.Nm
+.Cm send
+.Op Fl 12t
+.Op Fl i Ar snapshot
+.Ar name
+.Ar host:port
+.Nm
+.Cm recv
+.Op Fl 12ts
+.Op Fl d Ar datastore
+.Ar name
 .Pp
 .Nm
 .Cm iso
@@ -256,14 +293,28 @@ support in
 As of April 2016, UEFI support should be available in FreeBSD 10.3+ and
 11-CURRENT.
 .Pp
-You will also need a copy of the UEFI firmware (see URL below), which needs to be placed in
+You will also need a copy of the UEFI firmware. This can either be installed
+using the
+.Pa sysutils/uefi-edk2-bhyve
+port, or you can manually download a copy (see URL below) to
 .Pa $vm_dir/.config/BHYVE_UEFI.fd .
 .Pp
-As there is no VGA console in
+If you are running FreeBSD 10, there is no VGA console in
 .Xr bhyve 8 ,
-an unattended installation ISO is required which allows Windows to install and
+and so an unattended installation ISO is required which allows Windows to install and
 boot without any user interaction. Instructions for creating a suitable ISO can
 be found at the URL below.
+.Pp
+.Pp
+On FreeBSD 11, VGA access can be enabled by setting the 
+.Sy graphics="yes"
+option in the guest configuration file. Once the guest has started, vnc IP & port details 
+can be seen in
+.Sy vm list
+output. See the configuration format documentation below for more detailed information on configuring graphics.
+If network drivers are required, I recommend re-running the 
+.Sy vm install
+command once the guest has been installed, but providing an ISO of the virtio-net drivers instead.
 .Pp
 Once the installation ISO is ready, has been placed in the
 .Pa $vm_dir/.iso
@@ -285,7 +336,7 @@ and press
 to see the IP address that has been assigned. The default unattended installation files
 should make RDP available, using Administrator and Test123 as the default login details.
 .Pp
-The UEFI firmware (BHYVE_UEFI_20151002.fd), as well as instructions for creating an
+A pre-compiled copy of the UEFI firmware (BHYVE_UEFI_20160526.fd), as well as instructions for creating an
 unattended installation ISO can currently be obtained from
 .Pa https://people.freebsd.org/~grehan/bhyve_uefi/
 .\" ============ GLOBAL OPTIONS =============
@@ -301,7 +352,16 @@ Run
 .Nm
 in the foreground. This option is primarily useful with the
 .Nm Cm start
+or
+.Nm Cm install
 command and runs the guest on stdio.
+.It Fl i
+Run the guest in interactive mode. This mode is only supported when using
+the
+.Sy tmux
+console setting. This starts the guest on a tmux session and then immediately
+connects to that session. You can detach the session, or shut the guest down
+to return to your original terminal.
 .El
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS
@@ -321,6 +381,20 @@ o Load all necessary kernel modules if not already loaded
 o Set tap devices to come up automatically when opened
 .br
 o Create any configured virtual switches
+.It Cm get Ar all|setting
+Get a global configuration setting. These are settings that affect the functionality
+of vm-bhyve, such as configuring the type of serial console to use. The keyword
+.Sy all
+can be used to retrieve all user configurable settings, or you can specify one or 
+more settings by name, separated by a space.
+.It Cm set Ar setting=value
+Sets the value of a global configuration setting. Multiple settings can be changed
+at the same time by seperating the 
+.Sy setting=value
+pairs with a space.
+.Pp
+These settings are stored in
+.Pa $vm_dir/.config/system.conf
 .It Cm switch list
 List virtual switches. This reads all configured virtual switches from the
 .Pa $vm_dir/.config/switch
@@ -328,9 +402,9 @@ file and displays them. If the virtual switches are loaded, it also tries
 to display the
 .Xr bridge 4
 interface that has been assigned to each one.
-.It Cm switch info Op Ar name
-This command shows detailed information about the specified virtual switch.
-If no switch name is provided, information is output for all configured switches.
+.It Cm switch info Op Ar name Op Ar ...
+This command shows detailed information about the specified virtual switch(es).
+If no switch names are provided, information is output for all configured switches.
 Information displayed includes the following:
 .Pp
 o Basic switch settings
@@ -341,44 +415,80 @@ o Physical ports connected
 .br
 o Virtual ports, including the associated virtual machine
 .br
-.It Cm switch create Ar name
+.It Xo
+.Cm switch create
+.Op Fl t Ar type
+.Op Fl i Ar interface
+.Op Fl n Ar vlan-id
+.Op Fl b Ar bridge
+.Op Fl m Ar mtu
+.Op Fl a Ar address
+.Op Fl p
+.Ar name
+.Xc
 Create a new virtual switch. The name must be supplied and may only contain
 letters, numbers and dashes. However, it may not contain a dash at the beginning
 or end.
 .Pp
-When a new virtual switch is created, the persistent configuration file is updated
-and a new
+There are currently 4 types of virtual switch that can be created. These are
+.Sy standard ,
+.Sy manual ,
+.Sy vale
+and
+.Sy vxlan .
+The default type is
+.Sy standard ,
+which creates a basic
 .Xr bridge 4
-interface is provisioned.
-.It Cm switch import Ar name Ar bridge
-This command allows you to import an existing bridge interface that has been created
-manually and use it for virtual machines. Once a bridge is imported, you can use
-the switch
-.Pa name
-in guest configuration. Ideally the manual bridge should be configured in
-.Pa /etc/rc.conf ,
-so that it is available on each host boot.
-.Pp
-Please note that this creates a 'manual' switch and is designed to allow you to configure your
-own bridge. None of the
-.Pa add ,
-.Pa remove ,
-.Pa vlan
-or
-.Pa nat
-commands are supported on manual switches.
-.Pp
-If a manual switch is destroyed using the
-.Pa destroy
-command, we remove all vm-bhvye configuration, but leave the
-.Xr bridge 4
-interface intact.
+interface and bridges clients to it.
+.Sy manual
+allows you to attach guests to a bridge that you have created and configured manually.
+.Sy vale
+switches use the netmap VALE system to create a virtual switch connecting guests.
+.Sy vxlan
+allows you to create virtual LANs (similar to a VLAN) which tunnel L2 guest traffic
+over L3.
+.Bl -tag -width 12n
+.It Fl t Ar type
+The type of virtual switch to create. The available types are listed above. This defaults
+to
+.Sy standard
+if not specified.
+.It Fl i Ar interface
+For
+.Sy standard
+and
+.Sy vxlan
+switches you can attach a physical interface at creation time. This option is required
+for vxlan switches.
+.It Fl n Ar vlan-id
+Allows you to specify a VLAN ID for
+.Sy standard
+and
+.Sy vxlan
+switches. This option is required for vxlan switches.
+.It Fl b Ar bridge
+If creating a manual switch using an existing bridge on your system, this option allows
+you to specify the name of the bridge interface you would like to use. This option is
+required for manual switches.
+.It Fl m Ar mtu
+Specify an mtu to use for the bridge interface.
+.It Fl a Ar address
+This allows you to specify an IP address that is assigned to the bridge interface.
+This should be specified in
+.Sy a.b.c.d/prefix-len
+CIDR notation.
+.It Fl p
+Use this option to create a private switch. If this is enabled, no traffic will
+be allowed between guests on the same switch, however then will all be able to
+communicate with any physical interfaces added to the switch.
+.El
 .It Cm switch vlan Ar name Ar vlan-id
 Assign a VLAN number to a virtual switch. The VLAN number must be between 0-4094.
 .Pp
 When adding an interface to a VLAN enabled virtual switch, a new
 .Xr vlan 4
-interface is created. This interface has the relevent parent interface and VLAN tag
+interface is created. This interface has the relevant parent interface and VLAN tag
 configured. This vlan interface is then added to the virtual switch. As such, all
 traffic between guests on the same switch is untagged and travels freely. However,
 all traffic exiting via physical interfaces is tagged.
@@ -396,7 +506,7 @@ is required for this functionality and must be enabled in
 .Pa /etc/rc.conf .
 If DHCP is desired, please install the
 .Xr dnsmasq
-pacakge. vm-bhyve will generate a sample dnsmasq configuration in
+package. vm-bhyve will generate a sample dnsmasq configuration in
 .Pa /usr/local/etc/dnsmasq.conf.bhyve ,
 but it is up to the user to either use this configuration directly, or merge with
 any existing dnsmasq settings you have configured.
@@ -419,6 +529,12 @@ rules are inserted to provide the NAT translation.
 .Pa /etc/pf.conf
 is created if it doesn't exist, and a single include statement is added. This
 include statement can be moved within the file if required.
+.It Cm switch private Ar on|off
+Enable of disable private mode for a virtual switch. In private mode, guests will
+only be able to communicate with the physical interface(s), not with each other.
+.Pp
+Please note that changing this setting does not affect guests that are already
+running, but will be applied to any guests started from cold-boot thereafter.
 .It Cm switch add Ar name Ar interface
 Add the specified interface to the named virtual switch.
 .Pp
@@ -457,11 +573,15 @@ storage location should be specified in
 .Sy zfs:pool/dataset
 format.
 .Pp
-Please note that the dircetory or dataset should already exist. We do not try to 
+Please note that the directory or dataset should already exist. We do not try to 
 create it.
 .It Cm datastore remove Ar name
 Remove the specified datastore from the list. This does not destroy the directory
 or dataset, leaving all files intact.
+.It Cm datastore iso Ar name path
+Adds a new datastore location for storing iso files. Guests cannot be created in an
+iso store, but this provides an easy way to configure vm-bhyve to look in any arbitrary
+location on your system (or mounted network share) where you may want to store iso images.
 .It Xo
 .Cm create
 .Op Fl d Ar datastore
@@ -502,47 +622,68 @@ List all the virtual machines in the
 .Pa $vm_dir
 directory. This will show the basic configuration for each virtual machine, and whether
 they are currently running.
-.It Cm info Op Ar name
-Shows detailed information about the specified virtual machine. If no name is given,
+.It Cm info Op Ar name Op Ar ...
+Shows detailed information about the specified virtual machine(s). If no names are given,
 information for all virtual machines is displayed.
 .Pp
 This output includes detailed information about network and disk devices, including
-the space usage for all virtual disks (exluding custom disk devices). If the guest
-is running, the output also shows the amount of host memory curently in use,
+the space usage for all virtual disks (excluding custom disk devices). If the guest
+is running, the output also shows the amount of host memory currently in use,
 and additional network details including bytes sent/received for each virtual interface.
-.It Cm install Ar name Ar iso
+.It Xo
+.Op Fl fi
+.Cm install Ar name Ar iso
+.Xc
 Start a guest installation for the named virtual machine, using the specified ISO file.
 The
 .Ar iso
 argument should be the filename of an ISO file already downloaded into the
 .Pa $vm_dir/.iso
-directory. ISO files in this directory can be managed using the
+directory (or any media datastore), a full path, or a file in the current directory.
+ISO files in the default .iso store can be downloaded using the
 .Ar iso
 subcommand described below.
 .Pp
-Once started, the guest loader will be booted in the foreground. This allows you to choose
-the
-.Sy Install
-boot option for guests that require it. Once the loader has completed, you will be returned
-to the shell and bhyve will continue running in the background. Use the
+By default the installation is started in the background. Use the 
 .Ar console
-subcommand to connect to the guest and complete installation.
+command to connect and begin the installation.
 .Pp
 After installation, the guest can be rebooted and will restart using its own disk image to boot.
 At this point the installation ISO file is still attached, allowing you to use the CD/DVD image
 for any post installation tasks. The ISO file will remain attached after each reboot until the
 guest is fully stopped.
-.It Cm start Ar name
-Start the named virtual machine. The guest will boot and run completely in the background. Use
+.Pp
+If the
+.Ar -f
+option is specified, the guest will be started in the foreground on stdio. The
+.Ar -i
+option starts the guest in interactive mode. This requires tmux, and the global
+.Sy console
+setting must be set likewise. In interactive mode the guest is started on a foreground
+tmux session, but this can be detached using the standard tmux commands.
+.It Xo
+.Op Fl fi
+.Cm start Ar name Ar ...
+.Xc
+Start the named virtual machine(s). The guests will boot and run completely in the background. Use
 the
 .Ar console
 subcommand to connect to it if required.
 .Pp
 For each network adapter specified in the guest configuration, a
 .Xr tap 4
-interface will be created. If possible, the tap interface will be attached the relevent
+interface will be created. If possible, the tap interface will be attached the relevant
 .Xr bridge 4
 interface, based on the virtual switch specified in the guest configuration.
+.Pp
+If the 
+.Ar -f
+option is specified, the guest will be started in the foreground on stdio. The
+.Ar -i
+option starts the guest in interactive mode. This requires tmux, and the global
+.Sy console
+setting must be set likewise. In interactive mode the guest is started on a foreground
+tmux session, but this can be detached using the standard tmux commands.
 .It Cm stop Ar name Ar ...
 Stop a named virtual machine. All
 .Xr tap 4
@@ -661,7 +802,7 @@ as long as it is currently powered off. The new machine will be called
 .Pa new-name ,
 and will be ready to boot with a newly assigned UUID and empty log file.
 .Pp
-If no snapshot name is given, a new snapshot will be taken of the guest and any descendent
+If no snapshot name is given, a new snapshot will be taken of the guest and any descendant
 datasets or ZVOLs. If you wish to use an existing snapshot as the source for the clone,
 please make sure the snapshot exists for the guest and any child ZVOLs, otherwise the clone
 will fail.
@@ -673,7 +814,7 @@ Please note that this function requires ZFS.
 .Ar name|name@snapshot
 .Xc
 Create a snapshot of the names virtual machine. This command is only supported with ZFS
-and will take a snapshot of the guest dataset and any descendent ZVOL devices.
+and will take a snapshot of the guest dataset and any descendant ZVOL devices.
 .Pp
 The guest and snapshot name can be specified in the normal
 .Pa name@snapshot
@@ -691,7 +832,7 @@ option.
 .Ar name@snapshot
 .Xc
 Rollback the guest to the specified snapshot. This will roll back the guest dataset and all
-descendent ZVOL devices.
+descendant ZVOL devices.
 .Pp
 Normally, ZFS will only allow you to roll back to the most recent snapshot.
 If the snapshot given is not the most recent, ZFS will produce a warning detailing that you
@@ -705,6 +846,78 @@ option can be passed directly into
 .Cm rollback
 .Pp
 The guest must always be stopped to use this command.
+.It Xo
+.Cm send
+.Op Fl 12t
+.Op Fl i Ar snapshot
+.Ar name
+.Ar host:port
+.Xc
+Send a guest to the specified host. The receiving end must already be in recv mode (see 
+.Ar recv
+command below), which will provide the port number to use. This relies on ZFS features.
+By default this is a two stage procedure. The first stage sends a full snapshot of the guest.
+Once this is complete the guest is shutdown using an ACPI shutdown (if required) and then
+an incremental snapshot is sent. If required, the guest can be automatically booted on the
+receiving host once completed.
+.Pp
+Please note that any virtual switches used by the guest should exist on both hosts, and
+if using UEFI, the firmware must be available on both. It is also advised that the receiver
+is running a matching or newer version of FreeBSD.
+.Pp
+The function is not supported if the guest has passthrough devices or custom disks.
+.Bl -tag -width 12n
+.It Fl i Ar snapshot
+If the receiving end already has a copy of the guest, use this to specify an existing snapshot
+to use as the incremental source, rather than sending a full snapshot. A full snapshot will fail
+if the guest already exists on the remote host.
+.Pp
+If only running stage 2, the guest must already exist on the receiving side and this option is required.
+.It Fl 1
+Only run the first stage. This will send a single snapshot and then exit. The receiving end
+must be run in the same mode, and is useful for sending the first major snapshot without interrupting
+the guest.
+.It Fl 2
+Only run the second stage. If the remote end already has an up-to-date snapshot, this can be used to
+shut the guest down (if required), send a incremental snapshot, then boot the new guest.
+.It Fl t
+This runs triple stage mode, useful for large guests. The basic premise behind this is that the first
+full send may take several hours, or longer, for a large guest. During this time many changes could be made. We then
+run a second stage while the guest is still running to send these changes. This should hopefully send less
+data, and so complete quicker. Finally we shutdown the guest and do a third send. If the second send completed
+quicker than the first, there should be far fewer changes to send during this third stage, resulting in
+minimal downtime.
+.El
+.It Xo
+.Cm recv
+.Op Fl s12
+.Op Fl d Ar datastore
+.Ar name
+.Xc
+Prepare to receive a guest. This outputs a port number which should be provided to the
+.Ar send
+command used on the sending host.
+.Bl -tag -width 12n
+.It Fl d Ar datastore
+Create the new guest on the specific datastore instead of the
+.Sy default
+store.
+.It Fl s
+Start the guest as soon as stage 2 has been completed.
+.It Fl 1
+Only run the first stage. This receives a snapshot and then exits. This is useful to get the full
+snapshot sent, allowing you to complete the second stage during a pre-determined maintenance window.
+.It Fl 2
+Only run the second stage. This expects to receive an incremental snapshot for an existing guest,
+and will attempt to start the guest (if the
+.Sy -s
+option is also provided).
+.It Fl t
+Run the receiver in triple stage mode which expects three snapshots. See the
+.Cm send
+command above for details on this mode.
+.El
+.Xc
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso
@@ -754,8 +967,26 @@ datastore unless specified otherwise.
 .It Cm image destroy Ar uuid
 Destroy the specified image.
 .El
+.\" ============ GLOBAL CONFIGURATION ===========
+.Sh GLOBAL CONFIGURATION
+These configuration options are stored in 
+.Pa $vm_dir/.config/system.conf ,
+and affect the global functionality of vm-bhyve. These settings can be changed by
+either editing the configuration file manually, or using the
+.Sy vm set
+and
+.Sy vm get
+commands.
+.Bl -tag -width 17n
+.It console
+Set the type of console to use, which defaults to
+.Sy nmdm .
+If you have the tmux port installed and would prefer to use that for guest
+console access, you can set this option to
+.Sy tmux .
+.El
 .\" ============ CONFIGURATION FORMAT ===========
-.Sh CONFIGURATION FORMAT
+.Sh GUEST CONFIGURATION FORMAT
 Each virtual machine has a configuration file that specifies the hardware configuration. This
 uses a similar format to the
 .Sy rc
@@ -817,9 +1048,16 @@ and
 .Sy com2 .
 You can also connect two com ports by specifying both, separated by a space.
 .It utctime
-Set this option to
+As of version 1.2, vm-bhyve defaults to
 .Sy yes
-if the guest RTC should keep UTC time.
+for this option. This causes bhyve to try and set the guests RTC clock to UTC rather
+than the host's time. I consider this more consistent, and should produce the correct
+time in the guest as long as the timezone is correctly set. Additionally, some guests actually 
+expect a UTC realtime clock.
+.Pp
+If you require bhyve to use the host's time, as it would by default, explicitly set this
+to
+.Sy no .
 .It debug
 If this is set to
 .Sy yes ,
@@ -867,12 +1105,18 @@ This option allows you to specify a mac address to use for this interface. If no
 provided,
 .Xr bhyve 8
 will generate a mac address.
+.It network0_span
+Set this option to
+.Sy yes
+to instruct vm-bhyve to add the virtual network interface to the switch as a span port 
+on the bridge.  The default is to add the port to the switch as an ordinary bridge member.
 .It disk0_type
 The emulation type for the first virtual disk. At least one virtual disk is required.
 Valid options for this are currently
-.Sy virtio-blk
+.Sy virtio-blk ,
+.Sy ahci-hd
 and
-.Sy ahci-hd .
+.Sy ahci-cd .
 Additional disks can be added by adding additional
 .Sy diskX_type
 and
@@ -926,6 +1170,14 @@ command line option.
 .Pp
 NOTE: This setting is only supported in templates. It has no function in
 real guest configuration, and is not copied over when a new machine is provisioned
+.It ahci_device_limit
+By default, all AHCI devices are added on their own controller in a unique slot/function.
+In FreeBSD 12 it is possible to put up to 32 devices on one controller. This setting
+allows you to control the number of devices (ahci-hd/ahci-cd) that vm-bhyve will
+put on a single controller. The default is
+.Sy 1
+and allowed values are
+.Sy 2-32 .
 .It uuid
 This option allows you to specify a fixed UUID for the guests SMBIOS. Normally, the
 UUID is generated by
@@ -965,7 +1217,7 @@ The sample templates contain examples of how the grub configuration variables ca
 .It grub_run_dir
 By default
 .Sy grub-bhyve
-will look in the dircetory
+will look in the directory
 .Sy /boot/grub
 for the grub configuration file. This option allows you to specify an alternate path
 to use when starting a guest.
@@ -996,8 +1248,68 @@ Set this option to
 if you want to create a
 .Sy virtio-rnd
 device for this guest.
+.It graphics
+If set to yes, a frame buffer is added to the guest. This provides a graphical
+console that is accessible using VNC. By default the console is 800x600, and will
+listen on
+.Sy 0.0.0.0:5900 .
+If port 5900 is not available, the next available port will be used. The active address and
+port can be viewed in
+.Sy vm list
+and
+.Sy vm info
+output.
+.It graphics_port
+This option allows you to specific a fixed port that the VNC service should listen on.
+Please remember that all guests should ideally use a unique port to avoid any problems.
+.It graphics_listen
+By default the graphical VNC console will listen on
+.Sy 0.0.0.0 ,
+so is accessible by connecting to any IP address assigned to the bhyve host. Use this
+option to specify a specific IP address that the VNC service should bind to.
+.It graphics_res
+Specify the resolution of the graphical console in
+.Pa WxH
+format. Please note that only a certain range of resolutions are currently supported.
+Please set
+.Pa config.sample
+for a full up-to-date list.
+.It graphics_wait
+Set this to
+.Sy yes
+in order to make guest boot wait for the VNC console
+to be opened. This can help when installing operating systems
+that require immediate keyboard input (such as a timed 'enter setup'
+screen). Set to 
+.Sy no
+in order to completely disable this function.
+.Pp
+The default is
+.Sy auto ,
+in which case the console will wait if the guest is started in install mode.
+Note that after the first boot, the system will boot immediately as normal. To
+force the console to wait on each boot, the
+.Sy yes
+setting should be used.
+.It xhci_mouse
+Set this option to
+.Sy yes
+in order to provide an XHCI mouse device to the guest. This tracks much better than
+the default PS2 mouse in VNC settings, although this mouse may not supported by older
+guests.
+.It virt_consoles
+This can be used to specify a number of
+.Sy virtio_console
+ports to provide to the guest. This should be a number between 1 and 16, which is
+the maximum number of ports supported by the current virtio_console device.
+.Pp
+If enabled, each port will correspond to a unix socket named
+.Sy vconsoleX.sock
+in the guest's data/configuration directory, where
+.Sy X
+is the port number (1-16).
 .It zfs_dataset_opts
-This allows you to specify one or more ZFS properties to set on the dataset when a 
+This allows you to specify one or more ZFS properties to set on the dataset when a
 guest is created. Because properties are assigned as the dataset is created, this option
 is most useful when specified inside a template. As a guest is created, all properties
 listed in this option will be applied to the guest dataset.
@@ -1046,9 +1358,21 @@ Limit guest disk write iops to the specified number of operations per second.
 .Xr fetch 1 ,
 .Xr truncate 1 ,
 .Xr zfs 8 ,
-.Xr rctl 8
+.Xr rctl 8 ,
+.Xr tmux 1
 .\" ============ BUGS =============
-.Sh BUGS
+.Sh KNOWN BUGS
+If a guest is renamed, and then cloned using a snapshot taken before the rename,
+vm-bhyve is unable to find the guest configuration file. This is because the configuration
+file in the snapshot still refers to the old guest name. In this circumstance, vm-bhyve will
+output an error during cloning detailing that the configuration file in the new guest will
+need to be renamed and updated manually.
+.Pp
+On some systems it has been observed that bridging can cause interfaces to go down for up to
+10 seconds, which is enough to stall ssh sessions. This is noticable when the first guest is 
+started or when the last guest is stopped. Once there are at least 2 interfaces bridged 
+(one real interface and a tap interface), further guests can be started/stopped without issue.
+.Pp
 Please report all bugs/issues/feature requests to the github project at
 https://github.com/churchers/vm-bhyve
 .\" ============ AUTHOR =============

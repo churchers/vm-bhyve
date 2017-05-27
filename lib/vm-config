@@ -1,6 +1,6 @@
 #!/bin/sh
 #-------------------------------------------------------------------------+
-# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,13 +34,13 @@
 # @param string _file full path of the file to read
 # @modifies VM_CONFIG
 #
-__config_load(){
+config::load(){
     local _file="$1"
 
     # read config file
     # we kick out any lines that don't start with a letter,
     # scrap anything after a # character, and remove double-quotes
-    VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
+    VM_CONFIG=$(grep '^[a-z]' "${_file}" 2>/dev/null | awk -F# '{print $1}' | sed -e 's@ *$@@' | tr -d '"')
 }
 
 # get a configuration value from the current config file
@@ -50,7 +50,7 @@ __config_load(){
 # @param optional string _def default value to return if setting not found
 # @return true if setting found
 #
-__config_get(){
+config::get(){
     local _c_var="$1"
     local _c_key="$2"
     local _c_def="$3"
@@ -69,9 +69,40 @@ __config_get(){
     return 1
 }
 
+# set a value in guest configuration file
+# we check for newline at the end as sysrc won't add it
+# and that will mess up the new key and the existing one
+# from the end of the file
+#
+# @param string _name guest name
+# @param string _key config key to set
+# @param string _value value
+# @param int _skip_newline_check skip the check for newline
+# @return true if sysrc successful
+#
+config::set(){
+    local _name="$1"
+    local _key="$2"
+    local _value="$3"
+    local _skip_newline_check="$4"
+    local _newline
+
+    if [ -z "${_skip_newline_check}" ]; then
+        _newline=$(tail -1 "${VM_DS_PATH}/${_name}/${_name}.conf" | wc -l | tr -d " ")
+        [ "${_newline}" -eq "0" ] && echo "" >> "${VM_DS_PATH}/${_name}/${_name}.conf"
+    fi
+
+    sysrc -inqf "${VM_DS_PATH}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
+    return $?
+}
+
 # load core configuration file
 #
-__config_core_load(){
+# @modifies VM_CORE_CONFIG VM_CONFIG_USER
+#
+config::core::load(){
+    VM_CONFIG_USER="console;"
+
     # check config file exists
     # this is mainly for upgrades to make sure switch/datastore config are migrated
     if [ ! -e "${vm_dir}/.config/system.conf" ]; then
@@ -79,7 +110,7 @@ __config_core_load(){
         cat "${vm_dir}/.config/datastore" >> "${vm_dir}/.config/system.conf" 2>/dev/null
     fi
 
-    VM_CORE_CONFIG=$(grep '^[a-z]' "${vm_dir}/.config/system.conf" 2>/dev/null | awk -F# '{print $1}' | tr -d '"')
+    VM_CORE_CONFIG=$(grep '^[a-z]' "${vm_dir}/.config/system.conf" 2>/dev/null | awk -F# '{print $1}' | sed -e 's@ *$@@' | tr -d '"')
 }
 
 # get a value from core config
@@ -89,7 +120,7 @@ __config_core_load(){
 # @param string _c_def default value if not value
 # @return 0 if found
 #
-__config_core_get(){
+config::core::get(){
     local _c_var="$1"
     local _c_key="$2"
     local _c_def="$3"
@@ -114,7 +145,7 @@ __config_core_get(){
 # @param string _value new value
 # @param string _append non-empty to append to existing value
 #
-__config_core_set(){
+config::core::set(){
     local _var="$1"
     local _value="$2"
     local _append="$3"
@@ -134,7 +165,7 @@ __config_core_set(){
 # @param string _value if non-empty we will try to remove just this value from setting
 # @return non-zero on error
 #
-__config_core_remove(){
+config::core::remove(){
     local _var="$1"
     local _value="$2"
 

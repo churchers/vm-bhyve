@@ -1,0 +1,305 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# creaate bridge interface for a standard switch
+#
+# @param string _name name of the switch
+#
+switch::standard::init(){
+    local _name="$1"
+    local _id _addr _mtu
+
+    # see if it already exists
+    switch::standard::id "_id" "${_name}" && return 0
+
+    # create a bridge for this switch
+    _id=$(ifconfig bridge create description "vm-${_name}" priority 0 up 2>/dev/null)
+    [ $? -ne 0 ] && util::err "failed to create bridge interface for switch ${_name}"
+
+    # try to set ip address
+    config::core::get "_addr" "addr_${_name}"
+    [ -n "${_addr}" ] && ifconfig "${_id}" inet ${_addr}
+
+    # custom mtu?
+    config::core::get "_mtu" "mtu_${_name}"
+    [ -n "${_mtu}" ] && ifconfig "${_id}" mtu ${_mtu}
+
+    # add member interfaces
+    switch::standard::__add_members "${_name}" "${_id}"
+}
+
+# show the configuration details for a switch
+#
+# @param string _name the switch name
+# @param string _format output format
+#
+switch::standard::show(){
+    local _name="$1"
+    local _format="$2"
+    local _id _vlan _ports _nat _addr _mtu _priv
+
+    switch::standard::id "_id" "${_name}"
+    config::core::get "_ports" "ports_${_name}"
+    config::core::get "_vlan" "vlan_${_name}"
+    config::core::get "_nat" "nat_${_name}"
+    config::core::get "_addr" "addr_${_name}"
+    config::core::get "_mtu" "mtu_${_name}"
+    config::core::get "_priv" "private_${_name}" "no"
+
+    printf "${_format}" "${_name}" "standard" "${_id}" "${_addr:--}" "${_priv}" "${_mtu:--}" \
+      "${_vlan:--}" "${_nat:--}" "${_ports:--}"
+}
+
+# create a standard virtual switch
+#
+switch::standard::create(){
+
+    # store configuration
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "standard"
+
+    [ -n "${_if}" ] && config::core::set "ports_${_switch}" "${_if}"
+    [ -n "${_vlan}" ] && config::core::set "vlan_${_switch}" "${_vlan}"
+    [ -n "${_addr}" ] && config::core::set "addr_${_switch}" "${_addr}"
+    [ -n "${_priv}" ] && config::core::set "private_${_switch}" "${_priv}"
+    [ -n "${_mtu}" ] && config::core::set "mtu_${_switch}" "${_mtu}"
+
+    config::core::load
+    switch::standard::init "${_switch}"
+}
+
+# destroy a standard switch
+#
+# @param string _switch name of the switch to destroy
+#
+switch::standard::remove(){
+    local _switch="$1"
+    local _id
+
+    # get the bridge id
+    switch::standard::id "_id" "${_switch}"
+    [ -z "${_id}" ] && return 1
+
+    # remove all member interfaces
+    switch::standard::__remove_members "${_switch}" "${_id}"
+
+    # destroy the bridge
+    ifconfig "${_id}" destroy >/dev/null 2>&1
+}
+
+# add a new interface to this switch
+#
+# @param string _switch name of the switch
+# @param string _if the interface to add
+#
+switch::standard::add_member(){
+    local _switch="$1"
+    local _if="$2"
+    local _id _vlan _mtu
+    
+    switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
+    config::core::get "_vlan" "vlan_${_switch}"
+    config::core::get "_mtu" "mtu_${_switch}"
+    switch::standard::__configure_port "${_switch}" "${_id}" "${_if}" "${_vlan}" "${_mtu}"
+    config::core::set "ports_${_switch}" "${_if}" "1"
+}
+
+# remove a member interface from this switch
+#
+# @param string _switch name of the switch
+# @param string _if the interface to remove
+#
+switch::standard::remove_member(){
+    local _switch="$1"
+    local _if="$2"
+    local _id _vlan
+
+    switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
+    config::core::remove "ports_${_switch}" "${_if}"
+    config::core::get "_vlan" "vlan_${_switch}"
+    switch::standard::__unconfigure_port "${_switch}" "${_id}" "${_if}"
+}
+
+# set vlan id
+#
+# @param string _switch name of switch
+# @param int _vlan vlan id to set
+#
+switch::standard::vlan(){
+    local _switch="$1"
+    local _vlan="$2"
+    local _id
+
+    switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
+    switch::standard::__remove_members "${_switch}" "${_id}"
+
+    # update configuration
+    if [ "${_vlan}" = "0" ]; then
+        config::core::remove "vlan_${_switch}"
+    else
+        config::core::set "vlan_${_switch}" "${_vlan}"
+    fi
+
+    config::core::load
+    switch::standard::__add_members "${_switch}" "${_id}"
+}
+
+# add all member interfaces to a switch
+#
+# @param string _switch the name of the switch
+# @param string _id interface id for the switch
+#
+switch::standard::__add_members(){
+    local _switch="$1"
+    local _id="$2"
+    local _ports _vlan _port _mtu
+
+    # get the id if not provided
+    if [ -z "${_id}" ]; then
+        switch::standard::id "_id" "${_switch}" || util:err "failed to get switch id while adding members"
+    fi
+
+    config::core::get "_ports" "ports_${_switch}"
+    config::core::get "_vlan" "vlan_${_switch}"
+    config::core::get "_mtu" "mtu_${_switch}"
+
+    if [ -n "${_ports}" ]; then
+        for _port in ${_ports}; do
+            switch::standard::__configure_port "${_switch}" "${_id}" "${_port}" "${_vlan}" "${_mtu}"
+        done
+    fi
+}
+
+# remove member interfaces from a switch
+#
+# @param string _switch the name of the switch
+# @param string _id bridge id if already known
+#
+switch::standard::__remove_members(){
+    local _switch="$1"
+    local _id="$2"
+    local _ports _port _vlan
+
+    # get id if not given to us
+    if [ -z "${_id}" ]; then
+        switch::standard::id "_id" "${_switch}"
+        [ -z "${_id}" ] && util::err "failed to get switch id while removing members"
+    fi
+
+    # get full port list
+    config::core::get "_ports" "ports_${_switch}"
+    config::core::get "_vlan" "vlan_${_switch}"
+
+    if [ -n "${_ports}" ]; then
+        for _port in ${_ports}; do
+           switch::standard::__unconfigure_port "${_switch}" "${_id}" "${_port}" "${_vlan}"
+        done
+    fi
+}
+
+# configure a local port for our bridge
+#
+# @param string _switch the switch to add port to
+# @param string _id the bridge id of the switch
+# @param string _port the interface to add 
+# @param int _vlan vlan number if assigned to this switch
+# @param int _mtu custom mtu to use for this port
+#
+switch::standard::__configure_port(){
+    local _switch="$1"
+    local _id="$2"
+    local _port="$3"
+    local _vlan="$4"
+    local _mtu="$5"
+    local _vid
+
+    # try to set mtu of port?
+    [ -n "${_mtu}" ] && ifconfig "${_port}" mtu ${_mtu} >/dev/null 2>&1
+
+    # vlan enabled?
+    if [ -n "${_vlan}" ]; then
+        # see if vlan interface already exists
+        switch::standard::id "_vid" "vlan-${_port}-${_vlan}"
+
+        # create if needed
+        if [ -z "${_vid}" ]; then
+            _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" description "vm-vlan-${_port}-${_vlan}" up)
+            [ $? -ne 0 ] && util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
+        fi
+
+        ifconfig ${_id} addm ${_vid} >/dev/null 2>&1
+    else
+        # add to bridge, nice and simple :)
+        ifconfig ${_id} addm ${_port} >/dev/null 2>&1
+    fi
+
+    [ $? -ne 0 ] && util::err "failed to add member ${_port} to the virtual switch ${_switch}"
+}
+
+# unconfigure a local port
+#
+# @param string _switch the switch to remove port from
+# @param string _id the bridge id of the switch
+# @param string _port the interface to remove
+# @param string _vlan vlan number if assigned to this switch
+#
+switch::standard::__unconfigure_port(){
+    local _switch="$1"
+    local _id="$2"
+    local _port="$3"
+    local _vlan="$4"
+    local _vid
+
+    if [ -n "${_vlan}" ]; then
+        # get vlan interface
+        switch::standard::id "_vid" "vlan-${_port}-${_vlan}"
+
+        # remove the vlan interface, it will be removed from bridge automatically
+        [ -n "${_vid}" ] && ifconfig ${_vid} destroy >/dev/null 2>&1
+    else
+        ifconfig ${_id} deletem ${_port} >/dev/null 2>&1
+    fi
+}
+
+# get the interface name for a switch
+# we look for the "vm-{name}" description
+#
+# @param string _var variable to put id into
+# @param string _switch the switch to look for
+# @return 0 on success
+#
+switch::standard::id(){
+    local _var="$1"
+    local _switch="$2"
+    local _c_id
+
+    # search ifconfig for our switch id, and pull bridge interface name from preceeding line
+    _c_id=$(ifconfig -a | grep -B 1 "vm-${_switch}\$" | head -n 1 | awk -F: '{print $1}')
+    setvar "${_var}" "${_c_id}"
+
+    [ -z "${_c_id}" ] && return 1
+    return 0
+}

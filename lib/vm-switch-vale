@@ -1,0 +1,110 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# show the configuration details for a vale switch
+#
+# @param string _name the switch name
+# @param string _format output format
+#
+switch::vale::show(){
+    local _name="$1"
+    local _format="$2"
+    local _id
+
+    switch::vale::id "_id" "${_name}"
+    printf "${_format}" "${_name}" "vale" "${_id}" "n/a" "n/a" "n/a" "n/a" "n/a" "n/a"
+}
+
+# create a vale switch
+#
+# @param string _switch the name of the switch
+#
+switch::vale::create(){
+    local _switch="$1"
+
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "vale"
+}
+
+# remove a vale switch
+#
+switch::vale::remove(){}
+
+# add a new interface to this switch
+# at the moment we require the user to manually
+# set up any vale switches
+#
+# @param string _switch name of the switch
+# @param string _if the interface to add
+#
+switch::vale::add_member(){
+    util::err "physical interfaces must be added to the vale switch manually"
+}
+
+# remove an interface
+#
+# @param string _switch name of the switch
+# @param string _if the interface to remove
+#
+switch::vale::remove_member(){
+    util::err "physical interfaces must be removed from the vale switch manually"
+}
+
+# set vlan id
+#
+# @param string _switch name of switch
+# @param int _vlan vlan id to set
+#
+switch::vale::vlan(){
+    util::err "vlan support is not currently implemented for vale switches"
+}
+
+# gets a unique port name for a vale interface
+# we need to make sure vale switch name is the same
+# for all interfaces on the same switch, but port is
+# different
+#
+# @param string _var name of variable to put port name into
+# @param string _switch the name of the switch
+# @param string _port unique port identifier (usually mac address)
+#
+switch::vale::id(){
+    local _var="$1"
+    local _switch="$2"
+    local _port="$3"
+    local _id_s _id_p
+
+    # get a switch id
+    _id_s=$(md5 -qs "${_switch}" | awk '{print substr($0,0,5)}')
+
+    # given port?
+    if [ -n "${_port}" ]; then
+        _id_p=$(md5 -qs "${_port}" | awk '{print substr($0,0,5)}')
+        setvar "${_var}" "vale${_id_s}:${_id_p}"
+    else
+        setvar "${_var}" "vale${_id_s}"
+    fi
+}

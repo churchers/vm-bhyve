@@ -28,16 +28,16 @@
 # set limits to virtual machine
 # this is the background process
 #
-__rctl_set_limits(){
+rctl::set_limits(){
     local _pcpu _rbps _wbps _riops _wiops
     local _pid
 
     # get limit settings
-    __config_get "_pcpu" "limit_pcpu"
-    __config_get "_rbps" "limit_rbps"
-    __config_get "_wbps" "limit_wbps"
-    __config_get "_riops" "limit_riops"
-    __config_get "_wiops" "limit_wiops"
+    config::get "_pcpu" "limit_pcpu"
+    config::get "_rbps" "limit_rbps"
+    config::get "_wbps" "limit_wbps"
+    config::get "_riops" "limit_riops"
+    config::get "_wiops" "limit_wiops"
 
     # return if there are no limits
     [ -z "${_pcpu}${_rbps}${_wbps}${_riops}${_wiops}" ] && return 1
@@ -50,13 +50,13 @@ __rctl_set_limits(){
     # see if rctl works
     /usr/bin/rctl >/dev/null 2>&1
     [ $? -ne 0 ] && \
-        __log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
+        util::log "guest" "${_name}" "RCTL support requested but RCTL not available" && return 1
 
-    __log "guest" "${_name}" "applying rctl limits"
+    util::log "guest" "${_name}" "applying rctl limits"
 
     if [ -n "${_pcpu}" ]; then
         /usr/bin/rctl -a process:${_pid}:pcpu:deny=${_pcpu} >/dev/null 2>&1
-        [ $? -eq 0 ] && __log "guest" "${_name}" " pcpu=${_pcpu}"
+        [ $? -eq 0 ] && util::log "guest" "${_name}" " pcpu=${_pcpu}"
     fi
 
     # at this point we can return if < FreeBSD 11
@@ -64,21 +64,21 @@ __rctl_set_limits(){
 
     if [ -n "${_rbps}" ]; then
         /usr/bin/rctl -a process:${_pid}:readbps:throttle=${_rbps} >/dev/null 2>&1
-        [ $? -eq 0 ] && __log "guest" " readbps=${_rbps}"
+        [ $? -eq 0 ] && util::log "guest" " readbps=${_rbps}"
     fi
 
     if [ -n "${_wbps}" ]; then
         /usr/bin/rctl -a process:${_pid}:writebps:throttle=${_wbps} >/dev/null 2>&1
-        [ $? -eq 0 ] && __log "guest" " writebps=${_wbps}"
+        [ $? -eq 0 ] && util::log "guest" " writebps=${_wbps}"
     fi
 
     if [ -n "${_riops}" ]; then
         /usr/bin/rctl -a process:${_pid}:readiops:throttle=${_riops} >/dev/null 2>&1
-        [ $? -eq 0 ] && __log "guest" " readiops=${_riops}"
+        [ $? -eq 0 ] && util::log "guest" " readiops=${_riops}"
     fi
 
     if [ -n "${_wiops}" ]; then
         /usr/bin/rctl -a process:${_pid}:writeiops:throttle=${_wiops} >/dev/null 2>&1
-        [ $? -eq 0 ] && __log "guest" " writeiops=${_wiops}"
+        [ $? -eq 0 ] && util::log "guest" " writeiops=${_wiops}"
     fi
 }

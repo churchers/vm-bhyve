@@ -1,6 +1,6 @@
 #!/bin/sh
 #-------------------------------------------------------------------------+
-# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,50 +32,56 @@
 # @param string _name the name of the guest to run
 # @param optional string _iso the iso file for an install
 #
-__vm_run(){
+vm::run(){
     local _name="$1"
     local _iso="$2" _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
-    local _com _comports _comstring _logpath="/dev/null" _bootrom
+    local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
 
     # try to load datstore details
-    __datastore_get_guest "${_name}" || exit 5
+    datastore::get_guest "${_name}" || exit 5
 
     # bail out immediately if guest running
-    __vm_confirm_stopped "${_name}" "1" || exit 10
+    vm::confirm_stopped "${_name}" "1" || exit 10
 
-    __config_load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    __config_get "_cpu" "cpu"
-    __config_get "_memory" "memory"
-    __config_get "_loader" "loader"
-    __config_get "_bootdisk" "disk0_name"
-    __config_get "_bootdisk_dev" "disk0_dev" "file"
-    __config_get "_uefi" "uefi" "no"
-    __config_get "_hostbridge" "hostbridge" "standard"
-    __config_get "_comports" "comports" "com1"
-    __config_get "_uuid" "uuid"
-    __config_get "_utc" "utctime" "no"
-    __config_get "_debug" "debug" "no"
+    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+    config::get "_cpu" "cpu"
+    config::get "_memory" "memory"
+    config::get "_loader" "loader"
+    config::get "_bootdisk" "disk0_name"
+    config::get "_bootdisk_dev" "disk0_dev" "file"
+    config::get "_uefi" "uefi" "no"
+    config::get "_hostbridge" "hostbridge" "standard"
+    config::get "_comports" "comports" "com1"
+    config::get "_uuid" "uuid"
+    config::get "_utc" "utctime" "yes"
+    config::get "_debug" "debug" "no"
 
-    __log_rotate "guest" "${_name}"
-    __log "guest" "${_name}" "initialising"
-    __log "guest" "${_name}" " [loader: ${_loader:-none}]"
-    __log "guest" "${_name}" " [uefi: ${_uefi}]"
-    __log "guest" "${_name}" " [cpu: ${_cpu}]"
-    __log "guest" "${_name}" " [memory: ${_memory}]"
-    __log "guest" "${_name}" " [hostbridge: ${_hostbridge}]"
-    __log "guest" "${_name}" " [com ports: ${_comports}]"
-    __log "guest" "${_name}" " [uuid: ${_uuid:-auto}]"
-    __log "guest" "${_name}" " [utctime: ${_utc}]"
-    __log "guest" "${_name}" " [debug mode: ${_debug}]"
-    __log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
-    __log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
+    # generate a uuid if we don't have one already
+    if [ -z "${_uuid}" ]; then
+        _uuid=$(uuidgen)
+        config::set "${_name}" "uuid" "${_uuid}"
+    fi
+
+    util::log_rotate "guest" "${_name}"
+    util::log "guest" "${_name}" "initialising"
+    util::log "guest" "${_name}" " [loader: ${_loader:-none}]"
+    util::log "guest" "${_name}" " [uefi: ${_uefi}]"
+    util::log "guest" "${_name}" " [cpu: ${_cpu}]"
+    util::log "guest" "${_name}" " [memory: ${_memory}]"
+    util::log "guest" "${_name}" " [hostbridge: ${_hostbridge}]"
+    util::log "guest" "${_name}" " [com ports: ${_comports}]"
+    util::log "guest" "${_name}" " [uuid: ${_uuid}]"
+    util::log "guest" "${_name}" " [utctime: ${_utc}]"
+    util::log "guest" "${_name}" " [debug mode: ${_debug}]"
+    util::log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
+    util::log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
 
     # check basic settings
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
-        __log "guest" "${_name}" "fatal; unable to start - missing required configuration"
+        util::log "guest" "${_name}" "fatal; unable to start - missing required configuration"
         exit 15
     fi
 
@@ -84,14 +90,14 @@ __vm_run(){
 
         # only FreeBSD guests. these start direct in 64bit mode and don't need UG
         if [ "${_loader}" != "bhyveload" ]; then
-            __log "guest" "${_name}" "fatal; unable to start - no unrestricted guest support"
+            util::log "guest" "${_name}" "fatal; unable to start - no unrestricted guest support"
             exit 15
         fi
 
         # only 1 vcpu
         if [ "${_cpu}" -gt "1" ]; then
             _cpu=1
-            __log "guest" "${_name}" "warning; no unrestricted guest support. reducing vcpu count to 1"
+            util::log "guest" "${_name}" "warning; no unrestricted guest support. reducing vcpu count to 1"
         fi
     fi
 
@@ -99,21 +105,26 @@ __vm_run(){
     _opts="-AHP"
 
     # if uefi, make sure we have bootrom, then update options for uefi support
-    if __checkyesno "${_uefi}"; then
+    if util::checkyesno "${_uefi}"; then
         if [ ${VERSION_BSD} -lt 1002509 ]; then
-            __log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
+            util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
             exit 15
         fi
 
         case "${_uefi}" in
             csm)
-                _bootrom="${vm_dir}/.config/BHYVE_UEFI_CSM.fd"
+                _bootrom="BHYVE_UEFI_CSM.fd"
                 ;&
             *)
-                [ -z "${_bootrom}" ] && _bootrom="${vm_dir}/.config/BHYVE_UEFI.fd"
+                [ -z "${_bootrom}" ] && _bootrom="BHYVE_UEFI.fd"
 
-                if [ ! -e "${_bootrom}" ]; then
-                    __log "guest" "${_name}" "fatal; please download relevant uefi firmware to ${_bootrom}"
+                # look in sysutils/uefi-edk2-bhyve install location and our own .config dir
+                if [ -e "${vm_dir}/.config/${_bootrom}" ]; then
+                    _bootrom="${vm_dir}/.config/${_bootrom}"
+                elif [ -e "/usr/local/share/uefi-firmware/${_bootrom}" ]; then
+                    _bootrom="/usr/local/share/uefi-firmware/${_bootrom}"
+                else
+                    util::log "guest" "${_name}" "fatal; unable to locate relevant uefi firmware"
                     exit 15
                 fi
 
@@ -125,16 +136,16 @@ __vm_run(){
 
         # we must have a loader
         if [ -z "${_loader}" ]; then
-            __log "guest" "${_name}" "fatal; guest does not have a loader specified"
+            util::log "guest" "${_name}" "fatal; guest does not have a loader specified"
             exit 15
         fi
     fi
 
     # if we have passthru, check vt-d support now and exit
-    __config_get "_passdev" "passthru0"
+    config::get "_passdev" "passthru0"
 
-    if [ -n "${_passdev}" ] && ! __check_bhyve_iommu; then
-        __log "guest" "${_name}" "fatal; pci passthrough not supported on this system (no VT-d)"
+    if [ -n "${_passdev}" ] && ! util::check_bhyve_iommu; then
+        util::log "guest" "${_name}" "fatal; pci passthrough not supported on this system (no VT-d)"
         exit 15
     fi
 
@@ -143,30 +154,34 @@ __vm_run(){
     [ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
     # set utc time in opts if requested
-    if __checkyesno "${_utc}"; then
+    if util::checkyesno "${_utc}"; then
         if [ ${VERSION_BSD} -ge 1002000 ]; then
             _opts="${_opts} -u"
         else
-            __log "guest" "${_name}" "warning; utc time requested but not available pre FreeBSD 10.2"
+            util::log "guest" "${_name}" "warning; utc time requested but not available pre FreeBSD 10.2"
         fi
     fi
 
     # send bhyve output to bhyve.log if debug=yes
-    __checkyesno "${_debug}" && _logpath="${VM_DS_PATH}/${_name}/bhyve.log"
+    util::checkyesno "${_debug}" && _logpath="${VM_DS_PATH}/${_name}/bhyve.log"
 
     # complete the boot disk path
-    __vm_get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
+    vm::get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
 
     # build bhyve device string
-    __vm_bhyve_device_comports
-    __vm_bhyve_device_basic
-    __vm_bhyve_device_disks
-    __vm_bhyve_device_networking
-    __vm_bhyve_device_rand
-    __vm_bhyve_device_passthru
+    vm::bhyve_device_comports
+    vm::bhyve_device_basic
+    vm::bhyve_device_disks
+    vm::bhyve_device_networking
+    vm::bhyve_device_rand
+    vm::bhyve_device_passthru
+    vm::bhyve_device_fbuf
+    vm::bhyve_device_mouse
+    vm::bhyve_device_console
 
-    __vm_lock
-    __log "guest" "${_name}" "booting"
+    vm::lock
+    util::log "guest" "${_name}" "booting"
+    cd /
 
     while [ 1 ]; do
 
@@ -177,7 +192,7 @@ __vm_run(){
         if [ -e "/dev/vmm/${_name}" -a -z "${_uefi}" ]; then
             bhyvectl --vm="${_name}" --destroy >/dev/null 2>&1
             if [ $? -ne 0 ]; then
-                __log "guest" "${_name}" "fatal; failed to destroy existing vmm device"
+                util::log "guest" "${_name}" "fatal; failed to destroy existing vmm device"
                 _exit=15
                 break
             fi
@@ -185,30 +200,33 @@ __vm_run(){
 
         # set full iso path
         # use null.iso if not an install and uefi firmware
-        [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.iso/${_iso}"
+        [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${_iso}"
         [ -z "${_iso}" -a -n "${_uefi}" -a "${_uefi}" != "csm" ] && \
             _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
 
+        # reasonably ugly hack to remove wait option after first run
+        [ "${_run}" -eq "2" ] && vm::bhyve_device_fbuf_clear_wait
+
         # load guest
         if [ -n "${_loader}" ]; then
-            __guest_load "${_iso}"
+            guest::load "${_iso}"
             _exit=$?
 
             # check no errors
             if [ ${_exit} -ne 0 ]; then
-                __log "guest" "${_name}" "fatal; loader returned error ${_exit}"
+                util::log "guest" "${_name}" "fatal; loader returned error ${_exit}"
                 break
             fi
         fi
 
-        __log "guest" "${_name}" " [bhyve options: ${_opts}]"
-        __log "guest" "${_name}" " [bhyve devices: ${_devices}]"
-        __log "guest" "${_name}" " [bhyve console: ${_comstring}]"
-        [ -n "${_iso_dev}" ] && __log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
-        __log "guest" "${_name}" "starting bhyve"
+        util::log "guest" "${_name}" " [bhyve options: ${_opts}]"
+        util::log "guest" "${_name}" " [bhyve devices: ${_devices}]"
+        util::log "guest" "${_name}" " [bhyve console: ${_comstring}]"
+        [ -n "${_iso_dev}" ] && util::log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
+        util::log "guest" "${_name}" "starting bhyve (run ${_run})"
 
         # call rctl now as next line will block until bhyve exits
-        __rctl_set_limits &
+        rctl::set_limits &
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
@@ -220,28 +238,33 @@ __vm_run(){
 
         # get bhyve exit code
         _exit=$?
-        __log "guest" "${_name}" "bhyve exited with status ${_exit}"
+        util::log "guest" "${_name}" "bhyve exited with status ${_exit}"
+
+        # remove any console sockets
+        rm ${VM_DS_PATH}/${_name}/vconsole*.sock >/dev/null 2>&1
 
         # if 0, guest rebooted so continue loop
         # anything else we break and shutdown
         [ $_exit -ne 0 ] && break
-        __log "guest" "${_name}" "restarting"
+        util::log "guest" "${_name}" "restarting"
 
         # remove install iso so guest reboots from disk
         # after install non-uefi guests will still get install cd until a full shutdown+restart
         # as we don't reset _iso_dev
         _iso=""
+        _run=$((_run + 1))
     done
 
     # destroy taps
     for _devices in ${_taplist}; do
-        __log "guest" "${_name}" "destroying network device ${_devices}"
+        util::log "guest" "${_name}" "destroying network device ${_devices}"
         ifconfig "${_devices}" destroy
     done
 
-    __log "guest" "${_name}" "stopped"
-    bhyvectl --destroy --vm=${_name}
-    __vm_unlock
+    util::log "guest" "${_name}" "stopped"
+    [ -e "/dev/vmm/${_name}" ] && bhyvectl --destroy --vm=${_name} >/dev/null 2>&1
+
+    vm::unlock
     exit ${_exit}
 }
 
@@ -251,7 +274,7 @@ __vm_run(){
 #
 # @param string - the name of the guest to lock
 #
-__vm_lock(){
+vm::lock(){
     hostname > "${VM_DS_PATH}/${_name}/run.lock"
 }
 
@@ -259,8 +282,9 @@ __vm_lock(){
 #
 # @param string - the name of the guest to unlock
 #
-__vm_unlock(){
+vm::unlock(){
     unlink "${VM_DS_PATH}/${_name}/run.lock" >/dev/null 2>&1
+    unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 }
 
 # create string for guest com ports
@@ -272,19 +296,28 @@ __vm_unlock(){
 #
 # @modifies _com _comstring
 #
-__vm_bhyve_device_comports(){
-    local _port _num=1 _nmdm=""
+vm::bhyve_device_comports(){
+    local _port _num=1 _nmdm="" _tmux_name
 
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 
     for _port in ${_comports}; do
-        if [ -n "${VM_FOREGROUND}" -a "${_num}" = "1" ]; then
-            _comstring="-l ${_port},stdio"
-            _num=$((_num + 1))
-            continue
+        if [ ${_num} = 1 ]; then
+            # if tmux mode, log this to the console data
+            if [ -n "${VM_OPT_TMUX}" ]; then
+                _tmux_name=$(echo "${_name}" | tr "." "~")
+                echo "${_port}=tmux/${_tmux_name}" >> "${VM_DS_PATH}/${_name}/console"
+            fi
+
+            # if foreground mode, we don't configure a serial port
+            if [ -n "${VM_OPT_FOREGROUND}" ]; then
+                _comstring="-l ${_port},stdio"
+                _num=$((_num + 1))
+                continue
+            fi
         fi
 
-        __vm_find_console "_nmdm" "${_nmdm}"
+        vm::find_console "_nmdm" "${_nmdm}"
 
         # use first com port for the loader
         [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
@@ -301,7 +334,7 @@ __vm_bhyve_device_comports(){
 #
 # @modifies _devices
 #
-__vm_bhyve_device_basic(){
+vm::bhyve_device_basic(){
 
     # add hostbridge
     case "$_hostbridge" in 
@@ -320,48 +353,112 @@ __vm_bhyve_device_basic(){
 # we move through slots and stop at slot 6. For non-uefi we
 # step through all functions and just keep going
 #
+# since r302459 the ahci controller supports
+# up to 32 devices per controller. by default we set
+# the device limit to 1 and use the original syntax, but
+# this can be overridden by setting the ahci_device_limit
+# guest option to an integer between 2 and 32.
+#
 # @modifies _devices _slot
 #
-__vm_bhyve_device_disks(){
-    local _disk _type _dev _path _opts
-    local _num=0
+vm::bhyve_device_disks(){
+    local _disk _type _dev _path _opts _ahci _atype
+    local _ahci_num=0 _num=0 _add _ahci_multi
+    local _ahci_limit=1
 
-    # get disks
+    # check if user has set a per-controller device limit
+    config::get "_ahci_multi" "ahci_device_limit"
+
+    if [ ${VERSION_BSD} -ge 1200000 ] || \
+       [ ${VERSION_BSD} -ge 1101000 ] || \
+       [ ${VERSION_BSD} -ge 1004000 ]; then
+
+       if [ -n "${_ahci_multi}" ]; then
+
+            # see if it's numeric
+            echo "${_ahci_multi}" | egrep -iqs '^[0-9]+$'
+
+            [ $? -eq 0 -a ${_ahci_multi} -gt 1 -a ${_ahci_multi} -le 32 ] && \
+                _ahci_limit="${_ahci_multi}"
+        fi
+    fi
+
+    # get all disks
     while [ 1 ]; do
-        __config_get "_disk" "disk${_num}_name"
-        __config_get "_type" "disk${_num}_type"
+        config::get "_disk" "disk${_num}_name"
+        config::get "_type" "disk${_num}_type"
         [ -z "${_disk}" -o -z "${_type}" ] && break
 
-        __config_get "_dev" "disk${_num}_dev"
-        __config_get "_opts" "disk${_num}_opts"
+        config::get "_dev" "disk${_num}_dev"
+        config::get "_opts" "disk${_num}_opts"
 
-        # we need to move slot if we've hit function 8
         if [ ${_func} -ge 8 ]; then
             _func=0
             _slot=$((_slot + 1))
         fi
 
-        __vm_get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
-        _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
-        [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
+        vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 
-        if [ -n "${_uefi}" ]; then
-            _slot=$((_slot + 1))
+        # ahci device and multi mode?
+        if [ ${_ahci_limit} -gt 1 -a "${_type%%-*}" = "ahci" ]; then
 
-            # can't go past slot 6 with current UEFI firmware
-            if [ ${_slot} -ge 7 ]; then
-                __log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
-                break
-            fi
+            # check device type
+            case "${_type}" in
+                ahci-cd)
+                    _atype="cd"
+                    ;&
+                ahci-hd)
+                    [ -z "${_atype}" ] && _atype="hd"
+                    _ahci="${_ahci},${_atype}:${_path}"
+                    [ -n "${_opts}" ] && _ahci="${_ahci},${_opts}"
+                    _ahci_num=$((_ahci_num + 1))
+
+                    # we need to move to another controller if we get to the limit
+                    if [ ${_ahci_num} -ge ${_ahci_limit} ]; then
+                        _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
+                        _ahci=""
+                        _ahci_num=0
+                        _add=1
+                    fi
+                    ;;
+            esac
+
+            _atype=""
         else
-            _func=$((_func + 1))
+
+            _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+            [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
+            _add=1
+        fi
+
+        # have we just added a device?
+        if [ -n "${_add}" ]; then
+            if [ -n "${_uefi}" ]; then
+                _slot=$((_slot + 1))
+
+                # stop at slot 6 on uefi
+                if [ ${_slot} -ge 7 ]; then
+                    util::log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
+                    break
+                fi
+            else
+                _func=$((_func + 1))
+            fi
+
+            _add=""
         fi
 
         _num=$((_num + 1))
     done
 
-    # if we have any disks, move next devices to new slot
-    # unless uefi mode, because we'll have incremented slot anyway
+    # have ahci devices left?
+    if [ -n "${_ahci}" ]; then
+        _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
+        [ -n "${_uefi}" ] && _slot=$((_slot + 1))
+    fi
+
+    # move to next slot if we have devices
+    # unless uefi as we already inc slot in uefi mode
     if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
         _slot=$((_slot + 1))
         _func=0
@@ -371,25 +468,26 @@ __vm_bhyve_device_disks(){
 # get bhyve device string for networking
 # we dynamically create a new tap device for each interface
 # if we can find the correct bridge, we then add the tap as a member
-# we add each tap to __taplist from __vm_run which it will
+# we add each tap to __taplist from vm::run which it will
 # use to desstroy them all on shutdown
 #
 # @modifies _devices _slot _taplist
 #
-__vm_bhyve_device_networking(){
-    local _type _switch _mac _custom_tap _tap _sid _mtu
-    local _num=0
+vm::bhyve_device_networking(){
+    local _type _switch _mac _custom_tap _tap _sid _mtu _span
+    local _num=0 _member_type _sw_type
 
     while [ 1 ]; do
-        __config_get "_type" "network${_num}_type"
+        config::get "_type" "network${_num}_type"
         [ -z "${_type}" ] && break
 
-        __config_get "_switch" "network${_num}_switch"
-        __config_get "_mac" "network${_num}_mac"
-        __config_get "_custom_tap" "network${_num}_device"
+        config::get "_switch" "network${_num}_switch"
+        config::get "_mac" "network${_num}_mac"
+        config::get "_custom_tap" "network${_num}_device"
+        config::get "_span" "network${_num}_span"
 
         # set a static mac if we don't have one
-        [ -z "${_mac}" ] && __vm_generate_static_mac
+        [ -z "${_mac}" ] && vm::generate_static_mac
 
         # move slot if we've hit function 8
         if [ ${_func} -ge 8 ]; then
@@ -397,11 +495,14 @@ __vm_bhyve_device_networking(){
             _slot=$((_slot + 1))
         fi
 
-        if __switch_is_vale "${_switch}"; then
-            # create a vale port id
-            __switch_vale_id "_tap" "${_switch}" "${_mac}"
+        # get type of switch
+        switch::type "_sw_type" "${_switch}"
 
-            __log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
+        if [ "${_sw_type}" = "vale" ]; then
+            # create a vale port id
+            switch::vale::id "_tap" "${_switch}" "${_mac}"
+
+            util::log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
             _devices="${_devices} -s ${_slot}:${_func},${_type},${_tap}"
             [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
@@ -414,26 +515,33 @@ __vm_bhyve_device_networking(){
                 _tap=$(ifconfig tap create)
             fi
 
+            # should this be a span member?
+            _member_type="addm"
+            util::checkyesno "${_span}" && _member_type="span"
+
             if [ -n "${_tap}" ]; then
-                __log "guest" "${_name}" "initialising network device ${_tap}"
+                util::log "guest" "${_name}" "initialising network device ${_tap}"
                 ifconfig "${_tap}" description "vmnet-${_name}-${_num}-${_switch:-custom}" >/dev/null 2>&1
 
                 if [ -n "${_switch}" ]; then
-                    __switch_get_ident "_sid" "${_switch}"
+                    switch::id "_sid" "${_switch}"
 
                     if [ -n "${_sid}" ]; then
                         _mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
 
                         if [ "${_mtu}" != "1500" ]; then
-                            __log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
+                            util::log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
                     	    ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
                         fi
 
-                        __log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch})"
-                        ifconfig "${_sid}" addm "${_tap}" >/dev/null 2>&1
-                        [ $? -ne 0 ] && __log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+                        util::log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch} ${_member_type})"
+                        ifconfig "${_sid}" "${_member_type}" "${_tap}" >/dev/null 2>&1
+                        [ $? -ne 0 ] && util::log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+
+                        # set private if configured
+                        switch::is_private "${_switch}" && ifconfig "${_sid}" "private" "${_tap}" >/dev/null 2>&1
                     else
-                        __log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
+                        util::log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
                     fi
                 fi
 
@@ -458,15 +566,129 @@ __vm_bhyve_device_networking(){
 #
 # @modifies _devices _slot
 #
-__vm_bhyve_device_rand(){
+vm::bhyve_device_rand(){
     local _rand
 
-    __config_get "_rand" "virt_random"
+    config::get "_rand" "virt_random"
 
-    if __checkyesno "${_rand}"; then
+    if util::checkyesno "${_rand}"; then
         _devices="${_devices} -s ${_slot}:0,virtio-rnd"
         _slot=$((_slot + 1))
     fi
+}
+
+# add frame buffer output
+#
+vm::bhyve_device_fbuf(){
+    local _graphics _port _listen _res _wait _pass
+    local _fbuf_conf
+
+    # only works in uefi mode
+    [ -z "${_uefi}" ] && return 0
+
+    # check graphics enabled
+    config::get "_graphics" "graphics"
+    ! util::checkyesno "${_graphics}" && return 0
+
+    # only available in 11+
+    if [ ${VERSION_BSD} -lt 1100000 ]; then
+        util::log "guest" "${_name}" "warning; UEFI graphics is only available in FreeBSD 11 and newer"
+        return 1
+    fi
+
+    config::get "_port" "graphics_port"
+    config::get "_listen" "graphics_listen"
+    config::get "_res" "graphics_res"
+    config::get "_wait" "graphics_wait" "auto"
+    config::get "_pass" "vnc_password"
+
+    # check if graphics_wait is auto
+    # auto will count as yes so we need to unset it if we're not in an install.
+    [ "${_wait}" = "auto" -a -z "${_iso}" ] && _wait="no"
+
+    # try to get port
+    # return if we can't
+    if [ -z "${_port}" ]; then
+        vm::find_available_net_port "_port" "5900"
+
+        if [ -z "${_port}" ]; then
+            util::log "guest" "${_name}" "warning; unable to allocate a network port for graphics/vnc"
+            return 1
+        fi
+
+        util::log "guest" "${_name}" "dynamically allocated port ${_port} for vnc connections"
+    fi
+
+    # add ip, port, resolution, wait
+    _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port}"
+    [ -n "${_res}" ] && _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
+    [ -n "${_pass}" ] && _fbuf_conf="${_fbuf_conf},password=${_pass}"
+    util::checkyesno "${_wait}" && _fbuf_conf="${_fbuf_conf},wait"
+
+    # write vnc port to console data
+    echo "vnc=${_listen:-0.0.0.0}:${_port}" >> "${VM_DS_PATH}/${_name}/console"
+
+    # add device
+    _devices="${_devices} -s ${_slot}:0,fbuf,${_fbuf_conf}"
+    _slot=$((_slot + 1))
+}
+
+# remove wait option if we're in auto mode
+# fairly ugly code that uses sed to look for ",wait{word boundary}"
+# and removes it. Hopefully this will never match anything else in
+# the device string...
+#
+# @modifies _devices
+#
+vm::bhyve_device_fbuf_clear_wait(){
+    local _wait
+
+    [ -z "${_uefi}" ] && return
+
+    config::get "_wait" "graphics_wait" "auto"
+    [ "${_wait}" = "auto" ] && _devices=$(echo "${_devices}" | sed 's@,wait[[:>:]]@@')
+}
+
+# add a xhci mouse device
+#
+vm::bhyve_device_mouse(){
+    local _mouse
+
+    [ ${VERSION_BSD} -lt 1100000 ] && return 0
+    config::get "_mouse" "xhci_mouse"
+
+    # add a tablet device if enabled
+    if util::checkyesno "${_mouse}"; then
+        _devices="${_devices} -s ${_slot}:0,xhci,tablet"
+        _slot=$((_slot + 1))
+    fi
+}
+
+# add virtio_console devices to the guest
+#
+# @modifies _devices _slot
+#
+vm::bhyve_device_console(){
+    local _consle_count _curr=1
+    local _dev_str
+
+    [ ${VERSION_BSD} -lt 1200000 ] && return 0
+    config::get "_console_count" "virt_consoles"
+    [ -z "${_console_count}" ] && return 0
+
+    # make sure it's 1-16
+    echo "${_console_count}" | egrep -qs '^[0-9]{1,2}$'
+    [ $? -ne 0 ] && return 1
+    [ ${_console_count} -gt 16 ] && return 1
+
+    # add each console port to the device string
+    while [ ${_curr} -le ${_console_count} ]; do
+        _dev_str="${_dev_str},port${_curr}=${VM_DS_PATH}/${_name}/vconsole${_curr}.sock"
+        _curr=$((_curr + 1))
+    done
+
+    _devices="${_devices} -s ${_slot}:0,virtio-console${_dev_str}"
+    _slot=$((_slot + 1))
 }
 
 # get any pci passthrough devices
@@ -475,31 +697,30 @@ __vm_bhyve_device_rand(){
 #
 # @modifies _devices _slot _opts _wiredmem
 #
-__vm_bhyve_device_passthru(){
-    local _dev _orig_slot _orig_func
+vm::bhyve_device_passthru(){
+    local _dev _orig_slot _func=0
     local _last_orig_slot
     local _num=0
 
     while [ 1 ]; do
-        __config_get "_dev" "passthru${_num}"
+        config::get "_dev" "passthru${_num}"
         [ -z "${_dev}" ] && break
 
         _orig_slot=${_dev%%/*}
-        _orig_func=${_dev##*/}
 
         # only move to new slot if the original device is on a different slot to the last one.
         # if user wants to passthru a device that has multiple functions which must stay together
         # on one slot, they should be together in configuration file
         if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
             _slot=$((_slot + 1))
+            _func=0
         fi
 
-        # we use the original function number for all devices.
-        # does this work if you only pass through function 1 or 2, and leave 0 empty?
-        _devices="${_devices} -s ${_slot}:${_orig_func},passthru,${_dev}"
+        _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
         _last_orig_slot=${_orig_slot}
 
         _num=$((_num + 1))
+        _func=$((_func + 1))
     done
 
     if [ ${_num} -ge 1 ]; then
@@ -523,25 +744,17 @@ __vm_bhyve_device_passthru(){
 # @param string _disk the name of the disk
 # @param string _disk_dev=file|zvol|sparse-zvol|custom type of device
 #
-__vm_get_disk_path(){
+vm::get_disk_path(){
     local _var="$1"
     local _name="$2"
     local _disk="$3"
     local _disk_dev="$4"
 
     case "${_disk_dev}" in
-        zvol)
-            ;&
-        sparse-zvol)
-            # need to look at this, don't really want to reference VM_ZFS* variables here
-            setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}"
-            ;;
-        custom)
-            setvar "${_var}" "${_disk}"
-            ;;
-        *)
-            setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}"
-            ;;
+        zvol)        ;&
+        sparse-zvol) setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" ;;
+        custom)      setvar "${_var}" "${_disk}" ;;
+        *)           setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}" ;;
     esac
 }
 
@@ -553,7 +766,7 @@ __vm_get_disk_path(){
 # @param string _var variable to put value into
 # @param optional int _num the device number to start searching at (default = 0)
 #
-__vm_find_console(){
+vm::find_console(){
     local _var="$1"
     local _num="$2"
     local _ls
@@ -586,7 +799,7 @@ __vm_find_console(){
 #
 # @modifies VM_RUN_BHYVE VM_RUN_LOAD
 #
-__vm_running_load(){
+vm::running_load(){
     VM_RUN_BHYVE=$(pgrep -fl "bhyve:" | awk '{print $1,$NF}')
     VM_RUN_LOAD=$(pgrep -fl "grub-bhyve|bhyveload" | awk '{print $1,$NF}')
 }
@@ -600,7 +813,7 @@ __vm_running_load(){
 # @param string _name name of the guest to look for
 # @return success if running
 #
-__vm_running_check(){
+vm::running_check(){
     local _var="$1"
     local _name="$2"
     local IFS=$'\n'
@@ -634,7 +847,7 @@ __vm_running_check(){
 # @param int _skip_lock skip local lock file if no /dev/vmm found
 # @return success if not running
 #
-__vm_confirm_stopped(){
+vm::confirm_stopped(){
     local _name="$1"
     local _skip_lock="$2"
     local _host _our_host
@@ -647,14 +860,14 @@ __vm_confirm_stopped(){
         _host=$(head -n 1 "${VM_DS_PATH}/${_name}/run.lock")
 
         if [ "${_host}" != "${_our_host}" -o "${_skip_lock}" != "1" ]; then
-            __warn "${_name} appears to be running on ${_host} (locked)"
-            return 1
+            util::warn "${_name} appears to be running on ${_host} (locked)"
+            return 2
         fi
     fi
 
     # check local machine, just in case guest run manually
     if [ -e "/dev/vmm/${_name}" ]; then
-        __warn "${_name} appears to be running locally (vmm exists)"
+        util::warn "${_name} appears to be running locally (vmm exists)"
         return 1
     fi
 
@@ -670,7 +883,7 @@ __vm_confirm_stopped(){
 # with an incrementing integer just in case we happen to
 # get 5 zeros.
 #
-__vm_generate_static_mac(){
+vm::generate_static_mac(){
     local _time=$(date +%s)
     local _key _part="0:00:00"
     local _base _int=0
@@ -688,6 +901,49 @@ __vm_generate_static_mac(){
     # add base bhyve OUI
     _mac="58:9c:fc:0${_part}"
 
-    __log "guest" "${_name}" "generated static mac ${_mac} (based on '${_key}')"
-    __vm_config_set "${_name}" "network${_num}_mac" "${_mac}"
+    util::log "guest" "${_name}" "generated static mac ${_mac} (based on '${_key}')"
+    config::set "${_name}" "network${_num}_mac" "${_mac}"
+}
+
+# try to find an available network port to listen on
+# this isn't clever enough to diffeential ports on unique ip's yet
+#
+# @param string _var variable to put port into
+# @param int _curr the port to start searching from
+# @return true if we found a port
+#
+vm::find_available_net_port(){
+    local _var="$1"
+    local _curr="$2"
+    local _open _line _max _used
+    local IFS=$'\n'
+
+    # stop searching after 200 ports
+    _max=$((_curr + 200))
+
+    # get list of open ports
+    _open=$(netstat -an | grep LISTEN | awk '{print $4}' | awk -F. '{print $NF}')
+
+    while [ "${_curr}" -lt "${_max}" ]; do
+
+        # reset used flag
+        _used=""
+
+        # see if current port is used
+        for _line in ${_open}; do
+            [ "${_line}" = "${_curr}" ] && _used="1"
+        done
+
+        # this port available?
+        if [ -z "${_used}" ]; then
+            setvar "${_var}" "${_curr}"
+            return 0
+        fi
+
+        _curr=$((_curr + 1))
+    done
+
+    # not found a port
+    setvar "${_var}" ""
+    return 1
 }

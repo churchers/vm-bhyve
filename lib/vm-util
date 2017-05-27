@@ -1,6 +1,6 @@
 #!/bin/sh
 #-------------------------------------------------------------------------+
-# Copyright (C) 2015 Matt Churchyard (churchers@gmail.com)
+# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,11 @@
 
 # make sure we have the right environment
 #
-__setup(){
-    __load_module "vmm"
-    __load_module "nmdm"
-    __load_module "if_bridge"
-    __load_module "if_tap"
+util::setup(){
+    util::load_module "vmm"
+    util::load_module "nmdm"
+    util::load_module "if_bridge"
+    util::load_module "if_tap"
 
     sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
 }
@@ -39,12 +39,12 @@ __setup(){
 #
 # @param string _mod the module name
 #
-__load_module(){
+util::load_module(){
     local _mod="$1"
     kldstat -qm ${_mod} >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         kldload ${_mod} >/dev/null 2>&1
-        [ $? -ne 0 ] && __err "unable to load ${_mod}.ko!"
+        [ $? -ne 0 ] && util::err "unable to load ${_mod}.ko!"
     fi
 }
 
@@ -54,12 +54,15 @@ __load_module(){
 # 
 # @modifies VM_NO_UG
 #
-__check_bhyve_support(){
-    local _mesg _result
+util::check_bhyve_support(){
+    local _mesg _mesg1 _mesg2 _result
 
     # basic checks
-    [ `id -u` -ne 0 ] && __err "virtual machines can only be managed by root"
-    [ ${VERSION_BSD} -lt 1000000 ] && __err "please upgrade to FreeBSD 10 or newer for bhyve support"
+    [ `id -u` -ne 0 ] && util::err "virtual machines can only be managed by root"
+    [ ${VERSION_BSD} -lt 1000000 ] && util::err "please upgrade to FreeBSD 10 or newer for bhyve support"
+
+    # can't check any further if we don't have a dmesg.boot
+    [ ! -e "/var/run/dmesg.boot" ] && return 0
 
     # get features2 line which should include popcnt
     _mesg=$(grep -E '^[ ]+Features2' /var/run/dmesg.boot | tail -n 1)
@@ -69,17 +72,19 @@ __check_bhyve_support(){
 
         # look for pop cnt
         _result=$(echo "${_mesg}" |grep "POPCNT")
-        [ -z "${_result}" ] && __err "it doesn't look like your cpu supports bhyve (missing POPCNT)"
+        [ -z "${_result}" ] && util::err "it doesn't look like your cpu supports bhyve (missing POPCNT)"
     fi
 
     # check ept for intel
-    _mesg=$(grep -E '^[ ]+VT-x' /var/run/dmesg.boot | tail -n 1)
+    _mesg1=$(grep -E '^[ ]+VT-x' /var/run/dmesg.boot | tail -n 1)
+    _mesg2=$(grep -E '^[ ]+Secondary Processor Controls' /var/run/dmesg.boot | tail -n 1)
+    _mesg="${_mesg1}${_mesg2}"
 
     if [ -n "${_mesg}" ]; then
 
         # look for ept
         _result=$(echo "${_mesg}" |grep "EPT")
-        [ -z "${_result}" ] && __err "it doesn't look like your cpu supports bhyve (missing EPT)"
+        [ -z "${_result}" ] && util::err "it doesn't look like your cpu supports bhyve (missing EPT)"
 
         # look for unrestricted guest
         _result=$(echo "${_mesg}" |grep ",UG")
@@ -92,11 +97,13 @@ __check_bhyve_support(){
 #
 # @return success if host has vt-d
 #
-__check_bhyve_iommu(){
+util::check_bhyve_iommu(){
     local _mesg
 
     _mesg=$(acpidump -t |grep DMAR)
     [ -z "${_mesg}" ] && return 1
+
+    return 0
 }
 
 # restart a local service
@@ -104,7 +111,7 @@ __check_bhyve_iommu(){
 #
 # @param string _serv the name of the service
 #
-__restart_service(){
+util::restart_service(){
     local _serv="$1"
     local _cmd="restart"
 
@@ -113,41 +120,44 @@ __restart_service(){
     [ $? -ne 0 ] && _cmd="start"
 
     service ${_serv} ${_cmd} >/dev/null 2>&1
-    [ $? -ne 0 ] && __warn "failed to ${_cmd} service ${_serv}"
+    [ $? -ne 0 ] && util::warn "failed to ${_cmd} service ${_serv}"
 }
 
 # show version
 #
-__version(){
+util::version(){
     echo "vm-bhyve: Bhyve virtual machine management v${VERSION} (build ${VERSION_INT})"
 }
 
 # show version & usage information
 # we exit after running this
 #
-__usage(){
-    __version
+util::usage(){
+    util::version
     cat << EOT
 Usage: vm ...
     version
     init
+    set [setting=value] [...]
+    get [all|setting] [...]
     switch list
-    switch info [name]
-    switch create <name>
-    switch import <name> <bridge>
+    switch info [name] [...]
+    switch create [-t type] [-i interface] [-n vlan-id] [-m mtu] [-a address/prefix-len] [-b bridge] [-p] <name>
     switch vlan <name> <vlan|0>
     switch nat <name> <on|off>
+    switch private <name> <on|off>
     switch add <name> <interface>
     switch remove <name> <interface>
     switch destroy <name>
     datastore list
     datastore add <name> <spec>
     datastore remove <name>
+    datastore add <name> <path>
     list
-    info [name]
+    info [name] [...]
     create [-d datastore] [-t template] [-s size] <name>
-    [-f] install <name> <iso>
-    [-f] start <name>
+    [-fi] install <name> <iso>
+    [-fi] start <name> [...]
     stop <name> [...]
     console <name> [com1|com2]
     rename <name> <new-name>
@@ -171,13 +181,23 @@ EOT
     exit 1
 }
 
-# error
+# err
 # display an error message and exit immediately
 #
 # @param string - the message to display
 #
-__err(){
+util::err(){
     echo "${0}: ERROR: $1" >&2
+    exit 1
+}
+
+# err_inline
+# display an error inline with informational output
+#
+# @param string - message to display
+#
+util::err_inline(){
+    echo "  ! $1"
     exit 1
 }
 
@@ -186,7 +206,7 @@ __err(){
 #
 # @param string - the message to display
 #
-__warn(){
+util::warn(){
     echo "${0}: WARNING: $1" >&2
 }
 
@@ -198,7 +218,7 @@ __warn(){
 #
 # @param string _type whether to rotate guest or main log
 #
-__log_rotate(){
+util::log_rotate(){
     local _type="$1"
     local _lf="vm-bhyve.log"
     local _file _size _guest
@@ -233,7 +253,7 @@ __log_rotate(){
 # @param optional string _guest if _type=guest, the guest name, otherwise do not provide at all
 # @param string _message the message to log
 #
-__log(){
+util::log(){
     local _type="$1"
     local _lf="vm-bhyve.log"
     local _guest _message _file _date
@@ -264,20 +284,20 @@ __log(){
 # @param string _file the file name to write to
 # @param string _message the data to write
 #
-__log_and_write(){
+util::log_and_write(){
     local _type="$1"
     local _guest="$2"
     local _file="${VM_DS_PATH}/${_guest}/$3"
     local _message="$4"
 
     if [ "${_type}" = "write" ]; then
-        __log "guest" "${_guest}" "create file ${_file}"
+        util::log "guest" "${_guest}" "create file ${_file}"
         echo "${_message}" > "${_file}"
     else
         echo "${_message}" >> "${_file}"
     fi
 
-    __log "guest" "${_guest}" " -> ${_message}"
+    util::log "guest" "${_guest}" " -> ${_message}"
 }
 
 # confirm yes or no
@@ -285,7 +305,7 @@ __log_and_write(){
 # @param string _msh message to display
 # @return int success if confirmed
 #
-__confirm(){
+util::confirm(){
     local _msg="$1"
     local _resp
 
@@ -304,7 +324,7 @@ __confirm(){
 # @param _value the value to test
 # @return int 1 if set to "off/false/no/0", 0 otherwise
 #
-__checkyesno(){
+util::checkyesno(){
     local _value="$1"
 
     [ -z "${_value}" ] && return 1

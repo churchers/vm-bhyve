@@ -59,6 +59,11 @@ memory="512M"
 #
 ignore_bad_msr="no"
 
+# bhyve_options
+# any additional bhyve command line options
+#
+bhyve_options="-p 1:1"
+
 # hostbridge
 # Allows you to specify the type of hostbridge to use for the
 # guest hardware. This can usually be left as default. The

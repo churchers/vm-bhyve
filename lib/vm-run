@@ -39,7 +39,7 @@ vm::run(){
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
-    local _ignore_msr
+    local _ignore_msr _bhyve_options
 
     # try to load datstore details
     datastore::get_guest "${_name}" || exit 5
@@ -60,6 +60,7 @@ vm::run(){
     config::get "_utc" "utctime" "no"
     config::get "_debug" "debug" "no"
     config::get "_ignore_msr" "ignore_bad_msr" "no"
+    config::get "_bhyve_options" "bhyve_options"
 
     util::log_rotate "guest" "${_name}"
     util::log "guest" "${_name}" "initialising"
@@ -139,6 +140,9 @@ vm::run(){
             exit 15
         fi
     fi
+
+    # add any custom bhyve options
+    [ -n "${_bhyve_options}" ] && _opts="${_opts} ${_bhyve_options}"
 
     # if we have passthru, check vt-d support now and exit
     config::get "_passdev" "passthru0"

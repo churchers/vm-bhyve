@@ -39,6 +39,7 @@ vm::run(){
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
+    local _ignore_msr
 
     # try to load datstore details
     datastore::get_guest "${_name}" || exit 5
@@ -58,6 +59,7 @@ vm::run(){
     config::get "_uuid" "uuid"
     config::get "_utc" "utctime" "yes"
     config::get "_debug" "debug" "no"
+    config::get "_ignore_msr" "ignore_bad_msr" "no"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -103,6 +105,9 @@ vm::run(){
 
     # default bhyve options
     _opts="-AHP"
+
+    # ignore access to unimplemented Model Specific Registers?
+    util::checkyesno "${_ignore_msr}" && _opts="${_opts}w"
 
     # if uefi, make sure we have bootrom, then update options for uefi support
     if util::checkyesno "${_uefi}"; then

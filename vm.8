@@ -1186,6 +1186,13 @@ based on the hostname and guest name. Because this may change if guests are move
 between systems, the
 .Pa vm create
 command automatically assigns a UUID to all newly created guests.
+.It ignore_bad_msr
+Set to
+.Sy true|on|yes|1
+to configure
+.Xr bhyve 8
+to ignore accesses to unimplemented model specific registers. This is commonly required
+on AMD processors, although is enabled by default for UEFI guests.
 .It grub_installX
 This option allows you to specify grub commands needed to boot the install media for
 this guest.

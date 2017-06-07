@@ -63,6 +63,15 @@ memory="512M"
 #
 hostbridge=""
 
+# ignore_bad_msr
+# Instruct bhyve to ignore accesses to model specific registers
+# that are not implemented in the current CPU.
+# This appears to be required for AMD processors when using
+# some guest operating systems. Note that this is enabled
+# by default when running a UEFI guest
+#
+ignore_bad_msr="no"
+
 # comports
 # This allows you to define the com ports which should be available.
 # By default only com1 is connected, and can be accessed using the

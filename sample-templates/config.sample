@@ -50,6 +50,15 @@ cpu="1"
 #
 memory="512M"
 
+# ignore_bad_msr
+# Instruct bhyve to ignore accesses to model specific registers
+# that are not implemented in the current CPU.
+# This appears to be required for AMD processors when using
+# some guest operating systems. Note that this is enabled
+# by default when running a UEFI guest
+#
+ignore_bad_msr="no"
+
 # hostbridge
 # Allows you to specify the type of hostbridge to use for the
 # guest hardware. This can usually be left as default. The

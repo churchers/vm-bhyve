@@ -1193,6 +1193,10 @@ to configure
 .Xr bhyve 8
 to ignore accesses to unimplemented model specific registers. This is commonly required
 on AMD processors, although is enabled by default for UEFI guests.
+.It bhyve_options
+Specify any additional command line arguments to pass to the bhyve command. This allows
+the use of options such as cpu pinning or debug that are not exposed by
+.Sy vm-bhyve .
 .It grub_installX
 This option allows you to specify grub commands needed to boot the install media for
 this guest.

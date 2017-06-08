@@ -72,6 +72,11 @@ hostbridge=""
 #
 ignore_bad_msr="no"
 
+# bhyve_options
+# any additional bhyve command line options
+#
+bhyve_options="-p 1:1"
+
 # comports
 # This allows you to define the com ports which should be available.
 # By default only com1 is connected, and can be accessed using the

@@ -45,7 +45,7 @@ zfs::init(){
 
     # check for zfs storage location
     # user should specify "zfs:pool/dataset" if they want ZFS support
-    if [ ${vm_dir%%:*} = "zfs" ]; then
+    if [ "${vm_dir%%:*}" = "zfs" ]; then
 
         # check zfs running
         kldstat -qm zfs >/dev/null 2>&1

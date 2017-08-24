@@ -202,7 +202,7 @@ disk0_size="50"
 # Networking is not required, although this field is mandatory if you do want
 # to add an interface
 #
-# Valid Options: virtio-net
+# Valid Options: virtio-net,e1000
 #
 network0_type="virtio-net"
 

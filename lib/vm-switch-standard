@@ -37,7 +37,7 @@ switch::standard::init(){
 
     # create a bridge for this switch
     _id=$(ifconfig bridge create description "vm-${_name}" priority 0 up 2>/dev/null)
-    [ $? -ne 0 ] && util::err "failed to create bridge interface for switch ${_name}"
+    [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
 
     # try to set ip address
     config::core::get "_addr" "addr_${_name}"
@@ -247,7 +247,7 @@ switch::standard::__configure_port(){
         # create if needed
         if [ -z "${_vid}" ]; then
             _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" description "vm-vlan-${_port}-${_vlan}" up)
-            [ $? -ne 0 ] && util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
+            [ $? -eq 0 ] || util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
         fi
 
         ifconfig ${_id} addm ${_vid} >/dev/null 2>&1
@@ -256,7 +256,7 @@ switch::standard::__configure_port(){
         ifconfig ${_id} addm ${_port} >/dev/null 2>&1
     fi
 
-    [ $? -ne 0 ] && util::err "failed to add member ${_port} to the virtual switch ${_switch}"
+    [ $? -eq 0 ] || util::err "failed to add member ${_port} to the virtual switch ${_switch}"
 }
 
 # unconfigure a local port

@@ -44,7 +44,7 @@ util::load_module(){
     kldstat -qm ${_mod} >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         kldload ${_mod} >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err "unable to load ${_mod}.ko!"
+        [ $? -eq 0 ] || util::err "unable to load ${_mod}.ko!"
     fi
 }
 

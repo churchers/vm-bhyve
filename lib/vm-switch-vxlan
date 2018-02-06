@@ -55,7 +55,7 @@ switch::vxlan::init(){
 
     # create a bridge for this switch
     _id=$(ifconfig bridge create description "vm-${_name}" up 2>/dev/null)
-    [ $? -ne 0 ] && util::err "failed to create bridge interface for switch ${_name}"
+    [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
 
     # bridge vxlan to our guest switch
     # static route traffic for this multicast address via our specified interface

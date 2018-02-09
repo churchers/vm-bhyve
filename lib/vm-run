@@ -158,6 +158,9 @@ vm::run(){
         exit 15
     fi
 
+    # has user specified wired memory in custom options?
+    echo "${_bhyve_options}" | grep "S" >/dev/null 2>&1 && _wiredmem=1
+
     # set cpu/memory and uuid in opts
     _opts="-c ${_cpu} -m ${_memory} ${_opts}"
     [ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"

@@ -83,7 +83,7 @@ If you want to run guests other than FreeBSD, you will need the grub2-bhyve pack
 
     # pkg install grub2-bhyve
 
-Additionally, while not specifically required, dnsmasq can be used to provid DHCP services
+Additionally, while not specifically required, dnsmasq can be used to provide DHCP services
 when vm-bhyve is configured to run NAT.
 
     # pkg install dnsmasq
@@ -246,7 +246,7 @@ is the number of seconds to wait between starting each one. 5 seconds is the rec
 although a longer delay is useful if you have disk intensive guests and don't want them all booting
 at the same time.
 
-There's also a command which opens a guest's confiuration file in your default text editor, allowing
+There's also a command which opens a guest's configuration file in your default text editor, allowing
 you to easily make changes to the configuration. Please note that changes only take effect after
 a full shutdown and restart of the guest
 
@@ -283,7 +283,7 @@ Please see the Windows section in the Wiki
 
 If you are using the default csh/tcsh shell built into FreeBSD, running the following command should allow
 autocomplete to work for all the currently supported functions. This is especially useful for viewing
-and completing guest & ISO file names. Please note that there's three ocurrances of '/path/to/vm' which
+and completing guest & ISO file names. Please note that there's three occurrences of '/path/to/vm' which
 need to be changed to the directory containing your virtual machines.
 
 To make the autocomplete features available permanently, add the following to your `$HOME/.cshrc` file. Then either

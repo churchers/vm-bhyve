@@ -49,7 +49,7 @@ zfs::init(){
 
         # check zfs running
         kldstat -qm zfs >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err "ZFS support requested but ZFS not available"
+        [ $? -eq 0 ] || util::err "ZFS support requested but ZFS not available"
 
         # global zfs details
         VM_ZFS="1"
@@ -74,7 +74,7 @@ zfs::make_dataset(){
     if [ -n "${_name}" -a "${VM_DS_ZFS}" = "1" ]; then
         zfs::__format_options "_opts" "${_opts}"
         zfs create ${_opts} "${_name}"
-        [ $? -ne 0 ] && util::err "failed to create new ZFS dataset ${_name}"
+        [ $? -eq 0 ] || util::err "failed to create new ZFS dataset ${_name}"
     fi
 }
 
@@ -87,7 +87,7 @@ zfs::destroy_dataset(){
 
     if [ -n "${_name}" -a "${VM_DS_ZFS}" = "1" ]; then
         zfs destroy -rf "${_name}" >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err "failed to destroy ZFS dataset ${_name}"
+        [ $? -eq 0 ] || util::err "failed to destroy ZFS dataset ${_name}"
     fi
 }
 
@@ -104,7 +104,7 @@ zfs::rename_dataset(){
 
     if [ -n "${_old}" -a -n "${_new}" -a "${VM_DS_ZFS}" = "1" ]; then
         zfs rename "${VM_DS_ZFS_DATASET}/${_old}" "${VM_DS_ZFS_DATASET}/${_new}" >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err "failed to rename ZFS dataset ${VM_DS_ZFS_DATASET}/${_old}"
+        [ $? -eq 0 ] || util::err "failed to rename ZFS dataset ${VM_DS_ZFS_DATASET}/${_old}"
     fi
 }
 
@@ -126,7 +126,7 @@ zfs::make_zvol(){
 
     zfs::__format_options "_user_opts" "${_user_opts}"
     zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${_name}"
-    [ $? -ne 0 ] && util::err "failed to create new ZVOL ${_name}"
+    [ $? -eq 0 ] || util::err "failed to create new ZVOL ${_name}"
 }
 
 # format options for zfs commands
@@ -189,7 +189,7 @@ zfs::snapshot(){
     fi
 
     zfs snapshot -r ${VM_DS_ZFS_DATASET}/${_name}@${_snap}
-    [ $? -ne 0 ] && util::err "failed to create recursive snapshot of virtual machine"
+    [ $? -eq 0 ] || util::err "failed to create recursive snapshot of virtual machine"
 }
 
 # 'vm rollback'
@@ -268,7 +268,7 @@ zfs::clone(){
 
     # get list of datasets to copy
     _fs_list=$(zfs list -rHo name -t filesystem,volume "${VM_DS_ZFS_DATASET}/${_old}")
-    [ $? -ne 0 ] && util::err "unable to list datasets for ${VM_DS_ZFS_DATASET}/${_old}"
+    [ $? -eq 0 ] || util::err "unable to list datasets for ${VM_DS_ZFS_DATASET}/${_old}"
 
     # generate a short uuid and create snapshot if no custom snap given
     if [ -z "${_snap}" ]; then
@@ -276,11 +276,11 @@ zfs::clone(){
         _snap=$(echo "${_uuid}" |awk -F- '{print $1}')
 
         zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_old}@${_snap}"
-        [ $? -ne 0 ] && util::err "failed to create snapshot ${VM_DS_ZFS_DATASET}/${_old}@${_snap}"
+        [ $? -eq 0 ] || util::err "failed to create snapshot ${VM_DS_ZFS_DATASET}/${_old}@${_snap}"
     else
         for _fs in ${_fs_list}; do
             zfs get creation "${_fs}@${_snap}" >/dev/null 2>&1
-            [ $? -ne 0 ] && util::err "snapshot ${_fs}@${_snap} doesn't seem to exist"
+            [ $? -eq 0 ] || util::err "snapshot ${_fs}@${_snap} doesn't seem to exist"
         done
     fi
 
@@ -289,7 +289,7 @@ zfs::clone(){
         _newfs=$(echo "${_fs}" | sed "s@${VM_DS_ZFS_DATASET}/${_old}@${VM_DS_ZFS_DATASET}/${_name}@")
 
         zfs clone "${_fs}@${_snap}" "${_newfs}"
-        [ $? -ne 0 ] && util::err "error while cloning dataset ${_fs}@${_snap}"
+        [ $? -eq 0 ] || util::err "error while cloning dataset ${_fs}@${_snap}"
     done
 
     # update new guest files
@@ -350,12 +350,12 @@ zfs::image_create(){
     # create the image dataset if we don't have it
     if [ ! -e "${vm_dir}/images" ]; then
         zfs create "${VM_ZFS_DATASET}/images" >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err "failed to create image store ${VM_ZFS_DATASET}/images"
+        [ $? -eq 0 ] || util::err "failed to create image store ${VM_ZFS_DATASET}/images"
     fi
 
     # try to snapshot
     zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err "failed to create snapshot of source dataset ${VM_DS_ZFS_DATASET}/${_name}@${_snap}"
+    [ $? -eq 0 ] || util::err "failed to create snapshot of source dataset ${VM_DS_ZFS_DATASET}/${_name}@${_snap}"
 
     # copy source
     if [ -n "${_no_compress}" ]; then
@@ -431,14 +431,14 @@ zfs::image_provision(){
     esac
 
     # error unpacking?
-    [ $? -ne 0 ] && util::err "errors occured while trying to unpackage the image file"
+    [ $? -eq 0 ] || util::err "errors occured while trying to unpackage the image file"
 
     # remove the original snapshot
     zfs destroy -r "${VM_DS_ZFS_DATASET}/${_name}@${_uuid%%-*}" >/dev/null 2>&1
 
     # rename the guest configuration file
     mv "${VM_DS_PATH}/${_name}/${_oldname}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err "unpackaged image but unable to update guest configuration file"
+    [ $? -eq 0 ] || util::err "unpackaged image but unable to update guest configuration file"
 
     # update mac addresses and create a new uuid
     _uuid=$(uuidgen)

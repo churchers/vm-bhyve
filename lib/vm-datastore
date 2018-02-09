@@ -113,7 +113,7 @@ datastore::add(){
     # save
     config::core::set "datastore_list" "${_name}" "1"
     config::core::set "path_${_name}" "${_spec}"
-    [ $? -ne 0 ] && util::err "error saving settings to configuration file"
+    [ $? -eq 0 ] || util::err "error saving settings to configuration file"
 }
 
 # remove a datastore
@@ -136,7 +136,7 @@ datastore::remove(){
 
     config::core::remove "datastore_list" "${_name}"
     config::core::remove "path_${_name}"
-    [ $? -ne 0 ] && util::err "error removing settings from configuration file"
+    [ $? -eq 0 ] || util::err "error removing settings from configuration file"
 }
 
 # get the filesystem path for the specified dataset spec
@@ -290,7 +290,7 @@ datastore::iso(){
     # save
     config::core::set "datastore_list" "${_name}" "1"
     config::core::set "path_${_name}" "iso:${_path}"
-    [ $? -ne 0 ] && util::err "error saving settings to configuration file"
+    [ $? -eq 0 ] || util::err "error saving settings to configuration file"
 }
 
 # find an iso file by looking in the default location

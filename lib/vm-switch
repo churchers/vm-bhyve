@@ -116,20 +116,20 @@ switch::create(){
     # check vlan number
     if [ -n "${_vlan}" ]; then
         echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
-        [ $? -ne 0 ] && util::err "invalid vlan number"
+        [ $? -eq 0 ] || util::err "invalid vlan number"
         [ ${_vlan} -ge 4095 ] && util::err "invalid vlan number"
     fi
 
     # check address
     if [ -n "${_addr}" ]; then
         echo "${_addr}" | egrep -qs '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$'
-        [ $? -ne 0 ] && util::err "address must be supplied in CIDR notation (a.b.c.d/prefix-len)"
+        [ $? -eq 0 ] || util::err "address must be supplied in CIDR notation (a.b.c.d/prefix-len)"
     fi
 
     # check mtu
     if [ -n "${_mtu}" ]; then
         echo "${_mtu}" | egrep -qs '^[0-9]{3,4}$'
-        [ $? -ne 0 ] && util::err "invalid mtu"
+        [ $? -eq 0 ] || util::err "invalid mtu"
         [ ${_mtu} -gt 9000 ] && util::err "invalid mtu"
     fi
 
@@ -240,7 +240,7 @@ switch::vlan(){
     [ -z "${_id}" ] && util:err "unable to locate specified virtual switch"
 
     echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
-    [ $? -ne 0 ] && util::err "invalid vlan number"
+    [ $? -eq 0 ] || util::err "invalid vlan number"
     [ ${_vlan} -ge 4095 ] && util::err "invalid vlan number"
 
     case "${_type}" in

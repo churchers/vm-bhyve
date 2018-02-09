@@ -104,7 +104,7 @@ migration::__recv_snapshot(){
 
     echo "  * stage ${_stage}: waiting for snapshot on port ${_port}"
     socat -u "TCP-LISTEN:${_port}" EXEC:"zfs recv ${VM_DS_ZFS_DATASET}/${_name}" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err_inline "error detected while recieving snapshot"
+    [ $? -eq 0 ] || util::err_inline "error detected while recieving snapshot"
     echo "  * stage ${_stage}: complete"
 }
 
@@ -141,7 +141,7 @@ migration::send(){
 
     # split host & port
     echo "${_host}" | egrep -iqs '^.+:[0-9]+$'
-    [ $? -ne 0 ] && util::err "destination must be specified in host:port format"
+    [ $? -eq 0 ] || util::err "destination must be specified in host:port format"
     _port="${_host##*:}"
     _host="${_host%%:*}"
 
@@ -169,7 +169,7 @@ migration::send(){
         _snap1="$(date +'%Y%m%d%H%M%S')"
         echo "  * stage 1: taking snapshot - ${_snap1}"
         zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap1}" >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err_inline "error taking snapshot"
+        [ $? -eq 0 ] || util::err_inline "error taking snapshot"
 
         # send the first snapshot
         migration::__send_snapshot "1" "${_snap1}" "${_inc}"
@@ -187,7 +187,7 @@ migration::send(){
         _snap2="$(date +'%Y%m%d%H%M%S')"
         echo "  * stage 1b: taking snapshot - ${_snap2}"
         zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap2}" >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err_inline "error taking snapshot"
+        [ $? -eq 0 ] || util::err_inline "error taking snapshot"
 
         # send the middle snapshot
         migration::__send_snapshot "1b" "${_snap2}" "${_snap1}"
@@ -226,7 +226,7 @@ migration::send(){
     _snap3="$(date +'%Y%m%d%H%M%S')"
     echo "  * stage 2: taking snapshot - ${_snap3}"
     zfs snapshot -r "${VM_DS_ZFS_DATASET}/${_name}@${_snap3}" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err_inline "error taking snapshot"
+    [ $? -eq 0 ] || util::err_inline "error taking snapshot"
 
     # triple stage use snap 2
     # if single stage and snapshot given, use that
@@ -265,7 +265,7 @@ migration::__send_snapshot(){
         socat -u EXEC:"zfs send -R ${VM_DS_ZFS_DATASET}/${_name}@${_snapshot}" "TCP4:${_host}:${_port}" >/dev/null 2>&1
     fi
 
-    [ $? -ne 0 ] && util::err_inline "error detected while sending snapshot"
+    [ $? -eq 0 ] || util::err_inline "error detected while sending snapshot"
     echo "  * stage ${_stage}: complete"
 }
 

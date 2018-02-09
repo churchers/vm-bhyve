@@ -151,7 +151,7 @@ core::create(){
     [ ! -d "${VM_DS_PATH}/${_name}" ] && util::err "unable to create virtual machine directory ${VM_DS_PATH}/${_name}"
 
     cp "${vm_dir}/.templates/${_template}.conf" "${VM_DS_PATH}/${_name}/${_name}.conf"
-    [ $? -ne 0 ] && util::err "unable to copy template to virtual machine directory"
+    [ $? -eq 0 ] || util::err "unable to copy template to virtual machine directory"
 
     # generate a uuid
     config::set "${_name}" "uuid" $(uuidgen)
@@ -173,7 +173,7 @@ core::create(){
                 ;;
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
-                [ $? -ne 0 ] && util::err "failed to create sparse file for disk image"
+                [ $? -eq 0 ] || util::err "failed to create sparse file for disk image"
                 ;;
         esac
 
@@ -266,7 +266,7 @@ core::add_disk(){
             ;;
         file)
             truncate -s "${_size}" "${VM_DS_PATH}/${_name}/disk${_num}.img"
-            [ $? -ne 0 ] && util::err "failed to create sparse file for disk image"
+            [ $? -eq 0 ] || util::err "failed to create sparse file for disk image"
             _diskname="disk${_num}.img"
             ;;
         *)
@@ -278,7 +278,7 @@ core::add_disk(){
     config::set "${_name}" "disk${_num}_name" "${_diskname}"
     config::set "${_name}" "disk${_num}_type" "${_emulation}" "1"
     config::set "${_name}" "disk${_num}_dev" "${_device}" "1"
-    [ $? -ne 0 ] && util::err "disk image created but errors while updating guest configuration"
+    [ $? -eq 0 ] || util::err "disk image created but errors while updating guest configuration"
 }
 
 # add network interface to guest
@@ -309,7 +309,7 @@ core::add_network(){
     # update configuration
     config::set "${_name}" "network${_num}_type" "${_emulation}"
     config::set "${_name}" "network${_num}_switch" "${_switch}" "1"
-    [ $? -ne 0 ] && util::err "errors encountered while updating guest configuration"
+    [ $? -eq 0 ] || util::err "errors encountered while updating guest configuration"
 }
 
 # 'vm install'
@@ -404,7 +404,7 @@ core::__start(){
     # confirm we aren't running
     if ! vm::confirm_stopped "${_name}" "1" >/dev/null 2>&1; then
         echo "  ! guest appears to be running already"
-        return 1;
+        return 1
     fi
 
     # check basic settings before going into background mode
@@ -569,12 +569,12 @@ core::rename(){
     # rename folder if it still exists (shouldn't if zfs mode and rename worked)
     if [ -d "${VM_DS_PATH}/${_old}" ]; then
         mv "${VM_DS_PATH}/${_old}" "${VM_DS_PATH}/${_new}" >/dev/null 2>&1
-        [ $? -ne 0 ] && util::err "failed to rename guest directory"
+        [ $? -eq 0 ] || util::err "failed to rename guest directory"
     fi
 
     # rename config file
     mv "${VM_DS_PATH}/${_new}/${_old}.conf" "${VM_DS_PATH}/${_new}/${_new}.conf" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err "changed guest directory but failed to rename configuration file"
+    [ $? -eq 0 ] || util::err "changed guest directory but failed to rename configuration file"
 }
 
 # 'vm console'

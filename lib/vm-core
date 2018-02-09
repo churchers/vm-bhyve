@@ -174,6 +174,9 @@ core::create(){
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
                 [ $? -eq 0 ] || util::err "failed to create sparse file for disk image"
+
+                # make sure only owner can read the disk image
+                chmod 600 "${VM_DS_PATH}/${_name}/${_disk}"
                 ;;
         esac
 

@@ -685,7 +685,7 @@ vm::bhyve_device_mouse(){
 # @modifies _devices _slot
 #
 vm::bhyve_device_console(){
-    local _consle_count _curr=1
+    local _console_count _curr=1
     local _dev_str
 
     [ ${VERSION_BSD} -lt 1200000 ] && return 0

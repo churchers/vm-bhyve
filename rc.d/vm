@@ -10,6 +10,7 @@
 . /etc/rc.subr
 
 : ${vm_enable="NO"}
+: ${vm_startpostcmd=""}
 
 name=vm
 desc="Start and stop vm-bhyve guests on boot/shutdown"
@@ -20,6 +21,7 @@ load_rc_config $name
 command="/usr/local/sbin/${name}"
 start_cmd="${name}_start"
 stop_cmd="${command} stopall"
+start_postcmd=${vm_startpostcmd}
 
 vm_start()
 {

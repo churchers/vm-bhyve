@@ -24,6 +24,13 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# switch libraries
+#
+. "${LIB}/vm-switch-manual"
+. "${LIB}/vm-switch-standard"
+. "${LIB}/vm-switch-vale"
+. "${LIB}/vm-switch-vxlan"
+
 # create switches from rc list on init
 # this should run once per boot to make sure switches from the
 # configuration file have bridge interfaces. If any new switches are
@@ -292,7 +299,8 @@ switch::private(){
 # @param string _nat on|off
 #
 switch::nat(){
-    util::err "nat support is currently disabled"
+    util::warn "internal nat support is currently disabled"
+    util::warn "please add an address to the virtual switch and configure your firewall for NAT manually"
 }
 
 # return the type for a switch

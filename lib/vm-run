@@ -150,11 +150,11 @@ vm::run(){
     # add any custom bhyve options
     [ -n "${_bhyve_options}" ] && _opts="${_opts} ${_bhyve_options}"
 
-    # if we have passthru, check vt-d support now and exit
+    # if we have passthru, check vt-d or amdvi support now and exit
     config::get "_passdev" "passthru0"
 
     if [ -n "${_passdev}" ] && ! util::check_bhyve_iommu; then
-        util::log "guest" "${_name}" "fatal; pci passthrough not supported on this system (no VT-d)"
+        util::log "guest" "${_name}" "fatal; pci passthrough not supported on this system (no VT-d or amdvi)"
         exit 15
     fi
 

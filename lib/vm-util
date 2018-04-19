@@ -92,16 +92,19 @@ util::check_bhyve_support(){
     fi
 }
 
-# check for vt-d support
-# following neel@ wiki we search for DMAR acpi table
+# check for passthru support
+# following neel@ wiki we search for DMAR acpi table for vt-d
+# and we check sysctl if amdvi is present and enabled
 #
-# @return success if host has vt-d
+# @return success if host has vt-d or amdvi
 #
 util::check_bhyve_iommu(){
-    local _mesg
+    local _vtd
+    local _amdvi
 
-    _mesg=$(acpidump -t |grep DMAR)
-    [ -z "${_mesg}" ] && return 1
+    _vtd=$(acpidump -t |grep DMAR)
+    _amdvi=$(sysctl hw |grep 'vmm.amdvi.enable: 1')
+    [ -z "${_vtd}" ] && [ -z "${_amdvi}" ] && return 1
 
     return 0
 }

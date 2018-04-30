@@ -154,7 +154,7 @@
 .Op Ar url
 .Pp
 .Nm
-.Cm image list 
+.Cm image list
 .Nm
 .Cm image create
 .Op Fl d Ar description
@@ -227,7 +227,7 @@ command to finish initialisation. This will create subdirectories inside
 to hold configuration and templates. It will also load any required kernel modules.
 This command needs to be run on each boot, which is normally handled by the rc.d script.
 .Pp
-Sample templates are installed to 
+Sample templates are installed to
 .Pa /usr/local/share/examples/vm-bhyve/ .
 You can make use of these by copying them into your
 .Pa $vm_dir/.templates/
@@ -306,13 +306,13 @@ boot without any user interaction. Instructions for creating a suitable ISO can
 be found at the URL below.
 .Pp
 .Pp
-On FreeBSD 11, VGA access can be enabled by setting the 
+On FreeBSD 11, VGA access can be enabled by setting the
 .Sy graphics="yes"
-option in the guest configuration file. Once the guest has started, vnc IP & port details 
+option in the guest configuration file. Once the guest has started, vnc IP & port details
 can be seen in
 .Sy vm list
 output. See the configuration format documentation below for more detailed information on configuring graphics.
-If network drivers are required, I recommend re-running the 
+If network drivers are required, I recommend re-running the
 .Sy vm install
 command once the guest has been installed, but providing an ISO of the virtio-net drivers instead.
 .Pp
@@ -341,14 +341,14 @@ unattended installation ISO can currently be obtained from
 .Pa https://people.freebsd.org/~grehan/bhyve_uefi/
 .\" ============ GLOBAL OPTIONS =============
 .Sh GLOBAL OPTIONS
-There are some options that can be specified after 
+There are some options that can be specified after
 .Sy vm ,
 but before any subcommand. These are global options that affect the way
 .Nm
 functions.
 .Bl -tag -width 12n
 .It Fl f
-Run 
+Run
 .Nm
 in the foreground. This option is primarily useful with the
 .Nm Cm start
@@ -385,11 +385,11 @@ o Create any configured virtual switches
 Get a global configuration setting. These are settings that affect the functionality
 of vm-bhyve, such as configuring the type of serial console to use. The keyword
 .Sy all
-can be used to retrieve all user configurable settings, or you can specify one or 
+can be used to retrieve all user configurable settings, or you can specify one or
 more settings by name, separated by a space.
 .It Cm set Ar setting=value
 Sets the value of a global configuration setting. Multiple settings can be changed
-at the same time by seperating the 
+at the same time by seperating the
 .Sy setting=value
 pairs with a space.
 .Pp
@@ -558,7 +558,7 @@ List the configured datastores. Normally
 .Sy vm-bhyve
 will store all guests under the directory specified in
 .Pa /etc/rc.conf .
-This is the 
+This is the
 .Sy default
 datastore. Additional datastores can be added, providing the
 ability to store guests in multiple locations on your system.
@@ -573,7 +573,7 @@ storage location should be specified in
 .Sy zfs:pool/dataset
 format.
 .Pp
-Please note that the directory or dataset should already exist. We do not try to 
+Please note that the directory or dataset should already exist. We do not try to
 create it.
 .It Cm datastore remove Ar name
 Remove the specified datastore from the list. This does not destroy the directory
@@ -644,7 +644,7 @@ ISO files in the default .iso store can be downloaded using the
 .Ar iso
 subcommand described below.
 .Pp
-By default the installation is started in the background. Use the 
+By default the installation is started in the background. Use the
 .Ar console
 command to connect and begin the installation.
 .Pp
@@ -676,7 +676,7 @@ interface will be created. If possible, the tap interface will be attached the r
 .Xr bridge 4
 interface, based on the virtual switch specified in the guest configuration.
 .Pp
-If the 
+If the
 .Ar -f
 option is specified, the guest will be started in the foreground on stdio. The
 .Ar -i
@@ -693,7 +693,7 @@ devices will be automatically cleaned up once the guest has exited.
 .Pp
 If a guest is stuck in the bootloader stage, you are given the option to forcibly stop it.
 .Pp
-Multiple guests can be specified to this command at the same time. Each one will be sent a 
+Multiple guests can be specified to this command at the same time. Each one will be sent a
 poweroff event.
 .It Cm console Ar name Op Ar com1|com2
 Connect to the console of the named virtual machine. Without network access, this is the primary
@@ -782,7 +782,7 @@ the virtual machine is fully shutdown and restarted.
 The
 .Cm passthru
 command lists all PCI devices in the system, the device ID required for bhyve, and
-whether the device is currently ready to be used by a guest. In order to make a 
+whether the device is currently ready to be used by a guest. In order to make a
 device ready, it needs to be reserved on boot by adding the device ID to the
 .Sy pptdevs
 variable in
@@ -853,7 +853,7 @@ The guest must always be stopped to use this command.
 .Ar name
 .Ar host:port
 .Xc
-Send a guest to the specified host. The receiving end must already be in recv mode (see 
+Send a guest to the specified host. The receiving end must already be in recv mode (see
 .Ar recv
 command below), which will provide the port number to use. This relies on ZFS features.
 By default this is a two stage procedure. The first stage sends a full snapshot of the guest.
@@ -930,7 +930,7 @@ is specified, instead of listing ISO files, it attempts to download the given fi
 .Xr fetch 1 .
 .It Cm image list
 List available images. Any virtual machine can be packaged into an image, which can then be
-used to create additional machines. All images have a globally unique ID (UUID) which is 
+used to create additional machines. All images have a globally unique ID (UUID) which is
 used to identify them. The list command shows the UUID, the original machine name, the
 date it was created and a short description of the image.
 .Pp
@@ -945,7 +945,7 @@ and as such are only available when using a ZFS dataset as the storage location.
 Create a new image from the named virtual machine. This will create a compressed copy of
 the original guest dataset, which is stored in the
 .Pa $vm_dir/images
-directory. It also creates a 
+directory. It also creates a
 .Pa UUID.manifest
 file which contains details about the image.
 .Pp
@@ -969,7 +969,7 @@ Destroy the specified image.
 .El
 .\" ============ GLOBAL CONFIGURATION ===========
 .Sh GLOBAL CONFIGURATION
-These configuration options are stored in 
+These configuration options are stored in
 .Pa $vm_dir/.config/system.conf ,
 and affect the global functionality of vm-bhyve. These settings can be changed by
 either editing the configuration file manually, or using the
@@ -1000,13 +1000,13 @@ guests that require a loader to be used, this can set to
 .Sy bhyveload
 or
 .Sy grub .
-As an example, NetBSD & OpenBSD can be supported by using the 
+As an example, NetBSD & OpenBSD can be supported by using the
 .Sy generic
 guest type, and specifying the
 .Sy grub
 loader.
 .It loader_timeout
-By default the 
+By default the
 .Sy bhyveload
 and
 .Sy grub
@@ -1035,7 +1035,7 @@ There are two other options.
 .Sy amd ,
 which is almost identical to the standard hostbridge, but advertises itself with a
 vendor ID of AMD. There are also some special cases where you may require no
-hostbridge at all, which can be achieved using the 
+hostbridge at all, which can be achieved using the
 .Sy none
 value.
 .It comports
@@ -1052,7 +1052,7 @@ As of version 1.2, vm-bhyve defaults to
 .Sy yes
 for this option. This causes bhyve to try and set the guests RTC clock to UTC rather
 than the host's time. I consider this more consistent, and should produce the correct
-time in the guest as long as the timezone is correctly set. Additionally, some guests actually 
+time in the guest as long as the timezone is correctly set. Additionally, some guests actually
 expect a UTC realtime clock.
 .Pp
 If you require bhyve to use the host's time, as it would by default, explicitly set this
@@ -1098,7 +1098,7 @@ Normally vm-bhyve will create a
 .Xr tap 4
 device at run-time for each virtual network interface. This may be an issue in more advanced
 configurations where you want to pre-configure the networking manually in a way unsupported by
-vm-bhyve. This option allows you to instruct vm-bhyve to use an existing network device for 
+vm-bhyve. This option allows you to instruct vm-bhyve to use an existing network device for
 this virtual interface, rather than creating one dynamically.
 .It network0_mac
 This option allows you to specify a mac address to use for this interface. If not
@@ -1108,7 +1108,7 @@ will generate a mac address.
 .It network0_span
 Set this option to
 .Sy yes
-to instruct vm-bhyve to add the virtual network interface to the switch as a span port 
+to instruct vm-bhyve to add the virtual network interface to the switch as a span port
 on the bridge.  The default is to add the port to the switch as an ordinary bridge member.
 .It disk0_type
 The emulation type for the first virtual disk. At least one virtual disk is required.
@@ -1164,7 +1164,7 @@ When creating a guest,
 .Nm
 will default to creating a 20G image for each disk, unless an alternative size is
 specified using this option. The size of the first disk can be overridden using
-the 
+the
 .Sy -s
 command line option.
 .Pp
@@ -1291,7 +1291,7 @@ Set this to
 in order to make guest boot wait for the VNC console
 to be opened. This can help when installing operating systems
 that require immediate keyboard input (such as a timed 'enter setup'
-screen). Set to 
+screen). Set to
 .Sy no
 in order to completely disable this function.
 .Pp
@@ -1343,7 +1343,7 @@ zfs_zvol_opts="volblocksize=128k compress=off"
 .It limit_pcpu
 Limit the bhyve process to the specified cpu percentage.
 .Pp
-Please note this, as with all 
+Please note this, as with all
 .Sy limit
 settings, requires
 .Xr rctl 8
@@ -1380,8 +1380,8 @@ output an error during cloning detailing that the configuration file in the new 
 need to be renamed and updated manually.
 .Pp
 On some systems it has been observed that bridging can cause interfaces to go down for up to
-10 seconds, which is enough to stall ssh sessions. This is noticable when the first guest is 
-started or when the last guest is stopped. Once there are at least 2 interfaces bridged 
+10 seconds, which is enough to stall ssh sessions. This is noticable when the first guest is
+started or when the last guest is stopped. Once there are at least 2 interfaces bridged
 (one real interface and a tap interface), further guests can be started/stopped without issue.
 .Pp
 Please report all bugs/issues/feature requests to the github project at

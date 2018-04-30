@@ -4,7 +4,6 @@
 .Sh NAME
 .Nm vm
 .Nd "utility to manage bhyve virtual machines"
-.Nd v1.2
 .Sh SYNOPSIS
 .Nm
 .Cm version
@@ -322,7 +321,6 @@ and so an unattended installation ISO is required which allows Windows to instal
 boot without any user interaction.
 Instructions for creating a suitable ISO can be found at the URL below.
 .Pp
-.Pp
 On FreeBSD 11, VGA access can be enabled by setting the
 .Sy graphics="yes"
 option in the guest configuration file.
@@ -360,7 +358,8 @@ to see the IP address that has been assigned.
 The default unattended installation files should make RDP available, using
 Administrator and Test123 as the default login details.
 .Pp
-A pre-compiled copy of the UEFI firmware (BHYVE_UEFI_20160526.fd), as well as instructions for creating an
+A pre-compiled copy of the UEFI firmware (BHYVE_UEFI_20160526.fd), as well as
+instructions for creating an
 unattended installation ISO can currently be obtained from
 .Pa https://people.freebsd.org/~grehan/bhyve_uefi/
 .\" ============ GLOBAL OPTIONS =============
@@ -447,7 +446,6 @@ o Overall bytes sent and received via this switch
 o Physical ports connected
 .br
 o Virtual ports, including the associated virtual machine
-.br
 .It Xo
 .Cm switch create
 .Op Fl t Ar type
@@ -547,11 +545,11 @@ of 0.
 .It Cm switch nat Ar name Ar on|off
 Enable or disable NAT functionality on the specified switch.
 Please note that
-.Xr pf
+.Xr pf 4
 is required for this functionality and must be enabled in
 .Pa /etc/rc.conf .
 If DHCP is desired, please install the
-.Xr dnsmasq
+.Xr dnsmasq 8
 package.
 vm-bhyve will generate a sample dnsmasq configuration in
 .Pa /usr/local/etc/dnsmasq.conf.bhyve ,
@@ -570,9 +568,9 @@ interface.
 is chosen based on the ID of the bridge interface.
 For example, if the switch is using bridge10, the network will be
 172.16.10.0/24.
-.Xr dnsmasq
+.Xr dnsmasq 8
 can be used to provide DHCP to the guests, and
-.Xr pf
+.Xr pf 4
 rules are inserted to provide the NAT translation.
 .Pp
 .Pa /etc/pf.conf
@@ -1031,7 +1029,6 @@ See the
 .Cm send
 command above for details on this mode.
 .El
-.Xc
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso
@@ -1531,18 +1528,18 @@ Limit guest disk write iops to the specified number of operations per second.
 .El
 .\" ============ SEE ALSO =============
 .Sh SEE ALSO
-.Xr bhyve 8 ,
-.Xr bhyveload 8 ,
-.Xr tap 4 ,
-.Xr bridge 4 ,
-.Xr vlan 4 ,
-.Xr nmdm 4 ,
 .Xr cu 1 ,
 .Xr fetch 1 ,
+.Xr tmux 1 ,
 .Xr truncate 1 ,
-.Xr zfs 8 ,
+.Xr bridge 4 ,
+.Xr nmdm 4 ,
+.Xr tap 4 ,
+.Xr vlan 4 ,
+.Xr bhyve 8 ,
+.Xr bhyveload 8 ,
 .Xr rctl 8 ,
-.Xr tmux 1
+.Xr zfs 8
 .\" ============ BUGS =============
 .Sh KNOWN BUGS
 If a guest is renamed, and then cloned using a snapshot taken before the
@@ -1563,5 +1560,5 @@ interface), further guests can be started/stopped without issue.
 Please report all bugs/issues/feature requests to the github project at
 https://github.com/churchers/vm-bhyve
 .\" ============ AUTHOR =============
-.Sh AUTHOR
+.Sh AUTHORS
 .An Matt Churchyard Aq Mt churchers@gmail.com

@@ -303,11 +303,15 @@ This is used in place of
 to load the guest kernel into memory.
 .\" ============== WINDOWS ===============
 .Sh WINDOWS SUPPORT
-Windows guests are supported on versions of FreeBSD that have UEFI
+Windows guests are supported on versions of
+.Fx
+that have UEFI
 support in
 .Xr bhyve 8 .
-As of April 2016, UEFI support should be available in FreeBSD 10.3+ and
-11-CURRENT.
+As of April 2016, UEFI support should be available in
+.Fx 10.3-RELEASE
+and
+.Fx 11-CURRENT .
 .Pp
 You will also need a copy of the UEFI firmware.
 This can either be installed using the
@@ -315,13 +319,17 @@ This can either be installed using the
 port, or you can manually download a copy (see URL below) to
 .Pa $vm_dir/.config/BHYVE_UEFI.fd .
 .Pp
-If you are running FreeBSD 10, there is no VGA console in
+If you are running
+.Fx 10
+, there is no VGA console in
 .Xr bhyve 8 ,
 and so an unattended installation ISO is required which allows Windows to install and
 boot without any user interaction.
 Instructions for creating a suitable ISO can be found at the URL below.
 .Pp
-On FreeBSD 11, VGA access can be enabled by setting the
+On
+.Fx 11 ,
+VGA access can be enabled by setting the
 .Sy graphics="yes"
 option in the guest configuration file.
 Once the guest has started, vnc IP & port details can be seen in
@@ -960,7 +968,7 @@ completed.
 Please note that any virtual switches used by the guest should exist on both
 hosts, and if using UEFI, the firmware must be available on both.
 It is also advised that the receiver is running a matching or newer version of
-FreeBSD.
+.Fx .
 .Pp
 The function is not supported if the guest has passthrough devices or custom
 disks.
@@ -1116,12 +1124,18 @@ The settings for each guest are stored in
 An overview of the available configuration options is listed below.
 .Bl -tag -width 17n
 .It loader
-Windows, Linux & FreeBSD guests will use the correct loader by default.
+Windows, Linux &
+.Fx
+guests will use the correct loader by default.
 For other guests that require a loader to be used, this can set to
 .Sy bhyveload
 or
 .Sy grub .
-As an example, NetBSD & OpenBSD can be supported by using the
+As an example,
+.Nx
+&
+.Ox
+can be supported by using the
 .Sy generic
 guest type, and specifying the
 .Sy grub
@@ -1319,7 +1333,9 @@ new machine is provisioned
 .It ahci_device_limit
 By default, all AHCI devices are added on their own controller in a unique
 slot/function.
-In FreeBSD 12 it is possible to put up to 32 devices on one controller.
+In
+.Fx 12
+it is possible to put up to 32 devices on one controller.
 This setting allows you to control the number of devices (ahci-hd/ahci-cd) that
 vm-bhyve will put on a single controller.
 The default is

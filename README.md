@@ -29,8 +29,8 @@ See the sections below for more in-depth details.
 
     1. pkg install vm-bhyve
     2. zfs create pool/vm
-    3. echo 'vm_enable="YES"' >> /etc/rc.conf
-    4. echo 'vm_dir="zfs:pool/vm"' >> /etc/rc.conf
+    3. sysrc vm_enable="YES"
+    4. sysrc vm_dir="zfs:pool/vm"
     5. vm init
     6. cp /usr/local/share/examples/vm-bhyve/* /mountpoint/for/pool/vm/.templates/
     7. vm switch create public
@@ -73,7 +73,7 @@ in mind that you won't get back to your terminal until the guest is fully shutdo
 
 ## Install
 
-Download the latest release from Github, or install `sysutils/vm-bhyve`
+Download the latest release from GitHub, or install `sysutils/vm-bhyve`
 
 To install, just run the following command inside the vm-bhyve source directory
 

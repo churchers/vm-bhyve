@@ -3,32 +3,34 @@
 #
 
 PREFIX?=/usr/local
-MAN=
-BINOWN=root
-BINGRP=wheel
-BINMODE=0500
-BINDIR=$(PREFIX)/sbin
-FILESDIR=$(PREFIX)/lib/vm-bhyve
-EXAMPLESDIR=${PREFIX}/share/examples/vm-bhyve
-RCDIR=$(PREFIX)/etc/rc.d
-MANDIR=$(PREFIX)/man/man8
-MKDIR=/bin/mkdir
+BINDIR=$(DESTDIR)$(PREFIX)/sbin
+EXAMPLESDIR=$(DESTDIR)${PREFIX}/share/examples/vm-bhyve
+LIBDIR=$(DESTDIR)$(PREFIX)/lib/vm-bhyve
+MANDIR=$(DESTDIR)$(PREFIX)/man/man8
+RCDIR=$(DESTDIR)$(PREFIX)/etc/rc.d
+
 CP=/bin/cp
+INSTALL=/usr/bin/install
+MKDIR=/bin/mkdir
 
 PROG=vm
 MAN=$(PROG).8
 
 install:
 	$(MKDIR) -p $(BINDIR)
-	$(MKDIR) -p $(FILESDIR)
+	$(INSTALL) -m 544 $(PROG) $(BINDIR)/
+
+	$(MKDIR) -p $(LIBDIR)
+	$(INSTALL) lib/* $(LIBDIR)/
+
 	$(MKDIR) -p $(EXAMPLESDIR)
-	$(MKDIR) -p $(RCDIR)
-	$(MKDIR) -p $(MANDIR)
-	$(INSTALL) -m $(BINMODE) $(PROG) $(BINDIR)/
-	$(INSTALL) lib/* $(FILESDIR)/
 	$(INSTALL) sample-templates/* $(EXAMPLESDIR)/
+
+	$(MKDIR) -p $(RCDIR)
 	$(INSTALL) -m 555 rc.d/* $(RCDIR)/
-	rm -f $(MAN).gz
+
+	$(MKDIR) -p $(MANDIR)
+	rm -f -- $(MAN).gz
 	gzip -k $(MAN)
 	$(INSTALL) $(MAN).gz $(MANDIR)/
 

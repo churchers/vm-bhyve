@@ -244,7 +244,7 @@ switch::vlan(){
 
     switch::id "_id" "${_switch}"
     switch::type "_type" "${_switch}"
-    [ -z "${_id}" ] && util:err "unable to locate specified virtual switch"
+    [ -z "${_id}" ] && util::err "unable to locate specified virtual switch"
 
     echo "${_vlan}" | egrep -qs '^[0-9]{1,4}$'
     [ $? -eq 0 ] || util::err "invalid vlan number"
@@ -303,6 +303,37 @@ switch::nat(){
     util::warn "please add an address to the virtual switch and configure your firewall for NAT manually"
 }
 
+# set or remove ip address from a virtual switch
+#
+# @param string _switch name of the switch
+# @param string _addr the ip address to add (or "none" to remove
+#
+switch::address(){
+    local _switch="$1"
+    local _addr="$2"
+    local _id _type
+
+    [ -z "${_switch}" ] && util::usage
+
+    switch::id "_id" "${_switch}"
+    switch::type "_type" "${_switch}"
+    [ -z "${_id}" ] && util::err "unable to locate specified virtual switch"
+
+    # check address
+    if [ -n "${_addr}" ] && [ "${_addr}" != "none" ]; then
+        echo "${_addr}" | egrep -qs '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$'
+        [ $? -eq 0 ] || util::err "address must be supplied in CIDR notation (a.b.c.d/prefix-len)"
+    fi
+
+    case "${_type}" in
+        standard) switch::standard::address "${_switch}" "${_addr}" ;;
+        manual)   ;&
+        vale)     ;&
+        vxlan)    util::err "feature not currently supported on switches of this type" ;;
+        *)        util::err "unable to configure switch of unknown type" ;;
+    esac
+}
+
 # return the type for a switch
 #
 # @param string _var variable to put type into
@@ -314,6 +345,10 @@ switch::type(){
 
     [ -z "${_switch}" ] && return 1
     config::core::get "${_var}" "type_${_switch}"
+
+    # old code didn't set a type
+    # assume standard if we didn't find a config setting
+    [ $? -ne 0 ] && setvar "${_var}" "standard"
 }
 
 # check if a switch is configured for private members

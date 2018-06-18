@@ -167,6 +167,31 @@ switch::standard::vlan(){
     switch::standard::__add_members "${_switch}" "${_id}"
 }
 
+# set or remove ip address
+#
+# @param string _swtich name of the switch
+# @param string _addr address or "none"
+# @scope _id switch if from parent switch::address
+#
+switch::standard::address(){
+    local _switch="$1"
+    local _addr="$2"
+    local _curr
+
+    if [ "${_addr}" = "none" ]; then
+
+        config::core::get "_curr" "addr_${_switch}"
+        [ $? -ne 0 ] && util::err "unable to locate an existing address for this switch"
+
+        config::core::remove "addr_${_switch}"
+        ifconfig "${_id}" "${_curr}" delete
+    else
+
+        config::core::set "addr_${_switch}" "${_addr}"
+        ifconfig "${_id}" "${_addr}"
+    fi
+}
+
 # add all member interfaces to a switch
 #
 # @param string _switch the name of the switch

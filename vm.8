@@ -139,17 +139,6 @@
 .Cm rollback
 .Op Fl r
 .Ar name@snapshot
-.Nm
-.Cm send
-.Op Fl 12t
-.Op Fl i Ar snapshot
-.Ar name
-.Ar host:port
-.Nm
-.Cm recv
-.Op Fl 12ts
-.Op Fl d Ar datastore
-.Ar name
 .Pp
 .Nm
 .Cm iso
@@ -925,97 +914,6 @@ option can be passed directly into
 .Cm rollback
 .Pp
 The guest must always be stopped to use this command.
-.It Xo
-.Cm send
-.Op Fl 12t
-.Op Fl i Ar snapshot
-.Ar name
-.Ar host:port
-.Xc
-Send a guest to the specified host.
-The receiving end must already be in recv mode (see
-.Ar recv
-command below), which will provide the port number to use.
-This relies on ZFS features.
-By default this is a two stage procedure.
-The first stage sends a full snapshot of the guest.
-Once this is complete the guest is shutdown using an ACPI shutdown (if
-required) and then an incremental snapshot is sent.
-If required, the guest can be automatically booted on the receiving host once
-completed.
-.Pp
-Please note that any virtual switches used by the guest should exist on both
-hosts, and if using UEFI, the firmware must be available on both.
-It is also advised that the receiver is running a matching or newer version of
-.Fx .
-.Pp
-The function is not supported if the guest has passthrough devices or custom
-disks.
-.Bl -tag -width 12n
-.It Fl i Ar snapshot
-If the receiving end already has a copy of the guest, use this to specify an
-existing snapshot to use as the incremental source, rather than sending a full
-snapshot.
-A full snapshot will fail if the guest already exists on the remote host.
-.Pp
-If only running stage 2, the guest must already exist on the receiving side and
-this option is required.
-.It Fl 1
-Only run the first stage.
-This will send a single snapshot and then exit.
-The receiving end must be run in the same mode, and is useful for sending the
-first major snapshot without interrupting the guest.
-.It Fl 2
-Only run the second stage.
-If the remote end already has an up-to-date snapshot, this can be used to shut
-the guest down (if required), send a incremental snapshot, then boot the new
-guest.
-.It Fl t
-This runs triple stage mode, useful for large guests.
-The basic premise behind this is that the first full send may take several
-hours, or longer, for a large guest.
-During this time many changes could be made.
-We then run a second stage while the guest is still running to send these
-changes.
-This should hopefully send less data, and so complete quicker.
-Finally we shutdown the guest and do a third send.
-If the second send completed quicker than the first, there should be far fewer
-changes to send during this third stage, resulting in minimal downtime.
-.El
-.It Xo
-.Cm recv
-.Op Fl s12
-.Op Fl d Ar datastore
-.Ar name
-.Xc
-Prepare to receive a guest.
-This outputs a port number which should be provided to the
-.Ar send
-command used on the sending host.
-.Bl -tag -width 12n
-.It Fl d Ar datastore
-Create the new guest on the specific datastore instead of the
-.Sy default
-store.
-.It Fl s
-Start the guest as soon as stage 2 has been completed.
-.It Fl 1
-Only run the first stage.
-This receives a snapshot and then exits.
-This is useful to get the full snapshot sent, allowing you to complete the
-second stage during a pre-determined maintenance window.
-.It Fl 2
-Only run the second stage.
-This expects to receive an incremental snapshot for an existing guest, and will
-attempt to start the guest (if the
-.Sy -s
-option is also provided).
-.It Fl t
-Run the receiver in triple stage mode which expects three snapshots.
-See the
-.Cm send
-command above for details on this mode.
-.El
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso

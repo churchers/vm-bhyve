@@ -33,6 +33,12 @@ util::setup(){
     util::load_module "if_tap"
 
     sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
+
+    # do we have the default template example, but no default in our .templates?
+    # if so, get a copy, this at least allows a simple "vm create" to work out of the box
+    if [ -e "/usr/local/share/examples/vm-bhyve/default.conf" ] && [ ! -e "${vm_dir}/.templates/default.conf" ]; then
+        cp "/usr/local/share/examples/vm-bhyve/default.conf" "${vm_dir}/.templates/" >/dev/null 2>&1
+    fi
 }
 
 # load a kernel module

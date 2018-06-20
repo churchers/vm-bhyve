@@ -963,3 +963,28 @@ vm::find_available_net_port(){
     setvar "${_var}" ""
     return 1
 }
+
+# remove any values from configuration that should be unique
+# such as uuid and mac addresses. these should be generated
+# automatically at runtime
+#
+# used for cloning or imaging existing guests
+# should this remove devices like passthru that cannot be shared?
+#
+# @param string _name name of guest to generalise
+#
+vm::generalise(){
+    local _name="$1"
+    local _entry _num=0
+
+    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
+    config::remove "${_name}" "uuid"
+
+    while [ 1 ]; do
+        config::get "_entry" "network${_num}_mac"
+        [ -z "${_entry}" ] && break
+
+        config::remove "${_name}" "network${_num}_mac"
+        _num=$((_num + 1))
+    done
+}

@@ -302,18 +302,8 @@ zfs::clone(){
         exit 1
     fi
 
-    # update mac addresses and uuid
-    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    config::set "${_name}" "uuid" "${_uuid}"
-
-    # find all network interfaces and change mac
-    while [ 1 ]; do
-        config::get "_entry" "network${_num}_type"
-        [ -z "${_entry}" ] && break
-
-        vm::generate_static_mac
-        _num=$((_num + 1))
-    done
+    # generalise the clone
+    vm::generalise "${_name}"
 }
 
 # 'vm image create'
@@ -443,17 +433,8 @@ zfs::image_provision(){
     # update mac addresses and create a new uuid
     _uuid=$(uuidgen)
 
-    config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    config::set "${_name}" "uuid" "${_uuid}"
-
-    # find all network interfaces and change mac
-    while [ 1 ]; do
-        config::get "_entry" "network${_num}_type"
-        [ -z "${_entry}" ] && break
-
-        vm::generate_static_mac
-        _num=$((_num + 1))
-    done
+    # remove unique settings from new image
+    vm::generalise "${_name}"
 
     # vm may be started when 'vm image create' is executed
     rm -f "${VM_DS_PATH}/${_name}/run.lock" >/dev/null 2>&1

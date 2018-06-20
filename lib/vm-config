@@ -93,7 +93,14 @@ config::set(){
     fi
 
     sysrc -inqf "${VM_DS_PATH}/${_name}/${_name}.conf" "${_key}=${_value}" >/dev/null 2>&1
-    return $?
+}
+
+# remove a value from guest config
+config::remove(){
+    local _name="$1"
+    local _key="$2"
+
+    sysrc -inxqf "${VM_DS_PATH}/${_name}/${_name}.conf" "${_key}" >/dev/null 2>&1
 }
 
 # load core configuration file

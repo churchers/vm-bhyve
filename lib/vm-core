@@ -390,7 +390,8 @@ core::start(){
 core::__start(){
     local _name="$1"
     local _iso="$2"
-    local _cpu _memory _disk _guest _loader _console _tmux_cmd _tmux_name
+    local _cpu _memory _disk _guest _loader _console
+    local _tmux_cmd _tmux_name _util
 
     [ -z "${_name}" ] && util::usage
 
@@ -427,6 +428,16 @@ core::__start(){
     if [ -n "${VM_NO_UG}" -a "${_loader}" != "bhyveload" ]; then
         echo "  ! no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
         return 1
+    fi
+
+    # check loader
+    if [ "${_loader}" = "grub" ]; then
+        _util=$(which grub-bhyve)
+
+        if [ -z "${_util}" ]; then
+            echo "  ! grub requested but sysutils/grub2-bhyve not installed?"
+            return 1
+        fi
     fi
 
     # check for tmux

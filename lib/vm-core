@@ -509,7 +509,10 @@ core::reset(){
     [ -z "${_name}" ] && util::usage
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
 
-    util::confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
+    if [ -z "${VM_OPT_FORCE}" ]; then
+        util::confirm "Are you sure you want to forcefully reset this virtual machine" || exit 0
+    fi
+
     bhyvectl --force-reset --vm=${_name}
 }
 
@@ -524,7 +527,10 @@ core::poweroff(){
     [ -z "${_name}" ] && util::usage
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
 
-    util::confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
+    if [ -z "${VM_OPT_FORCE}" ]; then
+        util::confirm "Are you sure you want to forcefully poweroff this virtual machine" || exit 0
+    fi
+
     bhyvectl --force-poweroff --vm=${_name}
 }
 
@@ -542,7 +548,10 @@ core::destroy(){
     # make sure it's stopped!
     vm::confirm_stopped "${_name}" || exit 1
 
-    util::confirm "Are you sure you want to completely remove this virtual machine" || exit 0
+    if [ -z "${VM_OPT_FORCE}" ]; then
+        util::confirm "Are you sure you want to completely remove this virtual machine" || exit 0
+    fi
+
     zfs::destroy_dataset "${VM_DS_ZFS_DATASET}/${_name}"
     [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH}/${_name}"
 }

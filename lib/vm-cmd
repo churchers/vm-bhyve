@@ -152,6 +152,7 @@ cmd::parse_image(){
 
 # look for any arguments to the vm command
 # -f = foreground mode:   run vm-bhyve/loader/bhyve in the foreground
+#    = force:             force confirmation for some actions (see man pages)
 # -i = interactive mode:  if using tmux, don't detach the tmux session
 # -t = tmux mode: internal flag to notify vm-run we are in tmux
 #
@@ -159,13 +160,16 @@ cmd::parse_image(){
 # VM_COMMAND for the main command parser to handle
 #
 # @modifies VM_COMMAND VM_OPT_FOREGROUND VM_OPT_INTERACTIVE VM_OPT_TMUX vm_dir
+# @modifies VM_OPT_FORCE
 #
 cmd::parse_args(){
     local _opt
 
     while getopts fit _opt; do
         case ${_opt} in
-            f) VM_OPT_FOREGROUND="1" ;;
+            f) VM_OPT_FOREGROUND="1"
+               VM_OPT_FORCE="1"
+               ;;
             i) VM_OPT_INTERACTIVE="1" ;;
             t) VM_OPT_TMUX="1" ;;
         esac

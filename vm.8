@@ -77,6 +77,8 @@
 .Op Fl s Ar size
 .Ar name
 .Nm
+.Cm
+.Op Fl f
 .Cm destroy
 .Ar name
 .Nm
@@ -113,9 +115,11 @@
 .Op Fl s Ar size|switch
 .Ar name
 .Nm
+.Op Fl f
 .Cm reset
 .Ar name
 .Nm
+.Op Fl f
 .Cm poweroff
 .Ar name
 .Nm
@@ -380,6 +384,12 @@ This option is primarily useful with the
 or
 .Nm Cm install
 command and runs the guest on stdio.
+.Pp
+Note that for some commands, such as
+.Sy destroy ,
+.Sy reset ,
+.Sy poweroff ,
+this is interpreted as "force", and will perform the action without confirmation.
 .It Fl i
 Run the guest in interactive mode.
 This mode is only supported when using the

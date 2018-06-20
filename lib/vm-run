@@ -61,6 +61,7 @@ vm::run(){
     config::get "_debug" "debug" "no"
     config::get "_ignore_msr" "ignore_bad_msr" "no"
     config::get "_bhyve_options" "bhyve_options"
+    config::get "_bhyveload_loader" "bhyveload_loader"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then

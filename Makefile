@@ -30,9 +30,9 @@ install:
 	$(INSTALL) -m 555 rc.d/* $(RCDIR)/
 
 	$(MKDIR) -p $(MANDIR)
-	rm -f -- $(MAN).gz
-	gzip -k $(MAN)
+	gzip -fk $(MAN)
 	$(INSTALL) $(MAN).gz $(MANDIR)/
+	rm -f -- $(MAN).gz
 
 vmdir:
 	@if [ -z "${PATH}" ]; then \

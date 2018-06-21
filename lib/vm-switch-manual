@@ -65,8 +65,8 @@ switch::manual::create(){
     [ -z "${_bridge}" ] && util::err "you must specify a bridge to import when creating a manual switch"
 
     # check we can find this bridge on the system
-    _exists=$(ifconfig | grep "^${_bridge}: ")
-    [ -z "${_exists}" ] && util::err "${_bridge} does not appear to be a valid existing bridge"
+    ifconfig "${_bridge}" >/dev/null 2>&1
+    [ $? -ne 0 ] && util::err "${_bridge} does not appear to be a valid existing bridge"
 
     # store configuration
     config::core::set "switch_list" "${_switch}" "1"

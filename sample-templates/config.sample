@@ -323,12 +323,18 @@ graphics_wait="auto"
 #
 xhci_mouse="yes"
 
-# virt_consoles
-# specify a number between 1-16 to create virtio_console ports
-# for the guest. Each port will correspond to a vconsoleX.sock
-# unix socket on the host, which is created inside the guest directory.
+# virt_console0
+# create up to 16 virtual console devices
 #
-virt_consoles="2"
+# the value can be yes|on|1 to create a numbered port. FreeBSD < 12
+# only supports virtio consoles configured in this way
+#
+# For guests with named console support (FreeBSD 12+, Linux?), the
+# value can be the name of the port to create. The name "org.freenas.byhve-agent"
+# can be useful as it ties in with tools written to make use of the
+# FreeNAS bhyve-agent interface.
+#
+virt_console0="org.freenas.byhve-agent"
 
 # grub_install0
 # use this to specify grub commands that should be run inside the

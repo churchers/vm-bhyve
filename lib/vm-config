@@ -162,8 +162,6 @@ config::core::set(){
     else
         sysrc -inqf "${vm_dir}/.config/system.conf" "${_var}"="${_value}" >/dev/null 2>&1
     fi
-
-    return $?
 }
 
 # remove a value from core configuration
@@ -181,6 +179,4 @@ config::core::remove(){
     else
         sysrc -inxqf "${vm_dir}/.config/system.conf" ${_var} >/dev/null 2>&1
     fi
-
-    return $?
 }

@@ -253,7 +253,7 @@ vm::run(){
         util::log "guest" "${_name}" "bhyve exited with status ${_exit}"
 
         # remove any console sockets
-        rm ${VM_DS_PATH}/${_name}/vconsole*.sock >/dev/null 2>&1
+        rm ${VM_DS_PATH}/${_name}/vtcon.* >/dev/null 2>&1
 
         # if 0, guest rebooted so continue loop
         # anything else we break and shutdown
@@ -685,22 +685,27 @@ vm::bhyve_device_mouse(){
 # @modifies _devices _slot
 #
 vm::bhyve_device_console(){
-    local _console_count _curr=1
+    local _console _curr=0
     local _dev_str
 
-    [ ${VERSION_BSD} -lt 1200000 ] && return 0
-    config::get "_console_count" "virt_consoles"
-    [ -z "${_console_count}" ] && return 0
+    [ ${VERSION_BSD} -lt 1102000 ] && return 0
+    config::get "_console" "virt_console0"
+    [ -z "${_console}" ] && return 0
 
-    # make sure it's 1-16
-    echo "${_console_count}" | egrep -qs '^[0-9]{1,2}$'
-    [ $? -ne 0 ] && return 1
-    [ ${_console_count} -gt 16 ] && return 1
+    # add ports
+    while [ -n "${_console}" ]; do
+         # if set to "yes/on/1", just use the console number as port name
+         case "${_console}" in
+             [Yy][Ee][Ss]|[Oo][Nn]|1) _console="${_curr}" ;;
+         esac
 
-    # add each console port to the device string
-    while [ ${_curr} -le ${_console_count} ]; do
-        _dev_str="${_dev_str},port${_curr}=${VM_DS_PATH}/${_name}/vconsole${_curr}.sock"
-        _curr=$((_curr + 1))
+         _dev_str="${_dev_str},${_console}=${VM_DS_PATH}/${_name}/vtcon.${_console}"
+
+         # stop at 16
+         [ ${_curr} -ge 16 ] && break;
+
+         _curr=$((_curr + 1))
+         config::get "_console" "virt_console${_curr}"
     done
 
     _devices="${_devices} -s ${_slot}:0,virtio-console${_dev_str}"

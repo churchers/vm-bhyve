@@ -212,6 +212,11 @@ info::guest_show(){
             # virtio-console devices
             info::guest_vtcon
         fi
+        # show virtio-console socket path
+        echo ""
+        echo "${_INDENT}virtio-console"
+        vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
+        echo "${_INDENT}${_INDENT}${_path}${_name}.sock"
     fi
 
     # network interfaces

@@ -40,6 +40,7 @@
 # _memory: RAM
 # _guest: guest type
 # _bootdisk: full path to primary disk
+# _bhyveload_loader: full path to loader used by bhyveload
 #
 # I've written append wrong as it just needs to be something other than 'write',
 # and is much more readable when all the util::log* calls line up
@@ -72,6 +73,10 @@ guest::load(){
             else
                 _args="${_args} -d ${_bootdisk}"
             fi
+            if [ -n "${_bhyveload_loader}" ]  ; then
+                _args="${_args} -l ${_bhyveload_loader}"
+            fi
+
             ;;
         grub)
             _command=$(which grub-bhyve)

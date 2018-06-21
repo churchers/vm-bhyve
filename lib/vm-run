@@ -61,6 +61,7 @@ vm::run(){
     config::get "_debug" "debug" "no"
     config::get "_ignore_msr" "ignore_bad_msr" "no"
     config::get "_bhyve_options" "bhyve_options"
+    config::get "_bhyveload_loader" "bhyveload_loader"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -312,6 +313,7 @@ vm::bhyve_device_comports(){
     local _port _num=1 _nmdm="" _tmux_name
 
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
+    unlink "${VM_DS_PATH}/${_name}/${_name}.sock" >/dev/null 2>&1
 
     for _port in ${_comports}; do
         if [ ${_num} = 1 ]; then
@@ -332,12 +334,15 @@ vm::bhyve_device_comports(){
         vm::find_console "_nmdm" "${_nmdm}"
 
         # use first com port for the loader
-        [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
+        [ ${_num} -eq 1 ] && _com="/dev/nmdm-${_name}-A"
 
-        echo "${_port}=/dev/nmdm${_nmdm}B" >> "${VM_DS_PATH}/${_name}/console"
-        _comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
+        echo "${_port}=/dev/nmdm-${_name}-B" >> "${VM_DS_PATH}/${_name}/console"
+        _comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm-${_name}-A"
         _num=$((_num + 1))
     done
+
+    # Create the virtio-console socket
+    _comstring="${_comstring}${_comstring:+ }-s 2,virtio-console,org.freenas.byhve-agent=${VM_DS_PATH}/${_name}/${_name}.sock"
 }
 
 # get bhyve device string for basic devices

@@ -331,11 +331,12 @@ vm::bhyve_device_comports(){
 
         vm::find_console "_nmdm" "${_nmdm}"
 
-        # use first com port for the loader
-        [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
+        # create unique com port for the loader
+	[ ${_num} -eq 1 ] && _com="/dev/nmdm-${_name}-A"
 
-        echo "${_port}=/dev/nmdm${_nmdm}B" >> "${VM_DS_PATH}/${_name}/console"
-        _comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
+	echo "${_port}=/dev/nmdm-${_name}-B" >> "${VM_DS_PATH}/${_name}/console"
+	_comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm-${_name}-A"
+	[ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
         _num=$((_num + 1))
     done
 }

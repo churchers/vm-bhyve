@@ -208,6 +208,9 @@ info::guest_show(){
             while read _port; do
                 echo "${_INDENT}${_INDENT}${_port%%=*}: ${_port##*=}"
             done
+
+            # virtio-console devices
+            info::guest_vtcon
         fi
     fi
 
@@ -221,6 +224,30 @@ info::guest_show(){
     info::guest_zfs
 
     echo ""
+}
+
+# display any virtio consoles
+#
+info::guest_vtcon(){
+    local _INDENT="    "
+    local _console _num=0
+
+    config::get "_console" "virt_console0"
+    [ -z "${_console}" ] && return 0
+
+    echo ""
+
+    while [ -n "${_console}" -a ${_num} -lt 16 ]; do
+        # if set to "yes/on/1", just use the console number as port name
+        case "${_console}" in
+            [Yy][Ee][Ss]|[Oo][Nn]|1) _console="${_num}" ;;
+        esac
+
+        echo "${_INDENT}vtcon${_num}: ${VM_DS_PATH}/${_name}/vtcon.${_console}"
+
+        _num=$((_num + 1))
+        config::get "_console" "virt_console${_num}"        
+    done
 }
 
 # display zfs snapshot/origin data

@@ -49,7 +49,7 @@
 #
 guest::load(){
     local _iso="$1"
-    local _args _command _timeout _grub_opt
+    local _args _command _timeout _grub_opt _bsd_loader
 
     # all loaders have same console and wired memory options
     [ -z "${VM_OPT_FOREGROUND}" ] && _args="-c ${_com}"
@@ -62,6 +62,10 @@ guest::load(){
         bhyveload)
             _command="bhyveload"
             _args="${_args}${_args:+ }-m ${_memory} -e autoboot_delay=${_timeout}"
+
+            # have a custom guest loader specified?
+            config::get "_bsd_loader" "bhyveload_loader"
+            [ -n "${_bsd_loader}" ] && _args="${_args} -l ${_bsd_loader}"
 
             if [ -n "${_iso}" ]; then
                 _args="${_args} -d ${_iso}"

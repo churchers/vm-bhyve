@@ -693,16 +693,13 @@ vm::bhyve_device_console(){
     [ -z "${_console}" ] && return 0
 
     # add ports
-    while [ -n "${_console}" ]; do
+    while [ -n "${_console}" -a ${_curr} -lt 16 ]; do
          # if set to "yes/on/1", just use the console number as port name
          case "${_console}" in
              [Yy][Ee][Ss]|[Oo][Nn]|1) _console="${_curr}" ;;
          esac
 
          _dev_str="${_dev_str},${_console}=${VM_DS_PATH}/${_name}/vtcon.${_console}"
-
-         # stop at 16
-         [ ${_curr} -ge 16 ] && break;
 
          _curr=$((_curr + 1))
          config::get "_console" "virt_console${_curr}"

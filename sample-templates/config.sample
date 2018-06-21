@@ -18,8 +18,16 @@
 #
 loader=""
 
+# bhyveload_loader
+# If using bhyveload, this option can be used to specify the path
+# to the loader inside the guest to use
+#
+# the default is /boot/userboot.so
+#
+bhyveload_loader=""
+
 # loader_timeout
-# By default grub-bhyve will wait 3 seconds before booting the default
+# By default bhyveload & grub-bhyve will wait 3 seconds before booting the default
 # option. This setting allows you to either reduce the timeout to
 # make boot faster, or increase it so that it's easier to access
 # the grub console before it starts booting

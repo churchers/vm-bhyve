@@ -111,7 +111,7 @@ switch::create(){
     _switch="$1"
 
     # check for a valid switch name
-    core::check_name "${_switch}" || util::err "invalid switch name - '${_name}'"
+    core::check_name "${_switch}" || util::err "invalid switch name - '${_switch}'"
 
     # make sure it's not an existing name
     config::core::get "_list" "switch_list"

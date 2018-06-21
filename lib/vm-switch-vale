@@ -43,7 +43,6 @@ switch::vale::show(){
 # @param string _switch the name of the switch
 #
 switch::vale::create(){
-    local _switch="$1"
 
     config::core::set "switch_list" "${_switch}" "1"
     config::core::set "type_${_switch}" "vale"

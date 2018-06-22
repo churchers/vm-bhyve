@@ -37,6 +37,8 @@ switch::manual::init(){
     config::core::get "_bridge" "bridge_${_name}"
     [ -z "${_bridge}" ] && return 1
 
+    # don't rename custom bridges. user can set this in rc.conf
+    # or just stick with bridgeX
     ifconfig "${_bridge}" description "vm-${_name}" up >/dev/null 2>&1
 }
 
@@ -87,7 +89,7 @@ switch::manual::remove(){
     local _switch="$1"
     local _id
 
-    switch::standard::id "_id" "${_switch}"
+    switch::manual::id "_id" "${_switch}"
     [ -z "${_id}" ] && return 0
 
     # try to remove our description
@@ -124,4 +126,15 @@ switch::manual::remove_member(){
 #
 switch::manual::vlan(){
     util::err "manual switches and member interfaces should be configured using /etc/rc.conf"
+}
+
+# get id for a manual switch
+# in this case we need to return the bridge name
+#
+# @param string _var variable to put id into
+# @param string _switch switch name
+# @return 0 if switch id found
+#
+switch::manual::id(){
+    config::core::get "$1" "bridge_$2"
 }

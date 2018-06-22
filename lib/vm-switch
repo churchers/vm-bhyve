@@ -380,8 +380,9 @@ switch::id(){
     config::core::get "_type" "type_${_switch}"
 
     case "${_type}" in
-        vale) switch::vale::id "${_var}" "${_switch}" ;;
-        *)    switch::standard::id "${_var}" "${_switch}" ;;
+        vale)   switch::vale::id "${_var}" "${_switch}" ;;
+        manual) switch::manual::id "${_var}" "${_switch}" ;;
+        *)      switch::standard::id "${_var}" "${_switch}" ;;
     esac
 }
 

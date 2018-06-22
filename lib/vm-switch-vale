@@ -50,8 +50,7 @@ switch::vale::create(){
 
 # remove a vale switch
 #
-switch::vale::remove(){
-}
+switch::vale::remove(){ }
 
 # add a new interface to this switch
 # at the moment we require the user to manually

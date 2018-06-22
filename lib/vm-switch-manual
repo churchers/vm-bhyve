@@ -25,7 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # for a manual switch the bridge interface should already exist
-# we just assign our description to existing interface so switch::id can find it
+# we just assign our description so it's visible in ifconfig
 #
 # @param string _name name of the switch
 #
@@ -61,7 +61,6 @@ switch::manual::show(){
 # we just assign our switch name to the existing bridge
 #
 switch::manual::create(){
-    local _exists
 
     # we need to have a bridge
     [ -z "${_bridge}" ] && util::err "you must specify a bridge to import when creating a manual switch"
@@ -94,7 +93,6 @@ switch::manual::remove(){
 
     # try to remove our description
     ifconfig ${_id} description "" >/dev/null 2>&1
-    return 0
 }
 
 # add a new interface to this switch

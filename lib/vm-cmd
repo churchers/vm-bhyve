@@ -93,7 +93,7 @@ cmd::parse(){
         rollback)  zfs::rollback "$@" ;;
         send)      migration::send "$@" ;;
         recv)      migration::recv "$@" ;;
-        *)         util::usage ;;
+        *)         util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help" ;;
     esac
 }
 
@@ -125,7 +125,7 @@ cmd::parse_switch(){
         address) switch::address "$@" ;;
         private) switch::private "$@" ;;
         info)    info::switch "$@" ;;
-        *)       util::usage ;;
+        *)       util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help" ;;
     esac
 }
 
@@ -150,7 +150,7 @@ cmd::parse_datastore(){
         add)    datastore::add "$@" ;;
         remove) datastore::remove "$@" ;;
         iso)    datastore::iso "$@" ;;
-        *)      util::usage ;;
+        *)      util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help" ;;
     esac
 }
 
@@ -176,7 +176,7 @@ cmd::parse_image(){
         create)    zfs::image_create "$@" ;;
         provision) zfs::image_provision "$@" ;;
         destroy)   zfs::image_destroy "$@" ;;
-        *)         util::usage ;;
+        *)         util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help" ;;
     esac
 }
 
@@ -242,6 +242,6 @@ cmd::find(){
         fi
     done
 
-    [ -z "${_found}" ] && util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help"
+    [ -z "${_found}" ] && return 1
     setvar "${_var}" "${_choice}"
 }

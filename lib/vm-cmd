@@ -242,6 +242,6 @@ cmd::find(){
         fi
     done
 
-    [ -z "${_found}" ] && return 1
+    [ -z "${_found}" ] && util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help"
     setvar "${_var}" "${_choice}"
 }

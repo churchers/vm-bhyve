@@ -169,14 +169,14 @@ Usage: vm ...
     [-fi] start <name> [...]
     stop <name> [...]
     console <name> [com1|com2]
+    configure <name>
     rename <name> <new-name>
     add [-d device] [-t type] [-s size|switch] <name>
     startall
     stopall
-    reset <name>
-    poweroff <name>
-    configure <name>
-    destroy <name>
+    [-f] reset <name>
+    [-f] poweroff <name>
+    [-f] destroy <name>
     passthru
     clone <name[@snapshot]> <new-name>
     snapshot [-f] <name[@snapshot]>

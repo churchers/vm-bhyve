@@ -7,14 +7,14 @@ Some of the main features include:
 * Windows/UEFI support
 * Simple commands to create/start/stop bhyve instances
 * Simple configuration file format
-* Virtual switches supporting vlans & nat (no manual tap or bridge devices needed)
+* Virtual switches supporting vlans & automatic device creation
 * ZFS support
 * FreeBSD/NetBSD/OpenBSD/Linux guest support
 * Automatic assignment of console devices to access guest console
 * Integration with rc.d startup/shutdown
 * Guest reboot handling
 * Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
-* Multiple datastores (1.1 only)
+* Multiple datastores
 * VNC graphics & tmux support (1.1 only. See wiki for instructions)
 
 ##### See the GitHub wiki for more information and examples.
@@ -82,11 +82,6 @@ To install, just run the following command inside the vm-bhyve source directory
 If you want to run guests other than FreeBSD, you will need the grub2-bhyve package;
 
     # pkg install grub2-bhyve
-
-Additionally, while not specifically required, dnsmasq can be used to provide DHCP services
-when vm-bhyve is configured to run NAT.
-
-    # pkg install dnsmasq
 
 ## Initial configuration
 
@@ -161,16 +156,6 @@ If you just want to bridge guests to your physical network, add the appropriate 
 Obviously you will need to replace em0 here with the correct interface name on your system:
 
     # vm switch add public em0
-
-If you want to use NAT, do not add a physical interface to the switch, as the switch will be on the private
-side of the NAT network. Just enable NAT on the switch:
-
-    # vm switch nat public on
-
-This will automatically create a private network on the switch, and forward guest traffic
-via your default gateway. Please note that pf must be enabled in /etc/rc.conf for NAT functionality to work.
-Whilst not strictly required, dnsmasq can be used to provide DHCP services to guests on the NAT network.
-vm-bhyve will generate a sample dnsmasq.conf file which can be installed for this purpose.
 
 If you want guest traffic to be on a specific VLAN when leaving the host, specify a vlan number. To turn
 off vlans, just set the vlan number to 0:

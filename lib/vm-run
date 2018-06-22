@@ -309,7 +309,7 @@ vm::unlock(){
 # @modifies _com _comstring
 #
 vm::bhyve_device_comports(){
-    local _port _num=1 _nmdm="" _tmux_name
+    local _port _num=1 _tmux_name
     local _port_name
 
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
@@ -776,37 +776,6 @@ vm::get_disk_path(){
         custom)      setvar "${_var}" "${_disk}" ;;
         *)           setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}" ;;
     esac
-}
-
-# find a spare nmdm device for a vm
-# for guests that have multiple consoles, we won't yet have opened any
-# of them, so we can pass in the number of the previous console, and use
-# that to start the next search from. otherwise we'd find the same number again
-#
-# @param string _var variable to put value into
-# @param optional int _num the device number to start searching at (default = 0)
-#
-vm::find_console(){
-    local _var="$1"
-    local _num="$2"
-    local _ls
-
-    if [ -n "${_num}" ]; then
-        _num=$((_num + 1))
-    else
-        _num=0
-    fi
-
-    # loop until we find an available nmdm
-    # using -e seemed to create devices so now scanning ls
-    while [ 1 ]; do
-        _ls=$(ls -1 /dev | grep "nmdm${_num}A")
-        [ -z "${_ls}" ] && break
-        _num=$((_num + 1))
-    done
-
-    # set value
-    setvar "${_var}" "${_num}"
 }
 
 # get a list of all running virtual machines

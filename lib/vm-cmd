@@ -222,7 +222,7 @@ cmd::find(){
     local _var="$1"
     local _user_cmd="$2"
     local _valid="$3"
-    local _opt _choice _found=
+    local _opt _choice _found=""
     local IFS=","
 
     for _opt in ${_valid}; do

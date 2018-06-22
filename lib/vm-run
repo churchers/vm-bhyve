@@ -310,11 +310,12 @@ vm::unlock(){
 #
 vm::bhyve_device_comports(){
     local _port _num=1 _nmdm="" _tmux_name
+    local _port_name
 
     unlink "${VM_DS_PATH}/${_name}/console" >/dev/null 2>&1
 
     for _port in ${_comports}; do
-        if [ ${_num} = 1 ]; then
+        if [ ${_num} -eq 1 ]; then
             # if tmux mode, log this to the console data
             if [ -n "${VM_OPT_TMUX}" ]; then
                 _tmux_name=$(echo "${_name}" | tr "." "~")
@@ -329,13 +330,14 @@ vm::bhyve_device_comports(){
             fi
         fi
 
-        vm::find_console "_nmdm" "${_nmdm}"
+        # generate a port name unique to this vm and port number
+        _port_name="/dev/nmdm-${_name}.${_num}"
 
         # use first com port for the loader
-        [ ${_num} -eq 1 ] && _com="/dev/nmdm${_nmdm}A"
+        [ ${_num} -eq 1 ] && _com="${_port_name}A"
 
-        echo "${_port}=/dev/nmdm${_nmdm}B" >> "${VM_DS_PATH}/${_name}/console"
-        _comstring="${_comstring}${_comstring:+ }-l ${_port},/dev/nmdm${_nmdm}A"
+        echo "${_port}=${_port_name}B" >> "${VM_DS_PATH}/${_name}/console"
+        _comstring="${_comstring}${_comstring:+ }-l ${_port},${_port_name}A"
         _num=$((_num + 1))
     done
 }

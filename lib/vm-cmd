@@ -24,6 +24,10 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+CMD_VALID_LIST="init,switch,datastore,image,get,set,list,create,destroy,rename,install,start,stop,add"
+CMD_VALID_LIST="${CMD_VALID_LIST},reset,poweroff,startall,stopall,console,iso,configure,passthru,_run"
+CMD_VALID_LIST="${CMD_VALID_LIST},info,clone,snapshot,rollback,send,recv,version,usage"
+
 # cmd: vm ...
 #
 # handle simple information commands that don't need any 
@@ -32,7 +36,9 @@
 # @param string _cmd the command right after 'vm '
 #
 cmd::parse_info(){
-    local _cmd="$1"
+    local _cmd
+
+    cmd::find "_cmd" "$1" "${CMD_VALID_LIST}"
 
     case "${_cmd}" in
         version) util::version && exit ;;
@@ -47,7 +53,13 @@ cmd::parse_info(){
 # @param string _cmd the command right after 'vm '
 #
 cmd::parse(){
-    local _cmd="$1"
+    local _cmd
+
+    # try to find a matching command
+    cmd::find "_cmd" "$1" "${CMD_VALID_LIST}"
+    [ $? -ne 0 ] && util::usage
+
+    # remove parsed command
     shift
 
     case "${_cmd}" in
@@ -93,7 +105,13 @@ cmd::parse(){
 # @param string _cmd the command right after 'vm switch '
 #
 cmd::parse_switch(){
-    local _cmd="$1"
+    local _cmd
+
+    # try to find a matching command
+    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info"
+    [ $? -ne 0 ] && util::usage
+
+    # remove parsed command
     shift
 
     case "${_cmd}" in
@@ -118,7 +136,13 @@ cmd::parse_switch(){
 # @param string _cmd the command after 'vm datastore ...'
 #
 cmd::parse_datastore(){
-    local _cmd="$1"
+    local _cmd
+
+    # try to find a matching command
+    cmd::find "_cmd" "$1" "list,add,remove,iso"
+    [ $? -ne 0 ] && util::usage
+
+    # remove parsed command
     shift
 
     case "${_cmd}" in
@@ -136,10 +160,16 @@ cmd::parse_datastore(){
 # @param string _cmd the command after 'vm image '
 #
 cmd::parse_image(){
-    local _cmd="$1"
-    shift
+    local _cmd
 
     [ -z "${VM_ZFS}" ] && util::err "\$vm_dir must be a ZFS datastore to use these functions"
+
+    # try to find a matching command
+    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info"
+    [ $? -ne 0 ] && util::usage
+
+    # remove parsed command
+    shift
 
     case "${_cmd}" in
         list)      zfs::image_list ;;
@@ -177,4 +207,41 @@ cmd::parse_args(){
 
     shift $((OPTIND - 1))
     VM_COMMAND="$@"
+}
+
+# try to match part of a command name against a list of valid commands
+# if we find more than one match we return an error
+# if we only get one match, return the full command name
+#
+# @param string _var variable to put full command name into
+# @param string _user_cmd the value provided by the user
+# @param string _valid comma-separated list of valid choices
+# @return success if we find one match
+#
+cmd::find(){
+    local _var="$1"
+    local _user_cmd="$2"
+    local _valid="$3"
+    local _opt _choice _found=
+    local IFS=","
+
+    for _opt in ${_valid}; do
+        # exact match?
+        if [ "${_user_cmd}" = "${_opt}" ]; then
+            setvar "${_var}" "${_opt}"
+            return 0
+        fi
+
+        echo "${_opt}" | grep -iqs "^${_user_cmd}"
+
+        if [ $? -eq 0 ]; then
+           [ -n "${_found}" ] && util::err "ambiguous command '${_user_cmd}'"
+
+           _found=1
+           _choice="${_opt}"
+        fi
+    done
+
+    [ -z "${_found}" ] && return 1
+    setvar "${_var}" "${_choice}"
 }

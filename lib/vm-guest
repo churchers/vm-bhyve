@@ -87,8 +87,9 @@ guest::load(){
 
             if [ -n "${_iso}" ]; then
                 _root="cd0"
-                util::log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
-                util::log_and_write "appnd" "${_name}" "device.map" "(cd0) ${_iso}"
+                util::log_and_write "write" "${_name}" "device.map" "(cd0) ${_iso}"
+                util::log_and_write "appnd" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+                guest::__map_all_disks
 
                 # if we have local grub config, we need to point grub-bhyve at the host.
                 # if not, just use defaults
@@ -100,6 +101,7 @@ guest::load(){
             else
                 _root="hd0,1"
                 util::log_and_write "write" "${_name}" "device.map" "(hd0) ${_bootdisk}"
+                guest::__map_all_disks
 
                 config::get "_grub_opt" "grub_run_partition"
                 [ -n "${_grub_opt}" ] && _root="hd0,${_grub_opt}"
@@ -127,6 +129,24 @@ guest::load(){
     # run the command
     util::log "guest" "${_name}" "${_command} ${_args} ${_name}"
     ${_command} ${_args} ${_name}
+}
+
+# Add all extra/non-boot disks to the device.map file
+# Some users may need to access additional disks from the loader
+#
+guest::__map_all_disks(){
+    local _disk _dev _path _num=1
+
+    config::get "_disk" "disk${_num}_name"
+
+    while [ -n "${_disk}" ]; do
+        config::get "_dev" "disk${_num}_dev"
+        vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
+        util::log_and_write "appnd" "${_name}" "device.map" "(hd${_num}) ${_path}"
+
+        _num=$((_num + 1))
+        config::get "_disk" "disk${_num}_name"
+    done
 }
 
 # See if the user has configured grub commands.

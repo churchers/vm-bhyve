@@ -62,17 +62,16 @@ switch::standard::init(){
 switch::standard::show(){
     local _name="$1"
     local _format="$2"
-    local _id _vlan _ports _nat _addr _mtu _priv
+    local _id _vlan _ports _addr _mtu _priv
 
     config::core::get "_ports" "ports_${_name}"
     config::core::get "_vlan" "vlan_${_name}"
-    config::core::get "_nat" "nat_${_name}"
     config::core::get "_addr" "addr_${_name}"
     config::core::get "_mtu" "mtu_${_name}"
     config::core::get "_priv" "private_${_name}" "no"
 
     printf "${_format}" "${_name}" "standard" "-" "${_addr:--}" "${_priv}" "${_mtu:--}" \
-      "${_vlan:--}" "${_nat:--}" "${_ports:--}"
+      "${_vlan:--}" "${_ports:--}"
 }
 
 # create a standard virtual switch

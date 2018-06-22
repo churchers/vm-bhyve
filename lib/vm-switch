@@ -61,12 +61,12 @@ switch::init(){
 #
 switch::list(){
     local _switchlist _switch _type
-    local _id _format="%s^%s^%s^%s^%s^%s^%s^%s^%s\n"
+    local _id _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
 
     config::core::get "_switchlist" "switch_list"
 
     {
-        printf "${_format}" "NAME" "TYPE" "IDENT" "ADDRESS" "PRIVATE" "MTU" "VLAN" "NAT" "PORTS"
+        printf "${_format}" "NAME" "TYPE" "IDENT" "ADDRESS" "PRIVATE" "MTU" "VLAN" "PORTS"
 
         if [ -n "${_switchlist}" ]; then
             for _switch in ${_switchlist}; do

@@ -54,7 +54,7 @@ switch::manual::show(){
 
     config::core::get "_bridge" "bridge_${_name}"
     config::core::get "_priv" "private_${_name}" "no"
-    printf "${_format}" "${_name}" "manual" "${_bridge}" "n/a" "${_priv}" "n/a" "n/a" "n/a" "n/a"
+    printf "${_format}" "${_name}" "manual" "${_bridge}" "n/a" "${_priv}" "n/a" "n/a" "n/a"
 }
 
 # create a manual switch

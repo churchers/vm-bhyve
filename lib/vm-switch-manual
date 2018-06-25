@@ -67,7 +67,7 @@ switch::manual::create(){
 
     # check we can find this bridge on the system
     ifconfig "${_bridge}" >/dev/null 2>&1
-    [ $? -ne 0 ] && util::err "${_bridge} does not appear to be a valid existing bridge"
+    [ $? -eq 0 ] || util::err "${_bridge} does not appear to be a valid existing bridge"
 
     # store configuration
     config::core::set "switch_list" "${_switch}" "1"

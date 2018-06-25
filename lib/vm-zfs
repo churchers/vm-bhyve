@@ -158,7 +158,7 @@ zfs::__format_options(){
 # @param string _name the name of the guest to snapshot
 #
 zfs::snapshot(){
-    local _name _snap _opt _force _snap_exists
+    local _name _snap _opt _force
 
     while getopts f _opt; do
         case $_opt in
@@ -172,9 +172,9 @@ zfs::snapshot(){
 
     # try to get snapshot name
     # we support normal zfs syntax for this
-    _snap_exists=$(echo "${_name}" | grep "@")
+    echo "${_name}" | grep -qs "@"
 
-    if [ -n "${_snap_exists}" ]; then
+    if [ $? -eq 0 ]; then
         _snap=${_name##*@}
         _name=${_name%%@*}
     fi
@@ -190,6 +190,28 @@ zfs::snapshot(){
 
     zfs snapshot -r ${VM_DS_ZFS_DATASET}/${_name}@${_snap}
     [ $? -eq 0 ] || util::err "failed to create recursive snapshot of virtual machine"
+}
+
+# try to remove a snapshot
+#
+# @param string _name the guest name and snapshot (guest@snap)
+# @return true if successful
+#
+zfs::remove_snapshot(){
+    local _name="$1"
+    local _snap
+
+    # split name and snapshot
+    _snap=${_name##*@}
+    _name=${_name%%@*}
+
+    # try to load guest
+    datastore::get_guest "${_name}" || util::err "${_name} does not appear to be an existing virtual machine"
+    [ ! "${VM_DS_ZFS}" = "1" ] && util::err "cannot snapshot guests on non-zfs datastores"
+
+    # remove
+    zfs destroy -r ${VM_DS_ZFS_DATASET}/${_name}@${_snap}
+    [ $? -eq 0 ] || util::err "failed to remove snapshot ${VM_DS_ZFS_DATASET}/${_name}@${_snap}"
 }
 
 # 'vm rollback'

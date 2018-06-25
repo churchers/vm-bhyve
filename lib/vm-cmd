@@ -225,6 +225,8 @@ cmd::find(){
     local _opt _choice _found=""
     local IFS=","
 
+    [ -n "${_user_cmd}" ] || util::err "no command specified"
+
     for _opt in ${_valid}; do
         # exact match?
         if [ "${_user_cmd}" = "${_opt}" ]; then

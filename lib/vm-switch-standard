@@ -323,6 +323,5 @@ switch::standard::id(){
     local _switch="$2"
 
     setvar "${_var}" "vm-${_switch}"
-
     ifconfig "vm-${_switch}" >/dev/null 2>&1
 }

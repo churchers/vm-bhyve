@@ -119,8 +119,10 @@ switch::vxlan::remove(){
     
     # try to get guest bridge and vxlan id
     switch::standard::id "_id" "${_switch}"
+    [ $? -eq 0 ] || return 1
+
     config::core::get "_vlan" "vlan_${_switch}"
-    [ -z "${_id}" -o -z "${_vlan}" ] && return 1
+    [ -z "${_vlan}" ] && return 1
 
     # get the multicast address we used for this switch
     # and try to remove any route we may have added

@@ -102,7 +102,7 @@ switch::standard::remove(){
 
     # get the bridge id
     switch::standard::id "_id" "${_switch}"
-    [ -z "${_id}" ] && return 1
+    [ $? -eq 0 ] || return 1
 
     # remove all member interfaces
     switch::standard::__remove_members "${_switch}" "${_id}"
@@ -232,7 +232,7 @@ switch::standard::__remove_members(){
     # get id if not given to us
     if [ -z "${_id}" ]; then
         switch::standard::id "_id" "${_switch}"
-        [ -z "${_id}" ] && util::err "failed to get switch id while removing members"
+        [ $? -eq 0 ] || util::err "failed to get switch id while removing members"
     fi
 
     # get full port list
@@ -268,11 +268,11 @@ switch::standard::__configure_port(){
     # vlan enabled?
     if [ -n "${_vlan}" ]; then
         # see if vlan interface already exists
-        switch::standard::id "_vid" "vlan-${_port}-${_vlan}"
+        switch::standard::id "_vid" "${_port}.${_vlan}"
 
         # create if needed
-        if [ -z "${_vid}" ]; then
-            _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" description "vm-vlan-${_port}-${_vlan}" up)
+        if [ $? -ne 0 ]; then
+            _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" name "vm-${_port}.${_vlan}" up)
             [ $? -eq 0 ] || util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
         fi
 
@@ -301,10 +301,10 @@ switch::standard::__unconfigure_port(){
 
     if [ -n "${_vlan}" ]; then
         # get vlan interface
-        switch::standard::id "_vid" "vlan-${_port}-${_vlan}"
+        switch::standard::id "_vid" "${_port}.${_vlan}"
 
         # remove the vlan interface, it will be removed from bridge automatically
-        [ -n "${_vid}" ] && ifconfig ${_vid} destroy >/dev/null 2>&1
+        [ $? -eq 0 ] && ifconfig ${_vid} destroy >/dev/null 2>&1
     else
         ifconfig ${_id} deletem ${_port} >/dev/null 2>&1
     fi
@@ -325,5 +325,4 @@ switch::standard::id(){
     setvar "${_var}" "vm-${_switch}"
 
     ifconfig "vm-${_switch}" >/dev/null 2>&1
-    [ $? -eq 0 ] || return 1
 }

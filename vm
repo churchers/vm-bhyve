@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 #-------------------------------------------------------------------------+
 # Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved

@@ -118,7 +118,6 @@ info::switch_show(){
     echo "${_INDENT}ident: ${_id:--}"
 
     info::__output_config "vlan_${_switch}" "vlan"
-    info::__output_config "nat_${_switch}" "nat"
     info::__output_config "ports_${_switch}" "physical-ports"
 
     if [ -n "${_bridge}" ]; then

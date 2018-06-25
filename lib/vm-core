@@ -554,9 +554,17 @@ core::destroy(){
     local _name="$1"
 
     [ -z "${_name}" ] && util::usage
-    datastore::get_guest "${_name}" || util::err "${_name} doesn't appear to be a valid virtual machine"
+
+    # trying to remove a snapshot?
+    echo "${_name}" | grep -qs "@"
+
+    if [ $? -eq 0 ]; then
+        zfs::remove_snapshot "${_name}"
+        exit $?
+    fi
 
     # make sure it's stopped!
+    datastore::get_guest "${_name}" || util::err "${_name} doesn't appear to be a valid virtual machine"
     vm::confirm_stopped "${_name}" || exit 1
 
     if [ -z "${VM_OPT_FORCE}" ]; then

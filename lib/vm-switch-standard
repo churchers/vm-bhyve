@@ -182,7 +182,7 @@ switch::standard::address(){
     if [ "${_addr}" = "none" ]; then
 
         config::core::get "_curr" "addr_${_switch}"
-        [ $? -ne 0 ] && util::err "unable to locate an existing address for this switch"
+        [ $? -eq 0 ] || util::err "unable to locate an existing address for this switch"
 
         config::core::remove "addr_${_switch}"
         ifconfig "${_id}" "${_curr}" delete
@@ -325,5 +325,5 @@ switch::standard::id(){
     setvar "${_var}" "vm-${_switch}"
 
     ifconfig "vm-${_switch}" >/dev/null 2>&1
-    [ $? -ne 0 ] && return 1
+    [ $? -eq 0 ] || return 1
 }

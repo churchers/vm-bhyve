@@ -51,7 +51,7 @@ switch::vxlan::init(){
     # create the vxlan interface
     ifconfig "vxlan${_vlan}" create vxlanid "${_vlan}" vxlanlocal "${_local}" vxlangroup "${_maddr}" \
       vxlandev "${_if}" description "vm-vxlan-${_switch}" up >/dev/null 2>&1
-    [ $? -ne 0 ] && return 1
+    [ $? -eq 0 ] || return 1
 
     # create a bridge for this switch
     ifconfig bridge create name "${_id}" up >/dev/null 2>&1
@@ -129,7 +129,7 @@ switch::vxlan::remove(){
 
     # destroy the guest bridge
     ifconfig ${_id} destroy >/dev/null 2>&1
-    [ $? -ne 0 ] && return 1
+    [ $? -eq 0 ] || return 1
 
     # destroy the vxlan
     ifconfig "vxlan${_vlan}" destroy >/dev/null 2>&1

@@ -36,7 +36,7 @@ switch::standard::init(){
     switch::standard::id "_id" "${_name}" && return 0
 
     # create a bridge for this switch
-    ifconfig bridge create name "${_id}" up >/dev/null 2>&1
+    ifconfig bridge create name "${_id}" group vm-switch up >/dev/null 2>&1
     [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
 
     # randomise mac if feature is available
@@ -272,7 +272,7 @@ switch::standard::__configure_port(){
 
         # create if needed
         if [ $? -ne 0 ]; then
-            _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" name "vm-${_port}.${_vlan}" up)
+            _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" name "vm-${_port}.${_vlan}" group vm-vlan up)
             [ $? -eq 0 ] || util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
         fi
 

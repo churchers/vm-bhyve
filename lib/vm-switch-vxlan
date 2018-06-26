@@ -54,7 +54,7 @@ switch::vxlan::init(){
     [ $? -eq 0 ] || return 1
 
     # create a bridge for this switch
-    ifconfig bridge create name "${_id}" up >/dev/null 2>&1
+    ifconfig bridge create name "${_id}" group vm-switch up >/dev/null 2>&1
     [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
 
     # randomise mac if feature is available

@@ -270,16 +270,19 @@ util::log(){
     case "${_type}" in
         guest)
             _guest="$2"
-            _message="$3"
             _file="${VM_DS_PATH}/${_guest}/${_lf}"
+            shift 2
             ;;
         system)
-            _message="$2"
             _file="${vm_dir}/${_lf}"
+            shift 1
             ;;
     esac
 
-    echo "$(date +'%b %d %T'): ${_message}" >> "${_file}"
+    while [ -n "$1" ]; do
+      echo "$(date +'%b %d %T'): $1" >> "${_file}"
+      shift
+    done
 }
 
 # write content to a file, and log what we

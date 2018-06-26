@@ -69,18 +69,19 @@ vm::run(){
     fi
 
     util::log_rotate "guest" "${_name}"
-    util::log "guest" "${_name}" "initialising"
-    util::log "guest" "${_name}" " [loader: ${_loader:-none}]"
-    util::log "guest" "${_name}" " [uefi: ${_uefi}]"
-    util::log "guest" "${_name}" " [cpu: ${_cpu}]"
-    util::log "guest" "${_name}" " [memory: ${_memory}]"
-    util::log "guest" "${_name}" " [hostbridge: ${_hostbridge}]"
-    util::log "guest" "${_name}" " [com ports: ${_comports}]"
-    util::log "guest" "${_name}" " [uuid: ${_uuid}]"
-    util::log "guest" "${_name}" " [utctime: ${_utc}]"
-    util::log "guest" "${_name}" " [debug mode: ${_debug}]"
-    util::log "guest" "${_name}" " [primary disk: ${_bootdisk}]"
-    util::log "guest" "${_name}" " [primary disk dev: ${_bootdisk_dev}]"
+    util::log "guest" "${_name}" \
+      "initialising" \
+      " [loader: ${_loader:-none}]" \
+      " [uefi: ${_uefi}]" \
+      " [cpu: ${_cpu}]" \
+      " [memory: ${_memory}]" \
+      " [hostbridge: ${_hostbridge}]" \
+      " [com ports: ${_comports}]" \
+      " [uuid: ${_uuid}]" \
+      " [utctime: ${_utc}]" \
+      " [debug mode: ${_debug}]" \
+      " [primary disk: ${_bootdisk}]" \
+      " [primary disk dev: ${_bootdisk_dev}]"
 
     # check basic settings
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
@@ -231,9 +232,9 @@ vm::run(){
             fi
         fi
 
-        util::log "guest" "${_name}" " [bhyve options: ${_opts}]"
-        util::log "guest" "${_name}" " [bhyve devices: ${_devices}]"
-        util::log "guest" "${_name}" " [bhyve console: ${_comstring}]"
+        util::log "guest" "${_name}" " [bhyve options: ${_opts}]" \
+          " [bhyve devices: ${_devices}]" \
+          " [bhyve console: ${_comstring}]"
         [ -n "${_iso_dev}" ] && util::log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
         util::log "guest" "${_name}" "starting bhyve (run ${_run})"
 

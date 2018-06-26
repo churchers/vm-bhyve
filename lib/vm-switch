@@ -344,11 +344,7 @@ switch::type(){
     local _switch="$2"
 
     [ -z "${_switch}" ] && return 1
-    config::core::get "${_var}" "type_${_switch}"
-
-    # old code didn't set a type
-    # assume standard if we didn't find a config setting
-    [ $? -ne 0 ] && setvar "${_var}" "standard"
+    config::core::get "${_var}" "type_${_switch}" "standard"
 }
 
 # check if a switch is configured for private members

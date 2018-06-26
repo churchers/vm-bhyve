@@ -31,7 +31,7 @@
 #
 info::guest(){
     local _name="$1"
-    local _bridge_list=$(ifconfig | grep ^bridge | cut -d: -f1)
+    local _bridge_list=$(ifconfig -g bridge)
     local _ds
 
     vm::running_load

@@ -346,12 +346,76 @@ core::startall(){
 # note this will also stop instances not started by vm-bhyve
 #
 core::stopall(){
-    local _pids=$(pgrep -f 'bhyve:')
+    local _pids=$(pgrep -f 'bhyve:' | tr '\n' ' ')
+    local _stop_parallel _stop_list _running _list_rev _curr
+    local _stop_p_pids _pid
 
-    echo "Shutting down all bhyve virtual machines"
-    killall bhyve
-    sleep 1
-    killall bhyve
+    : ${vm_delay:=2}
+
+    # get a list of running bhyve instances
+    _running=$(pgrep -lf 'bhyve:' | cut -d" " -f3 | tr '\n' ' ')
+    [ -z "${_running}" ] && return 0
+
+    # do we have any guests to stop in order
+    if [ -z "${VM_OPT_FORCE}" -a -n "${vm_list}" ]; then
+        # reverse the configured start order
+        for _curr in ${vm_list}; do
+            _list_rev="${_curr} ${_list_rev}"
+        done
+
+        # go through each autostart guest
+        # if running add to stop list.
+        # we are searching in reverse start order, so should get an ordered shutdown
+        for _curr in ${_list_rev}; do
+            echo "${_running}" | grep -qs "${_curr} "
+
+            if [ $? -eq 0 ]; then
+                _stop_list="${_stop_list}${_stop_list:+ }${_curr}"
+            fi
+        done
+
+        # look for anything running that isn't in the ordered stop list
+        for _curr in ${_running}; do
+            echo "${_stop_list}" | grep -qs "${_curr}\b"
+            if [ $? -ne 0 ]; then
+                _stop_parallel="${_stop_parallel}${_stop_parallel:+ }${_curr}"
+                core::__getpid "_pid" "bhyve: ${_curr}\$"
+                [ $? -eq 0 ] && _stop_p_pids="${_stop_p_pids}${_stop_p_pids:+ }${_pid}"
+            fi
+        done
+    else
+        # nothing ordered, or a force shutdown
+        # just do everything at once
+        _stop_parallel="${_running}"
+        _stop_p_pids="${_pids}"
+    fi
+
+    echo "Beginning shutdown process"
+
+    # have any guests to stop in parallel
+    if [ -n "${_stop_p_pids}" ]; then
+        echo "  * parallel shutdown of non-ordered guests: ${_stop_parallel}"
+        kill ${_stop_p_pids} >/dev/null 2>&1
+        sleep 1
+        kill ${_stop_p_pids} >/dev/null 2>&1
+    fi
+
+    if [ -n "${_stop_list}" ]; then
+        _pid=""
+        for _curr in ${_stop_list}; do
+            [ -n "${_pid}" ] && echo "  * waiting ${vm_delay} second(s)" && sleep ${vm_delay}
+            core::__getpid "_pid" "bhyve: ${_curr}\$"
+
+            if [ $? -ne 0 ]; then
+                echo "  * stopping ${_curr}"
+                kill ${_pid} >/dev/null 2>&1
+                sleep 1
+                kill ${_pid} >/dev/null 2>&1
+            fi
+        done
+    fi
+
+    echo ""
     wait_for_pids ${_pids}
 }
 
@@ -365,7 +429,7 @@ core::start(){
     local _done
 
     [ -z "${_name}" ] && util::usage
-    : ${vm_delay:=5}
+    : ${vm_delay:=2}
 
     # disable foreground/interactive if we're starting more than one
     if [ $# -ge 2 ]; then
@@ -768,4 +832,20 @@ core::set(){
 #
 core::__valid_config_setting(){
     echo "${VM_CONFIG_USER}" | grep -iqs "${1};"
+}
+
+# __getpid
+# get a process id
+#
+# @param string _var variable to put pid into
+# @param string _proc process to look for
+#
+core::__getpid(){
+    local _var="$1"
+    local _proc="$2"
+    local _ret
+
+    _ret=$(pgrep -f "${_proc}")
+    [ $? -eq 0 ] || return 1
+    setvar "${_var}" "${_ret}"
 }

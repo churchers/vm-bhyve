@@ -209,6 +209,7 @@ vm::run(){
                 _exit=15
                 break
             fi
+            sleep 1
         fi
 
         # set full iso path

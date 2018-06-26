@@ -31,7 +31,7 @@
 #
 info::guest(){
     local _name="$1"
-    local _bridge_list=$(ifconfig | grep ^bridge | cut -d: -f1)
+    local _bridge_list=$(ifconfig -g bridge)
     local _ds
 
     vm::running_load
@@ -304,7 +304,7 @@ info::guest_disks(){
         if [ -n "${_path}" ]; then
             case "${_dev}" in
                 file)
-                    _size=$(stat "${_path}" | cut -d' ' -f8)
+                    _size=$(stat -f%z "${_path}")
                     _used=$(du "${_path}" | awk '{print $1}')
                     _used=$((_used * 1024))
                     ;;

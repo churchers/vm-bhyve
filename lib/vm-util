@@ -243,7 +243,7 @@ util::log_rotate(){
     esac
 
     if [ -e "${_file}" ]; then
-        _size=$(stat "${_file}" | cut -d' ' -f8)
+        _size=$(stat -f %z "${_file}")
 
         if [ -n "${_size}" -a "${_size}" -ge 1048576 ]; then
             unlink "${_file}.0.gz" >/dev/null 2>&1

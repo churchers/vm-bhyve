@@ -344,3 +344,17 @@ util::checkyesno(){
         *)  return 0 ;;		
     esac
 }
+
+# check name of virtual machine
+#
+# @param _name name to check
+# @param _maxlen=30 maximum name length (NOTE should be 2 less than desired)
+# @return int 0 if name is valid
+#
+util::check_name(){
+    local _name="$1"
+    local _maxlen="$2"
+
+    : ${_maxlen:=30}
+    echo "${_name}" | egrep -iqs "^[a-z0-9][.a-z0-9-]{0,${_maxlen}}[a-z0-9]\$"
+}

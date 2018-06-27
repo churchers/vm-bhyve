@@ -88,7 +88,7 @@ datastore::add(){
     local _mount _num=0 _curr
 
     [ -z "${_name}" -o -z "${_spec}" ] && util::usage
-    core::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
+    util::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
 
     # check name not in use
     for _curr in ${VM_DATASTORE_LIST}; do
@@ -277,7 +277,7 @@ datastore::iso(){
     local _path="$2"
 
     [ -z "${_name}" -o -z "${_path}" ] && util::usage
-    core::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
+    util::check_name "${_name}" || util::err "invalid datastore name - '${_name}'"
 
     # check name not in use
     for _curr in ${VM_DATASTORE_LIST}; do

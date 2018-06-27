@@ -92,15 +92,6 @@ core::list(){
     } | column -ts^
 }
 
-# 'vm check name'
-# check name of virtual machine
-#
-# @return int 0 if name is valid
-#
-core::check_name(){
-    echo "$1" | egrep -iqs '^[a-z0-9][.a-z0-9-]{0,30}[a-z0-9]$'
-}
-
 # 'vm create'
 # create a new virtual machine
 #
@@ -127,7 +118,7 @@ core::create(){
     [ -z "${_name}" ] && util::usage
 
     # check guest name
-    core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
     datastore::get_guest "${_name}" && util::err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
     datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
 
@@ -586,7 +577,7 @@ core::rename(){
     local _new="$2"
 
     [ -z "${_old}" -o -z "${_new}" ] && util::usage
-    core::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
 
     datastore::get_guest "${_new}" && util::err "directory ${VM_DS_PATH}/${_new} already exists"
     datastore::get_guest "${_old}" || util::err "${_old} doesn't appear to be a valid virtual machine"

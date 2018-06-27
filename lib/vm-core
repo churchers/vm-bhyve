@@ -92,15 +92,6 @@ core::list(){
     } | column -ts^
 }
 
-# 'vm check name'
-# check name of virtual machine
-#
-# @return int 0 if name is valid
-#
-core::check_name(){
-    echo "$1" | egrep -iqs '^[a-z0-9][.a-z0-9-]{0,30}[a-z0-9]$'
-}
-
 # 'vm create'
 # create a new virtual machine
 #
@@ -127,7 +118,7 @@ core::create(){
     [ -z "${_name}" ] && util::usage
 
     # check guest name
-    core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
     datastore::get_guest "${_name}" && util::err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
     datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
 
@@ -379,7 +370,7 @@ core::stopall(){
             echo "${_stop_list}" | grep -qs "${_curr}\b"
             if [ $? -ne 0 ]; then
                 _stop_parallel="${_stop_parallel}${_stop_parallel:+ }${_curr}"
-                core::__getpid "_pid" "bhyve: ${_curr}\$"
+                util::getpid "_pid" "bhyve: ${_curr}\$"
                 [ $? -eq 0 ] && _stop_p_pids="${_stop_p_pids}${_stop_p_pids:+ }${_pid}"
             fi
         done
@@ -404,7 +395,7 @@ core::stopall(){
         _pid=""
         for _curr in ${_stop_list}; do
             [ -n "${_pid}" ] && echo "  * waiting ${vm_delay} second(s)" && sleep ${vm_delay}
-            core::__getpid "_pid" "bhyve: ${_curr}\$"
+            util::getpid "_pid" "bhyve: ${_curr}\$"
 
             if [ $? -ne 0 ]; then
                 echo "  * stopping ${_curr}"
@@ -650,7 +641,7 @@ core::rename(){
     local _new="$2"
 
     [ -z "${_old}" -o -z "${_new}" ] && util::usage
-    core::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
 
     datastore::get_guest "${_new}" && util::err "directory ${VM_DS_PATH}/${_new} already exists"
     datastore::get_guest "${_old}" || util::err "${_old} doesn't appear to be a valid virtual machine"
@@ -792,7 +783,7 @@ core::get(){
         done
     else
         while [ -n "${_var}" ]; do
-            if core::__valid_config_setting "${_var}"; then
+            if util::valid_config_setting "${_var}"; then
                 config::core::get "_val" "${_var}"
                 printf "${_format}" "${_var}" "${_val:--}"
             fi
@@ -814,7 +805,7 @@ core::set(){
         _key="${_pair%%=*}"
         _val="${_pair#*=}"
 
-        if core::__valid_config_setting "${_key}"; then
+        if util::valid_config_setting "${_key}"; then
             config::core::set "${_key}" "${_val}"
         else
             util::err "invalid configuration setting - '${_key}'"
@@ -823,29 +814,4 @@ core::set(){
         shift
         _pair="$1"
     done
-}
-
-# check if the specified string is a valid core configuration
-# setting that the user can change
-#
-# @param string the setting name to look for
-#
-core::__valid_config_setting(){
-    echo "${VM_CONFIG_USER}" | grep -iqs "${1};"
-}
-
-# __getpid
-# get a process id
-#
-# @param string _var variable to put pid into
-# @param string _proc process to look for
-#
-core::__getpid(){
-    local _var="$1"
-    local _proc="$2"
-    local _ret
-
-    _ret=$(pgrep -f "${_proc}")
-    [ $? -eq 0 ] || return 1
-    setvar "${_var}" "${_ret}"
 }

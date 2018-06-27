@@ -49,7 +49,7 @@ migration::recv(){
     _name="$1"
 
     [ -z "${_name}" ] && util::usage
-    core::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
     datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
     [ -z "${VM_DS_ZFS}" ] && util::err "${_ds} datastore must be on ZFS to support migration"
     [ -n "${_stage}" -a -n "${_triple}" ] && util::err "single stage and triple stage are mutually exclusive"

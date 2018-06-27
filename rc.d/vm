@@ -19,7 +19,7 @@ load_rc_config $name
 
 command="/usr/local/sbin/${name}"
 start_cmd="${name}_start"
-stop_cmd="${command} stopall"
+stop_cmd="${command} -f stopall"
 
 vm_start()
 {

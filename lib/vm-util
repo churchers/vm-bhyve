@@ -347,3 +347,43 @@ util::checkyesno(){
         *)  return 0 ;;		
     esac
 }
+
+# 'vm check name'
+# check name of virtual machine
+#
+# @param _name name to check
+# @param _maxlen=16 maximum name length (NOTE should be 2 less than desired)
+# @return int 0 if name is valid
+#
+util::check_name(){
+    local _name="$1"
+    local _maxlen="$2"
+
+    : ${_maxlen:=30}
+    echo "${_name}" | egrep -iqs "^[a-z0-9][.a-z0-9-]{0,${_maxlen}}[a-z0-9]\$"
+}
+
+# check if the specified string is a valid core configuration
+# setting that the user can change
+#
+# @param string the setting name to look for
+#
+util::valid_config_setting(){
+    echo "${VM_CONFIG_USER}" | grep -iqs "${1};"
+}
+
+# __getpid
+# get a process id
+#
+# @param string _var variable to put pid into
+# @param string _proc process to look for
+#
+util::getpid(){
+    local _var="$1"
+    local _proc="$2"
+    local _ret
+
+    _ret=$(pgrep -f "${_proc}")
+    [ $? -eq 0 ] || return 1
+    setvar "${_var}" "${_ret}"
+}

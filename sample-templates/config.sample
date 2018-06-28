@@ -405,6 +405,20 @@ zfs_dataset_opts=""
 #
 zfs_zvol_opts=""
 
+# prestart
+# specify a script to run when the guest starts
+# if just a name rather than full path is provided, we look in the guest directory
+# the script must be executable and is run in the following way -
+#
+# {scriptname} <guest-name> <guest-path>
+#
+# we also change directory to <guest-path> before running the script
+# note that if taking guest snapshots, the -f option must be used as although
+# the guest is technically stopped when this script runs, vm-bhyve still has it
+# locked
+#
+prestart="myscript.pl"
+
 # limit_pcpu
 # use rctl to limit guest to the specified cpu percentage
 #

@@ -1421,6 +1421,17 @@ For example, the following will configure the ZVOL block size to 128k, and turn
 compression off.
 .Pp
 zfs_zvol_opts="volblocksize=128k compress=off"
+.It prestart
+Allows you to specify a script or executable that will run before the guest starts,
+including on reboot. This is provided the guest name, and full guest path as arguments.
+We also change directory to the guest path before running the script.
+.Pp
+This can be specified as a full path, or just a script filename. In the latter case we
+look in the guest directory for the script.
+.Pp
+Note that although the guest is technically stopped when this process runs, calls to
+.Nm
+will still consider the guest locked.
 .It limit_pcpu
 Limit the bhyve process to the specified cpu percentage.
 .Pp

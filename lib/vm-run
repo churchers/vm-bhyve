@@ -212,6 +212,9 @@ vm::run(){
             sleep 1
         fi
 
+        # run any prestart script while guest is fully down
+        vm::prestart
+
         # set full iso path
         # use null.iso if not an install and uefi firmware
         [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${_iso}"
@@ -778,6 +781,27 @@ vm::get_disk_path(){
         custom)      setvar "${_var}" "${_disk}" ;;
         *)           setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}" ;;
     esac
+}
+
+# looks for a prestart setting and runs it if possible
+# this will execute before each start/reboot
+#
+# script is given the guest name and full path as arguments
+#
+vm::prestart(){
+    local _script
+
+    config::get "_script" "prestart" || return 0
+    echo "${_script}" | grep -qs '^/'
+    [ $? -ne 0 ] && _script="${VM_DS_PATH}/${_name}/${_script}"
+    [ ! -x "${_script}" ] && return 1
+
+    util::log "guest" "${_name}" "running prestart script ${_script} ${_name} ${VM_DS_PATH}/${_name}"
+
+    (
+      cd "${VM_DS_PATH}/${_name}"
+      exec "${_script}" "${_name}" "${VM_DS_PATH}/${_name}"
+    )
 }
 
 # get a list of all running virtual machines

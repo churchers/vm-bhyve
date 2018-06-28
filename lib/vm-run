@@ -800,7 +800,7 @@ vm::prestart(){
 
     (
       cd "${VM_DS_PATH}/${_name}"
-      exec "${_script}" "${_name}" "${VM_DS_ZFS_DATASET}"
+      exec "${_script}" "${_name}" "${VM_DS_ZFS_DATASET}/${_name}"
     )
 }
 

@@ -410,7 +410,7 @@ zfs_zvol_opts=""
 # if just a name rather than full path is provided, we look in the guest directory
 # the script must be executable and is run in the following way -
 #
-# {scriptname} <guest-name> <guest-path>
+# {scriptname} <guest-name> [zfs-dataset?]
 #
 # we also change directory to <guest-path> before running the script
 # note that if taking guest snapshots, the -f option must be used as although

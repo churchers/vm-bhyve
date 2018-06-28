@@ -796,11 +796,11 @@ vm::prestart(){
     [ $? -ne 0 ] && _script="${VM_DS_PATH}/${_name}/${_script}"
     [ ! -x "${_script}" ] && return 1
 
-    util::log "guest" "${_name}" "running prestart script ${_script} ${_name} ${VM_DS_PATH}/${_name}"
+    util::log "guest" "${_name}" "running prestart script ${_script} ${_name} ${VM_DS_ZFS_DATASET}/${_name}"
 
     (
       cd "${VM_DS_PATH}/${_name}"
-      exec "${_script}" "${_name}" "${VM_DS_PATH}/${_name}"
+      exec "${_script}" "${_name}" "${VM_DS_ZFS_DATASET}"
     )
 }
 

@@ -1423,7 +1423,7 @@ compression off.
 zfs_zvol_opts="volblocksize=128k compress=off"
 .It prestart
 Allows you to specify a script or executable that will run before the guest starts,
-including on reboot. This is provided the guest name, and full guest path as arguments.
+including on reboot. This is provided the guest name, and ZFS dataset (if applicable) as arguments.
 We also change directory to the guest path before running the script.
 .Pp
 This can be specified as a full path, or just a script filename. In the latter case we

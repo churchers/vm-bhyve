@@ -31,15 +31,17 @@
 #
 switch::manual::init(){
     local _name="$1"
-    local _id _bridge
+    local _bridge="$2"
 
     # get bridge
-    config::core::get "_bridge" "bridge_${_name}"
-    [ -z "${_bridge}" ] && return 1
+    if [ -z "${_bridge}" ]; then
+        config::core::get "_bridge" "bridge_${_name}"
+        [ -z "${_bridge}" ] && return 1
+    fi
 
-    # don't rename custom bridges. user can set this in rc.conf
-    # or just stick with bridgeX
-    ifconfig "${_bridge}" description "vm-${_name}" up >/dev/null 2>&1
+    # don't rename custom bridges. user can set this in rc.conf or just stick with bridgeX
+    ifconfig "${_bridge}" descr "vm-${_name}" group vm-switch up >/dev/null 2>&1
+    switch::set_viid "${_name}" "${_bridge}"
 }
 
 # show the configuration details for a manual switch
@@ -77,7 +79,7 @@ switch::manual::create(){
     [ -n "${_priv}" ] && config::core::set "private_${_switch}" "${_priv}"
 
     # import
-    ifconfig "${_bridge}" description "vm-${_switch}" up
+    switch::manual::init "${_switch}" "${_bridge}"
 }
 
 # remove a manual switch
@@ -92,7 +94,8 @@ switch::manual::remove(){
     [ -z "${_id}" ] && return 0
 
     # try to remove our description
-    ifconfig ${_id} description "" >/dev/null 2>&1
+    # viid stays but it's not worth the extra hassle to remove that
+    ifconfig ${_id} -descr -group vm-switch >/dev/null 2>&1
 }
 
 # add a new interface to this switch

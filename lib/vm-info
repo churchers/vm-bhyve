@@ -31,7 +31,7 @@
 #
 info::guest(){
     local _name="$1"
-    local _bridge_list=$(ifconfig -g bridge)
+    local _bridge_list=$(ifconfig -g vm-switch)
     local _ds
 
     vm::running_load

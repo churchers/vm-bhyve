@@ -66,7 +66,7 @@ switch::list(){
     config::core::get "_switchlist" "switch_list"
 
     {
-        printf "${_format}" "NAME" "TYPE" "IDENT" "ADDRESS" "PRIVATE" "MTU" "VLAN" "PORTS"
+        printf "${_format}" "NAME" "TYPE" "IFACE" "ADDRESS" "PRIVATE" "MTU" "VLAN" "PORTS"
 
         if [ -n "${_switchlist}" ]; then
             for _switch in ${_switchlist}; do
@@ -111,7 +111,7 @@ switch::create(){
     _switch="$1"
 
     # check for a valid switch name
-    util::check_name "${_switch}" 10 || util::err "invalid switch name - '${_switch}'"
+    util::check_name "${_switch}" || util::err "invalid switch name - '${_switch}'"
 
     # make sure it's not an existing name
     config::core::get "_list" "switch_list"
@@ -421,4 +421,45 @@ switch::__migrate(){
 
     # reload configuration
     [ -n "${_update}" ] && config::core::load
+}
+
+# get a virt interface id for a port/switch
+#
+# @param string _var variable name to put result into
+# @param string _switch switch name to get id for
+#
+switch::__viid(){
+    local _hash=$(md5 -qs "${2}" | cut -c1-5)
+    setvar "$1" "viid-${_hash}@"
+}
+
+# retrieve interface name based on a switch viid
+#
+# @param string _var variable to put interface name into
+# @param string _switch the switch name
+#
+switch::find(){
+    local _var="$1"
+    local _switch="$2"
+    local _viid _name
+
+    switch::__viid "_viid" "${_switch}"
+    _name=$(ifconfig -g "${_viid}" 2>/dev/null)
+    [ -n "${_name}" ] && setvar "${_var}" "${_name}"
+}
+
+# mark an interface with a unique viid
+# i say unique, its 5 chars from an md5 hash which
+# should be enough for half a dozen switches
+#
+# @parem string _switch switch name
+# @param string _iface interface to mark
+#
+switch::set_viid(){
+    local _switch="$1"
+    local _iface="$2"
+    local _viid
+
+    switch::__viid "_viid" "${_switch}"
+    ifconfig "${_iface}" group "${_viid}" >/dev/null 2>&1
 }

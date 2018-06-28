@@ -50,12 +50,14 @@ switch::vxlan::init(){
 
     # create the vxlan interface
     ifconfig "vxlan${_vlan}" create vxlanid "${_vlan}" vxlanlocal "${_local}" vxlangroup "${_maddr}" \
-      vxlandev "${_if}" description "vm-vxlan-${_switch}" up >/dev/null 2>&1
+      vxlandev "${_if}" descr "vm-vxlan-${_switch}" group vm-vlan up >/dev/null 2>&1
     [ $? -eq 0 ] || return 1
 
     # create a bridge for this switch
-    ifconfig bridge create name "${_id}" up >/dev/null 2>&1
+    _id=$(ifconfig bridge create descr "vm-${_name}" group vm-switch up 2>/dev/null)
     [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
+
+    switch::set_viid "${_name}" "${_id}"
 
     # randomise mac if feature is available
     [ ${VERSION_BSD} -ge 1102000 ] && ifconfig "${_id}" link random
@@ -86,7 +88,7 @@ switch::vxlan::show(){
     config::core::get "_addr" "addr_${_name}"
     config::core::get "_priv" "private_${_name}" "no"
 
-    printf "${_format}" "${_name}" "vxlan" "${_id}" "${_addr}" "${_priv}" "n/a" "${_vlan}" "${_port}"
+    printf "${_format}" "${_name}" "vxlan" "${_id:--}" "${_addr}" "${_priv}" "n/a" "${_vlan}" "${_port}"
 }
 
 # create a vxlan switch

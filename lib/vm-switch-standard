@@ -36,8 +36,10 @@ switch::standard::init(){
     switch::standard::id "_id" "${_name}" && return 0
 
     # create a bridge for this switch
-    ifconfig bridge create name "${_id}" group vm-switch up >/dev/null 2>&1
+    _id=$(ifconfig bridge create descr "vm-${_name}" group vm-switch up 2>/dev/null)
     [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
+
+    switch::set_viid "${_name}" "${_id}"
 
     # randomise mac if feature is available
     [ ${VERSION_BSD} -ge 1102000 ] && ifconfig "${_id}" link random
@@ -64,13 +66,14 @@ switch::standard::show(){
     local _format="$2"
     local _id _vlan _ports _addr _mtu _priv
 
+    switch::find "_id" "${_name}"
     config::core::get "_ports" "ports_${_name}"
     config::core::get "_vlan" "vlan_${_name}"
     config::core::get "_addr" "addr_${_name}"
     config::core::get "_mtu" "mtu_${_name}"
     config::core::get "_priv" "private_${_name}" "no"
 
-    printf "${_format}" "${_name}" "standard" "-" "${_addr:--}" "${_priv}" "${_mtu:--}" \
+    printf "${_format}" "${_name}" "standard" "${_id:--}" "${_addr:--}" "${_priv}" "${_mtu:--}" \
       "${_vlan:--}" "${_ports:--}"
 }
 
@@ -141,7 +144,7 @@ switch::standard::remove_member(){
     switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
     config::core::remove "ports_${_switch}" "${_if}"
     config::core::get "_vlan" "vlan_${_switch}"
-    switch::standard::__unconfigure_port "${_switch}" "${_id}" "${_if}"
+    switch::standard::__unconfigure_port "${_switch}" "${_id}" "${_if}" "${_vlan}"
 }
 
 # set vlan id
@@ -260,23 +263,29 @@ switch::standard::__configure_port(){
     local _port="$3"
     local _vlan="$4"
     local _mtu="$5"
-    local _vid
+    local _viface _vname
 
     # try to set mtu of port?
     [ -n "${_mtu}" ] && ifconfig "${_port}" mtu ${_mtu} >/dev/null 2>&1
 
     # vlan enabled?
     if [ -n "${_vlan}" ]; then
+
         # see if vlan interface already exists
-        switch::standard::id "_vid" "${_port}.${_vlan}"
+        _vname="${_port}.${_vlan}"
+        switch::standard::id "_viface" "${_vname}"
 
         # create if needed
         if [ $? -ne 0 ]; then
-            _vid=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" name "vm-${_port}.${_vlan}" group vm-vlan up)
+            # use our id as the interface name here.
+            # it should always be a valid name and interface.vlan-id is much easier to understand in ifconfig
+            # than a bunch of vlanX interfaces
+            _viface=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" descr "vm-vlan-${_switch}-${_vname}" name "${_vname}" group vm-vlan up 2>/dev/null)
             [ $? -eq 0 ] || util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
         fi
 
-        ifconfig ${_id} addm ${_vid} >/dev/null 2>&1
+        switch::set_viid "${_vname}" "${_viface}"
+        ifconfig ${_id} addm ${_viface} >/dev/null 2>&1
     else
         # add to bridge, nice and simple :)
         ifconfig ${_id} addm ${_port} >/dev/null 2>&1
@@ -311,17 +320,12 @@ switch::standard::__unconfigure_port(){
 }
 
 # get the id for a standard switch
-# this is just vm-<switch-name>
-# we do make sure it exists here though
+# this returns the associated bridge name
 #
 # @param string _var variable to put id into
 # @param string _switch the switch to look for
 # @return 0 on success
 #
 switch::standard::id(){
-    local _var="$1"
-    local _switch="$2"
-
-    setvar "${_var}" "vm-${_switch}"
-    ifconfig "vm-${_switch}" >/dev/null 2>&1
+    switch::find "$1" "$2"
 }

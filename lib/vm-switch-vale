@@ -97,11 +97,11 @@ switch::vale::id(){
     local _id_s _id_p
 
     # get a switch id
-    _id_s=$(md5 -qs "${_switch}" | awk '{print substr($0,0,5)}')
+    _id_s=$(md5 -qs "${_switch}" | cut -c1-5)
 
     # given port?
     if [ -n "${_port}" ]; then
-        _id_p=$(md5 -qs "${_port}" | awk '{print substr($0,0,5)}')
+        _id_p=$(md5 -qs "${_port}" | cut -c1-5)
         setvar "${_var}" "vale${_id_s}:${_id_p}"
     else
         setvar "${_var}" "vale${_id_s}"

@@ -33,13 +33,17 @@
 # @param optional string _iso the iso file for an install
 #
 vm::run(){
-    local _name="$1"
-    local _iso="$2" _iso_dev
+    local _name _iso _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
     local _ignore_msr _bhyve_options
+
+    cmd::parse_args "$@"
+    shift $?
+    _name="$1"
+    _iso="$2"
 
     # try to load datstore details
     datastore::get_guest "${_name}" || exit 5

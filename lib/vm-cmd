@@ -180,33 +180,31 @@ cmd::parse_image(){
     esac
 }
 
-# look for any arguments to the vm command
-# -f = foreground mode:   run vm-bhyve/loader/bhyve in the foreground
-#    = force:             force confirmation for some actions (see man pages)
-# -i = interactive mode:  if using tmux, don't detach the tmux session
-# -t = tmux mode: internal flag to notify vm-run we are in tmux
+# many commands accept the same arguments (force being the obvious one)
+# provide a function to parse these so we don't have to keep
+# repeating the same getopt code. the return value here is the number
+# of arguments the caller needs to shift.
 #
-# the argument string without any options is put into 
-# VM_COMMAND for the main command parser to handle
+# note that start/install/_run use -f for foreground mode
 #
-# @modifies VM_COMMAND VM_OPT_FOREGROUND VM_OPT_INTERACTIVE VM_OPT_TMUX vm_dir
-# @modifies VM_OPT_FORCE
+# @param _arglist[multiple] the callers $@
 #
 cmd::parse_args(){
-    local _opt
+    local _opt _count
 
     while getopts fit _opt; do
         case ${_opt} in
-            f) VM_OPT_FOREGROUND="1"
-               VM_OPT_FORCE="1"
-               ;;
+            f) VM_OPT_FORCE="1"
+               VM_OPT_FOREGROUND="1" ;;
             i) VM_OPT_INTERACTIVE="1" ;;
             t) VM_OPT_TMUX="1" ;;
         esac
     done
 
-    shift $((OPTIND - 1))
-    VM_COMMAND="$@"
+    [ -n "${VM_OPT_FOREGROUND}" -a -n "${VM_OPT_INTERACTIVE}" ] && \
+      util::err "foreground and interactive mode are mutually exclusive"
+
+    return $((OPTIND - 1))
 }
 
 # try to match part of a command name against a list of valid commands

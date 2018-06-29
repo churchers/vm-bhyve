@@ -313,9 +313,12 @@ core::add_network(){
 # @param string _iso the iso file in $vm_dir/.iso to use
 #
 core::install(){
-    local _name="$1"
-    local _iso="$2"
-    local _fulliso
+    local _name _iso _fulliso
+
+    cmd::parse_args "$@"
+    shift $?
+    _name="$1"
+    _iso="$2"
 
     [ -z "${_name}" -o -z "${_iso}" ] && util::usage
 
@@ -341,6 +344,7 @@ core::stopall(){
     local _stop_parallel _stop_list _running _list_rev _curr
     local _stop_p_pids _pid
 
+    cmd::parse_args "$@"
     : ${vm_delay:=2}
 
     # get a list of running bhyve instances
@@ -416,8 +420,12 @@ core::stopall(){
 # @param string[multiple] _name the name of the guest(s) to start
 #
 core::start(){
-    local _name="$1"
+    local _name
     local _done
+
+    cmd::parse_args "$@"
+    shift $?
+    _name="$1"
 
     [ -z "${_name}" ] && util::usage
     : ${vm_delay:=2}
@@ -509,7 +517,7 @@ core::__start(){
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
     if [ -n "${VM_OPT_FOREGROUND}" ]; then
-        $0 -f _run "${_name}" "${_iso}"
+        $0 _run -f "${_name}" "${_iso}"
     elif [ "${_console}" = "tmux" ]; then
         # can't have dots in tmux session :( (looks like it may use . to separate window.pane)
         # use ~ which we don't normally allow
@@ -517,9 +525,9 @@ core::__start(){
 
         # start session and connect if in interactive mode
         if [ -n "${VM_OPT_INTERACTIVE}" ]; then
-            ${_tmux_cmd} new -s "${_tmux_name}" $0 -tf _run "${_name}" "${_iso}"
+            ${_tmux_cmd} new -s "${_tmux_name}" $0 _run -tf "${_name}" "${_iso}"
         else
-            ${_tmux_cmd} new -ds "${_tmux_name}" $0 -tf _run "${_name}" "${_iso}"
+            ${_tmux_cmd} new -ds "${_tmux_name}" $0 _run -tf "${_name}" "${_iso}"
         fi
     else
         $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
@@ -570,7 +578,11 @@ core::stop(){
 # @param string _name name of the guest
 #
 core::reset(){
-    local _name="$1"
+    local _name
+
+    cmd::parse_args "$@"
+    shift $?
+    _name="$1"
 
     [ -z "${_name}" ] && util::usage
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
@@ -588,7 +600,11 @@ core::reset(){
 # @param string _name name of the guest
 #
 core::poweroff(){
-    local _name="$1"
+    local _name
+
+    cmd::parse_args "$@"
+    shift $?
+    _name="$1"
 
     [ -z "${_name}" ] && util::usage
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
@@ -606,7 +622,11 @@ core::poweroff(){
 # @param string _name name of the guest
 #
 core::destroy(){
-    local _name="$1"
+    local _name
+
+    cmd::parse_args "$@"
+    shift $?
+    _name="$1"
 
     [ -z "${_name}" ] && util::usage
 

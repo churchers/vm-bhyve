@@ -78,8 +78,8 @@
 .Ar name
 .Nm
 .Cm
-.Op Fl f
 .Cm destroy
+.Op Fl f
 .Ar name
 .Nm
 .Cm list
@@ -88,12 +88,12 @@
 .Op Ar name
 .Op Ar ...
 .Nm
-.Op Fl fi
 .Cm install
+.Op Fl fi
 .Ar name iso
 .Nm
-.Op Fl fi
 .Cm start
+.Op Fl fi
 .Ar name
 .Ar ...
 .Nm
@@ -115,12 +115,12 @@
 .Op Fl s Ar size|switch
 .Ar name
 .Nm
-.Op Fl f
 .Cm reset
+.Op Fl f
 .Ar name
 .Nm
-.Op Fl f
 .Cm poweroff
+.Op Fl f
 .Ar name
 .Nm
 .Cm startall
@@ -366,40 +366,6 @@ A pre-compiled copy of the UEFI firmware (BHYVE_UEFI_20160526.fd), as well as
 instructions for creating an
 unattended installation ISO can currently be obtained from
 .Lk https://people.freebsd.org/~grehan/bhyve_uefi/
-.\" ============ GLOBAL OPTIONS =============
-.Sh GLOBAL OPTIONS
-There are some options that can be specified after
-.Sy vm ,
-but before any subcommand.
-These are global options that affect the way
-.Nm
-functions.
-.Bl -tag -width 12n
-.It Fl f
-Run
-.Nm
-in the foreground.
-This option is primarily useful with the
-.Nm Cm start
-or
-.Nm Cm install
-command and runs the guest on stdio.
-.Pp
-Note that for some commands, such as
-.Sy destroy ,
-.Sy reset ,
-.Sy poweroff ,
-this is interpreted as "force", and will perform the action without confirmation.
-.It Fl i
-Run the guest in interactive mode.
-This mode is only supported when using the
-.Sy tmux
-console setting.
-This starts the guest on a tmux session and then immediately connects to that
-session.
-You can detach the session, or shut the guest down to return to your original
-terminal.
-.El
 .\" ============ SUBCOMMANDS =============
 .Sh SUBCOMMANDS
 .Bl -tag -width indent

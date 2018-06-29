@@ -158,16 +158,10 @@ zfs::__format_options(){
 # @param string _name the name of the guest to snapshot
 #
 zfs::snapshot(){
-    local _name _snap _opt _force
+    local _name _snap
 
-    while getopts f _opt; do
-        case $_opt in
-            f) _force=1 ;;
-            *) util::usage ;;
-        esac
-    done
-
-    shift $((OPTIND - 1))
+    cmd::parse_args "$@"
+    shift $?
     _name="$1"
 
     # try to get snapshot name
@@ -185,7 +179,7 @@ zfs::snapshot(){
     [ -z "${_snap}" ] && _snap=$(date +"%Y-%m-%d-%H:%M:%S")
 
     if ! vm::confirm_stopped "${_name}" >/dev/null; then
-        [ -z "${_force}" ] && util::err "${_name} must be powered off first (use -f to override)"
+        [ -z "${VM_OPT_FORCE}" ] && util::err "${_name} must be powered off first (use -f to override)"
     fi
 
     zfs snapshot -r ${VM_DS_ZFS_DATASET}/${_name}@${_snap}

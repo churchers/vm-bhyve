@@ -429,7 +429,8 @@ switch::__viid(){
     setvar "$1" "viid-${_hash}@"
 }
 
-# retrieve interface name based on a switch viid
+# retrieve interface name, given a switch name
+# we convert to viid then look for the matching group
 #
 # @param string _var variable to put interface name into
 # @param string _switch the switch name

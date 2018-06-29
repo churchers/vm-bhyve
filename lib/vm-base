@@ -1,6 +1,6 @@
 #!/bin/sh
 #-------------------------------------------------------------------------+
-# Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
+# Copyright (C) 2018 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,28 +24,37 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# get libs
-if [ -e "./lib/vm-core" ]; then
-    LIB="./lib"
-elif [ -e "/usr/local/lib/vm-bhyve" ]; then
-    LIB="/usr/local/lib/vm-bhyve"
-else
-    echo "unable to locate vm-bhyve libriaries"
-    exit 1
-fi
+VERSION=1.3-devel
+VERSION_INT=103010
+VERSION_BSD=$(uname -K)
+PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
-# load libs
-. "${LIB}/vm-cmd"
-. "${LIB}/vm-config"
-. "${LIB}/vm-core"
-. "${LIB}/vm-datastore"
-. "${LIB}/vm-guest"
-. "${LIB}/vm-info"
-. "${LIB}/vm-migration"
-. "${LIB}/vm-rctl"
-. "${LIB}/vm-run"
-. "${LIB}/vm-switch"
-. "${LIB}/vm-util"
-. "${LIB}/vm-zfs"
+. /etc/rc.subr
+load_rc_config "vm"
 
-. "${LIB}/vm-base"
+# check informational commands
+cmd::parse_info $@
+
+# we should be enabled in rc.conf
+# or call it using forcestart
+[ -z "$rc_force" ] && ! checkyesno vm_enable && util::err "\$vm_enable is not enabled in /etc/rc.conf!"
+
+# check we can run bhyve
+util::check_bhyve_support
+
+# init for zfs
+zfs::init
+
+# create directories as needed
+[ ! -d "${vm_dir}" ] && util::err "\$vm_dir has not been configured or is not a valid directory"
+[ ! -d "${vm_dir}/.config" ] && mkdir "${vm_dir}/.config"
+[ ! -e "${vm_dir}/.config/null.iso" ] && touch "${vm_dir}/.config/null.iso"
+[ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
+[ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
+
+# load core configuration
+config::core::load
+datastore::load
+
+# run the requested command
+cmd::parse "$@"

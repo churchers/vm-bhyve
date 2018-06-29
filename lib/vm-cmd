@@ -188,6 +188,7 @@ cmd::parse_image(){
 # note that start/install/_run use -f for foreground mode
 #
 # @param _arglist[multiple] the callers $@
+# @return number of arguments caller should shift over
 #
 cmd::parse_args(){
     local _opt _count

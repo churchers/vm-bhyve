@@ -36,7 +36,7 @@ util::setup(){
 
     # do we have the default template example, but no default in our .templates?
     # if so, get a copy, this at least allows a simple "vm create" to work out of the box
-    if [ -e "/usr/local/share/examples/vm-bhyve/default.conf" ] && [ ! -e "${vm_dir}/.templates/default.conf" ]; then
+    if [ -e "/usr/local/share/examples/vm-bhyve/default.conf" -a ! -e "${vm_dir}/.templates/default.conf" ]; then
         cp "/usr/local/share/examples/vm-bhyve/default.conf" "${vm_dir}/.templates/" >/dev/null 2>&1
     fi
 }
@@ -110,7 +110,7 @@ util::check_bhyve_iommu(){
 
     _vtd=$(acpidump -t |grep DMAR)
     _amdvi=$(sysctl hw |grep 'vmm.amdvi.enable: 1')
-    [ -z "${_vtd}" ] && [ -z "${_amdvi}" ] && return 1
+    [ -z "${_vtd}" -a -z "${_amdvi}" ] && return 1
 
     return 0
 }

@@ -34,7 +34,7 @@ switch::vxlan::init(){
     local _id _vlan _if _maddr _addr
 
     # see if the bridge already exists
-    switch::standard::id "_id" "${_name}" && return 0
+    switch::find "_id" "${_name}" && return 0
 
     # need a vlan id and interface
     config::core::get "_vlan" "vlan_${_name}"
@@ -82,7 +82,7 @@ switch::vxlan::show(){
     local _format="$2"
     local _id _vlan _port _addr _priv
 
-    switch::standard::id "_id" "${_name}"
+    switch::find "_id" "${_name}"
     config::core::get "_vlan" "vlan_${_name}"
     config::core::get "_port" "ports_${_name}"
     config::core::get "_addr" "addr_${_name}"
@@ -120,7 +120,7 @@ switch::vxlan::remove(){
     local _id _vlan _maddr
     
     # try to get guest bridge and vxlan id
-    switch::standard::id "_id" "${_switch}"
+    switch::find "_id" "${_switch}"
     [ $? -eq 0 ] || return 1
 
     config::core::get "_vlan" "vlan_${_switch}"

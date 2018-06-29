@@ -33,7 +33,7 @@ switch::standard::init(){
     local _id _addr _mtu
 
     # see if it already exists
-    switch::standard::id "_id" "${_name}" && return 0
+    switch::find "_id" "${_name}" && return 0
 
     # create a bridge for this switch
     _id=$(ifconfig bridge create descr "vm-${_name}" group vm-switch up 2>/dev/null)
@@ -104,8 +104,7 @@ switch::standard::remove(){
     local _id
 
     # get the bridge id
-    switch::standard::id "_id" "${_switch}"
-    [ $? -eq 0 ] || return 1
+    switch::find "_id" "${_switch}" || return 1
 
     # remove all member interfaces
     switch::standard::__remove_members "${_switch}" "${_id}"
@@ -124,7 +123,7 @@ switch::standard::add_member(){
     local _if="$2"
     local _id _vlan _mtu
     
-    switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
+    switch::find "_id" "${_switch}" || util::err "unable to locate switch id"
     config::core::get "_vlan" "vlan_${_switch}"
     config::core::get "_mtu" "mtu_${_switch}"
     switch::standard::__configure_port "${_switch}" "${_id}" "${_if}" "${_vlan}" "${_mtu}"
@@ -141,7 +140,7 @@ switch::standard::remove_member(){
     local _if="$2"
     local _id _vlan
 
-    switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
+    switch::find "_id" "${_switch}" || util::err "unable to locate switch id"
     config::core::remove "ports_${_switch}" "${_if}"
     config::core::get "_vlan" "vlan_${_switch}"
     switch::standard::__unconfigure_port "${_switch}" "${_id}" "${_if}" "${_vlan}"
@@ -157,7 +156,7 @@ switch::standard::vlan(){
     local _vlan="$2"
     local _id
 
-    switch::standard::id "_id" "${_switch}" || util::err "unable to locate switch id"
+    switch::find "_id" "${_switch}" || util::err "unable to locate switch id"
     switch::standard::__remove_members "${_switch}" "${_id}"
 
     # update configuration
@@ -208,7 +207,7 @@ switch::standard::__add_members(){
 
     # get the id if not provided
     if [ -z "${_id}" ]; then
-        switch::standard::id "_id" "${_switch}" || util:err "failed to get switch id while adding members"
+        switch::find "_id" "${_switch}" || util:err "failed to get switch id while adding members"
     fi
 
     config::core::get "_ports" "ports_${_switch}"
@@ -234,8 +233,7 @@ switch::standard::__remove_members(){
 
     # get id if not given to us
     if [ -z "${_id}" ]; then
-        switch::standard::id "_id" "${_switch}"
-        [ $? -eq 0 ] || util::err "failed to get switch id while removing members"
+        switch::find "_id" "${_switch}" || util::err "failed to get switch id while removing members"
     fi
 
     # get full port list
@@ -273,7 +271,7 @@ switch::standard::__configure_port(){
 
         # see if vlan interface already exists
         _vname="${_port}.${_vlan}"
-        switch::standard::id "_viface" "${_vname}"
+        switch::find "_viface" "${_vname}"
 
         # create if needed
         if [ $? -ne 0 ]; then
@@ -310,7 +308,7 @@ switch::standard::__unconfigure_port(){
 
     if [ -n "${_vlan}" ]; then
         # get vlan interface
-        switch::standard::id "_vid" "${_port}.${_vlan}"
+        switch::find "_vid" "${_port}.${_vlan}"
 
         # remove the vlan interface, it will be removed from bridge automatically
         [ $? -eq 0 ] && ifconfig ${_vid} destroy >/dev/null 2>&1

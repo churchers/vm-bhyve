@@ -77,7 +77,7 @@ core::list(){
                 # find out if we auto-start this vm, and get sequence number
                 for _vm in ${vm_list}; do
                     [ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
-                    _num=$(($_num + 1))
+                    _num=$((_num + 1))
                 done
 
                 # if stopped, see if it's locked by another host
@@ -239,7 +239,7 @@ core::add_disk(){
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
     config::get "_zfs_opts" "zfs_zvol_opts"
 
-    while [ 1 ]; do
+    while true; do
         config::get "_curr" "disk${_num}_name"
         [ -z "${_curr}" ] && break
         config::get "_emulation" "disk${_num}_type"
@@ -290,7 +290,7 @@ core::add_network(){
 
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
 
-    while [ 1 ]; do
+    while true; do
         _emulation="${_curr}"
         config::get "_curr" "network${_num}_type"
         [ -z "${_curr}" ] && break
@@ -646,8 +646,8 @@ core::destroy(){
         util::confirm "Are you sure you want to completely remove this virtual machine" || exit 0
     fi
 
-    zfs::destroy_dataset "${VM_DS_ZFS_DATASET}/${_name}"
-    [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH}/${_name}"
+    zfs::destroy_dataset "${VM_DS_ZFS_DATASET:?}/${_name:?}"
+    [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH:?}/${_name:?}"
 }
 
 # 'vm rename'
@@ -741,7 +741,7 @@ core::configure(){
     local _name="$1"
 
     [ -z "${_name}" ] && util::usage
-    [ -z "${EDITOR}" ] && EDITOR=vi
+    [ -z "${EDITOR}" ] && EDITOR="vi"
 
     datastore::get_guest "${_name}" || \
         util::err "cannot locate configuration file for virtual machine: ${_name}"

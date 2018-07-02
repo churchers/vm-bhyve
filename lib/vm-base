@@ -33,7 +33,7 @@ PATH=${PATH}:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 load_rc_config "vm"
 
 # check informational commands
-cmd::parse_info $@
+cmd::parse_info "$@"
 
 # we should be enabled in rc.conf
 # or call it using forcestart

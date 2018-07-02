@@ -283,7 +283,7 @@ migration::__check_compat(){
     # check for custom disks
     # file/zvol are under guest dataset and should go across ok
     # custom disks could be anywhere
-    while [ 1 ]; do
+    while true; do
         config::get "_setting" "disk${_num}_type"
         [ -z "${_setting}" ] && break
         [ "${_setting}" = "custom" ] && _err="custom disk(s) configured" && break

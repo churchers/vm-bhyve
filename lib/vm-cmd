@@ -56,10 +56,7 @@ cmd::parse(){
     local _cmd
 
     # try to find a matching command
-    cmd::find "_cmd" "$1" "${CMD_VALID_LIST}"
-    [ $? -ne 0 ] && util::usage
-
-    # remove parsed command
+    cmd::find "_cmd" "$1" "${CMD_VALID_LIST}" || util::usage
     shift
 
     case "${_cmd}" in
@@ -108,10 +105,7 @@ cmd::parse_switch(){
     local _cmd
 
     # try to find a matching command
-    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info"
-    [ $? -ne 0 ] && util::usage
-
-    # remove parsed command
+    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info" || util::usage
     shift
 
     case "${_cmd}" in
@@ -139,10 +133,7 @@ cmd::parse_datastore(){
     local _cmd
 
     # try to find a matching command
-    cmd::find "_cmd" "$1" "list,add,remove,iso"
-    [ $? -ne 0 ] && util::usage
-
-    # remove parsed command
+    cmd::find "_cmd" "$1" "list,add,remove,iso" || util::usage
     shift
 
     case "${_cmd}" in
@@ -165,10 +156,7 @@ cmd::parse_image(){
     [ -z "${VM_ZFS}" ] && util::err "\$vm_dir must be a ZFS datastore to use these functions"
 
     # try to find a matching command
-    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info"
-    [ $? -ne 0 ] && util::usage
-
-    # remove parsed command
+    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info" || util::usage
     shift
 
     case "${_cmd}" in
@@ -202,7 +190,7 @@ cmd::parse_args(){
         esac
     done
 
-    [ -n "${VM_OPT_FOREGROUND}" -a -n "${VM_OPT_INTERACTIVE}" ] && \
+    [ -n "${VM_OPT_FOREGROUND}" ] && [ -n "${VM_OPT_INTERACTIVE}" ] && \
       util::err "foreground and interactive mode are mutually exclusive"
 
     return $((OPTIND - 1))
@@ -233,9 +221,7 @@ cmd::find(){
             return 0
         fi
 
-        echo "${_opt}" | grep -iqs "^${_user_cmd}"
-
-        if [ $? -eq 0 ]; then
+        if echo "${_opt}" | grep -iqs "^${_user_cmd}"; then
            [ -n "${_found}" ] && util::err "ambiguous command '${_user_cmd}'"
 
            _found=1

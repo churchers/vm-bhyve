@@ -280,7 +280,7 @@ info::guest_disks(){
     local _disk _type _dev _path _size _b_size _used _b_used
     local _INDENT="    "
 
-    while [ 1 ]; do
+    while true; do
         config::get "_disk" "disk${_num}_name"
         config::get "_type" "disk${_num}_type"
         config::get "_dev" "disk${_num}_dev" "file"
@@ -333,7 +333,7 @@ info::guest_networking(){
     local _int _id _tag _switch _stats _b_in _b_out
     local _INDENT="    "
 
-    while [ 1 ]; do
+    while true; do
         config::get "_int" "network${_num}_type"
         [ -z "${_int}" ] && break
 

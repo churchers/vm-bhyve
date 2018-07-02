@@ -200,7 +200,7 @@ vm::run(){
     util::log "guest" "${_name}" "booting"
     cd /
 
-    while [ 1 ]; do
+    while true; do
 
         # destroy existing vmm
         # freebsd seems happy to run a bhyveload/bhyve loop
@@ -407,7 +407,7 @@ vm::bhyve_device_disks(){
     fi
 
     # get all disks
-    while [ 1 ]; do
+    while true; do
         config::get "_disk" "disk${_num}_name"
         config::get "_type" "disk${_num}_type"
         [ -z "${_disk}" -o -z "${_type}" ] && break
@@ -500,7 +500,7 @@ vm::bhyve_device_networking(){
     local _type _switch _mac _custom_tap _tap _sid _mtu _span
     local _num=0 _member_type _sw_type
 
-    while [ 1 ]; do
+    while true; do
         config::get "_type" "network${_num}_type"
         [ -z "${_type}" ] && break
 
@@ -558,12 +558,10 @@ vm::bhyve_device_networking(){
                         fi
 
                         util::log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch} ${_member_type})"
-                        ifconfig "${_sid}" "${_member_type}" "${_tap}" >/dev/null 2>&1
-                        [ $? -ne 0 ] && util::log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+                        ifconfig "${_sid}" "${_member_type}" "${_tap}" >/dev/null 2>&1 || util::log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
 
                         util::log "guest" "${_name}" "bring up ${_tap} -> ${_sid} (${_switch} ${_member_type})"
-                        ifconfig "${_tap}" up >/dev/null 2>&1
-                        [ $? -ne 0 ] && util::log "guest" "${_name}" "failed to bring up ${_tap} in ${_sid}"
+                        ifconfig "${_tap}" up >/dev/null 2>&1 || util::log "guest" "${_name}" "failed to bring up ${_tap} in ${_sid}"
 
                         # set private if configured
                         switch::is_private "${_switch}" && ifconfig "${_sid}" "private" "${_tap}" >/dev/null 2>&1
@@ -731,7 +729,7 @@ vm::bhyve_device_passthru(){
     local _last_orig_slot
     local _num=0
 
-    while [ 1 ]; do
+    while true; do
         config::get "_dev" "passthru${_num}"
         [ -z "${_dev}" ] && break
 
@@ -983,7 +981,7 @@ vm::generalise(){
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
     config::remove "${_name}" "uuid"
 
-    while [ 1 ]; do
+    while true; do
         config::get "_entry" "network${_num}_mac"
         [ -z "${_entry}" ] && break
 

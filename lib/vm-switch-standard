@@ -30,13 +30,24 @@
 #
 switch::standard::init(){
     local _name="$1"
-    local _id _addr _mtu
+    local _id _addr _mtu _len _ifconf
 
     # see if it already exists
     switch::find "_id" "${_name}" && return 0
 
+    # get the length of the switch name
+    # it's useful for other utilities to use switch name as interface name
+    # as it's static. can't do that if it's > 12 chars
+    _len=$(echo -n "${_name}" | wc -m)
+
+    if [ ${_len} -le 12 ]; then
+      _ifconf="name vm-${_name}"
+    else
+      _ifconf="descr vm-${_name}"
+    fi
+
     # create a bridge for this switch
-    _id=$(ifconfig bridge create descr "vm-${_name}" group vm-switch up 2>/dev/null)
+    _id=$(ifconfig bridge create ${_ifconf} group vm-switch up 2>/dev/null)
     [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
 
     switch::set_viid "${_name}" "${_id}"

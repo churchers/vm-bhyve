@@ -39,7 +39,6 @@
 switch::init(){
     local _switchlist _switch _type
 
-    switch::__migrate
     config::core::get "_switchlist" "switch_list"
 
     if [ -n "${_switchlist}" ]; then
@@ -380,43 +379,6 @@ switch::id(){
         manual) switch::manual::id "${_var}" "${_switch}" ;;
         *)      switch::standard::id "${_var}" "${_switch}" ;;
     esac
-}
-
-# temporary function to migrate old switch configuration
-# to new style. we need the "type_{name}" config option to
-# be present for each switch, rather than the ugly way we 
-# used to use vale_* or bridge_* to determine switch type
-#
-switch::__migrate(){
-    local _list _switch _type _bridge _vale _update
-
-    config::core::get "_list" "switch_list"
-
-    for _switch in ${_list}; do
-        config::core::get "_type" "type_${_switch}"
-        [ -n "${_type}" ] && continue
-
-        _type="standard"
-
-        # try to determine switch type using old method
-        config::core::get "_bridge" "bridge_${_switch}"
-        config::core::get "_vale" "vale_${_switch}"
-
-        # manually specified bridge interface?
-        [ -n "${_bridge}" ] && _type="manual"
-
-        # vale flag present?
-        if util::checkyesno "${_vale}"; then
-            config::core::remove "vale_${_switch}"
-            _type="vale"
-        fi
-
-        config::core::set "type_${_switch}" "${_type}"
-        _update="1"
-    done
-
-    # reload configuration
-    [ -n "${_update}" ] && config::core::load
 }
 
 # get a virt interface id for a port/switch

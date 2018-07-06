@@ -36,7 +36,7 @@ vm::run(){
     local _name _iso _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
-    local _opts _devices _slot=4 _func=0 _taplist _exit _passdev
+    local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
     local _ignore_msr _bhyve_options
 
@@ -65,6 +65,8 @@ vm::run(){
     config::get "_debug" "debug" "no"
     config::get "_ignore_msr" "ignore_bad_msr" "no"
     config::get "_bhyve_options" "bhyve_options"
+    config::get "_slot" "start_slot" "4"
+    config::get "_install_slot" "install_slot" "3"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -221,9 +223,9 @@ vm::run(){
 
         # set full iso path
         # use null.iso if not an install and uefi firmware
-        [ -n "${_iso}" ] && _iso_dev="-s 3:0,ahci-cd,${_iso}"
+        [ -n "${_iso}" ] && _iso_dev="-s ${_install_slot}:0,ahci-cd,${_iso}"
         [ -z "${_iso}" -a -n "${_uefi}" -a "${_uefi}" != "csm" ] && \
-            _iso_dev="-s 3:0,ahci-cd,${vm_dir}/.config/null.iso"
+            _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run
         [ "${_run}" -eq "2" ] && vm::bhyve_device_fbuf_clear_wait
@@ -733,21 +735,27 @@ vm::bhyve_device_passthru(){
         config::get "_dev" "passthru${_num}"
         [ -z "${_dev}" ] && break
 
-        _orig_slot=${_dev%%/*}
+        # see if there's an = sign
+        # we allow A/B/C=D:E to force D:E as the guest SLOT:FUNC
+        if echo "${_dev}" | grep -qs "="; then
+            _devices="${_devices} -s ${_dev##*=},passthru,${_dev%%=*}"
+        else
+            _orig_slot=${_dev%%/*}
 
-        # only move to new slot if the original device is on a different slot to the last one.
-        # if user wants to passthru a device that has multiple functions which must stay together
-        # on one slot, they should be together in configuration file
-        if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
-            _slot=$((_slot + 1))
-            _func=0
+            # only move to new slot if the original device is on a different slot to the last one.
+            # if user wants to passthru a device that has multiple functions which must stay together
+            # on one slot, they should be together in configuration file
+            if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
+                _slot=$((_slot + 1))
+                _func=0
+            fi
+
+            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
+            _last_orig_slot=${_orig_slot}
+            _func=$((_func + 1))
         fi
 
-        _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
-        _last_orig_slot=${_orig_slot}
-
         _num=$((_num + 1))
-        _func=$((_func + 1))
     done
 
     if [ ${_num} -ge 1 ]; then

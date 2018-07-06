@@ -257,6 +257,11 @@ network0_span="no"
 # metal. The value of this option is the B/S/F of the appropriate device.
 # e.g "3/0/0"
 #
+# The slot to use in bhyve can be specified as below. This example will
+# force the host device 6/0/0 to use slot 2:0 in the guest
+#
+# passthru0="6/0/0=2:0"
+#
 # Please note that in order to stop the bhyve host from attaching to the device,
 # there are some steps required to reserve the device in /boot/loader.conf.
 #
@@ -267,6 +272,24 @@ network0_span="no"
 # More details can be found in the FreeBSD bhyve wiki pages
 #
 passthru0=""
+
+# start_slot
+# The slot to start creating devices at inside the guest. Note that
+# we create disk devices first, and some UEFI guests require disks to
+# be in slots 3-6. The default is 4, with 3 being left available for
+# an installation ISO
+#
+start_slot="4"
+
+# install_slot
+# The slot to use for an installation ISO. By default this is 3,
+# which is the first available slot with the original UEFI firmware.
+# Using this makes sure the ISO is the first device, and leaves
+# 4-6 available for hd devices. Being able to change this may
+# be useful for non-UEFI guests, especially if a passthru device
+# requires this slot.
+#
+install_slot="3"
 
 # virt_random
 # Set to any value other than [empty]/off/false/no/0 to create

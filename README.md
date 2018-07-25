@@ -15,7 +15,15 @@ Some of the main features include:
 * Guest reboot handling
 * Designed with multiple compute nodes + shared storage in mind (NFS/iSCSI/etc)
 * Multiple datastores
-* VNC graphics & tmux support (1.1 only. See wiki for instructions)
+* VNC graphics & tmux support (1.1+ only. See wiki for instructions)
+* Dependency free**
+
+** Some additional packages may be required in certain circumstances -
+
+* The port has a dependancy on ca_root_nss added by the ports maintainers to help avoid any SSL errors when downloading FreeBSD ISO files using the `vm iso` command.
+* `sysutils/bhyve-firmware` is required to run UEFI guests
+* `sysutils/tmux` is needed to use tmux console access instead of cu/nmdm
+
 
 ##### See the GitHub wiki for more information and examples.
 

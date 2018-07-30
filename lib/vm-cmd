@@ -151,14 +151,11 @@ cmd::parse_datastore(){
 # @param string _cmd the command after 'vm image '
 #
 cmd::parse_image(){
-    local _cmd
-
-    [ -z "${VM_ZFS}" ] && util::err "\$vm_dir must be a ZFS datastore to use these functions"
-
-    # try to find a matching command
-    cmd::find "_cmd" "$1" "create,list,destroy,add,remove,vlan,nat,address,private,info" || util::usage
+    local _cmd="$1"
     shift
 
+    [ -z "${VM_ZFS}" ] && util::err "\$vm_dir must be a ZFS datastore to use these functions"
+    
     case "${_cmd}" in
         list)      zfs::image_list ;;
         create)    zfs::image_create "$@" ;;

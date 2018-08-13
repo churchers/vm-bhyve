@@ -165,8 +165,8 @@ Usage: vm ...
     list
     info [name] [...]
     create [-d datastore] [-t template] [-s size] <name>
-    [-fi] install <name> <iso>
-    [-fi] start <name> [...]
+    install [-fi] <name> <iso>
+    start [-fi] <name> [...]
     stop <name> [...]
     console <name> [com1|com2]
     configure <name>
@@ -174,9 +174,9 @@ Usage: vm ...
     add [-d device] [-t type] [-s size|switch] <name>
     startall
     stopall
-    [-f] reset <name>
-    [-f] poweroff <name>
-    [-f] destroy <name>
+    reset  [-f] <name>
+    poweroff [-f] <name>
+    destroy [-f] <name>
     passthru
     clone <name[@snapshot]> <new-name>
     snapshot [-f] <name[@snapshot]>

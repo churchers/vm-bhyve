@@ -58,6 +58,11 @@ cpu="1"
 #
 memory="512M"
 
+# wired_memory
+# All requested memory should be wired to the guest
+#
+wired_memory="no"
+
 # hostbridge
 # Allows you to specify the type of hostbridge to use for the
 # guest hardware. This can usually be left as default. The

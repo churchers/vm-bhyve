@@ -645,8 +645,9 @@ If the guest is running, the output also shows the amount of host memory
 currently in use, and additional network details including bytes sent/received
 for each virtual interface.
 .It Xo
+.Cm install 
 .Op Fl fi
-.Cm install Ar name Ar iso
+.Ar name Ar iso
 .Xc
 Start a guest installation for the named virtual machine, using the specified
 ISO file.
@@ -684,8 +685,9 @@ setting must be set likewise.
 In interactive mode the guest is started on a foreground tmux session, but this
 can be detached using the standard tmux commands.
 .It Xo
+.Cm start
 .Op Fl fi
-.Cm start Ar name Ar ...
+.Ar name Ar ...
 .Xc
 Start the named virtual machine(s).
 The guests will boot and run completely in the background.
@@ -773,11 +775,19 @@ the network interface to.
 .Pp
 For both types of device, the emulation type will be chosen automatically based
 on the emulation used for the existing guest devices.
-.It Cm reset Ar name
+.It Xo
+.Cm reset
+.Op Fl f
+.Ar name
+.Xc
 Forcefully reset the named virtual machine.
 This can cause corruption to the guest file system just as with real hardware
 and should only be used if necessary.
-.It Cm poweroff Ar name
+.It Xo
+.Cm poweroff
+.Op Fl f
+.Ar name
+.Xc
 Forcefully power off the named virtual machine.
 As with
 .Ar reset
@@ -1028,6 +1038,9 @@ This can be specified in megabytes or gigabytes using the
 and
 .Sy G
 suffixes.
+.It wired_memory
+Set this to yes in order to have the requested amount of memory wired to the 
+guest.
 .It hostbridge
 This option allows you to specify the type of hostbridge used for the guest
 hardware.

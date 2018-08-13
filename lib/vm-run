@@ -38,7 +38,7 @@ vm::run(){
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
-    local _ignore_msr _bhyve_options
+    local _ignore_msr _bhyve_options _use_wired
 
     cmd::parse_args "$@"
     shift $?
@@ -67,6 +67,7 @@ vm::run(){
     config::get "_bhyve_options" "bhyve_options"
     config::get "_slot" "start_slot" "4"
     config::get "_install_slot" "install_slot" "3"
+    config::get "_use_wired" "wired_memory"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -165,8 +166,11 @@ vm::run(){
         exit 15
     fi
 
-    # has user specified wired memory in custom options?
-    echo "${_bhyve_options}" | grep "S" >/dev/null 2>&1 && _wiredmem=1
+    # wired memory?
+    if util::checkyesno "${_use_wired}"; then
+        _wiredmem="1"
+        _opts="${_opts} -S"
+    fi
 
     # set cpu/memory and uuid in opts
     _opts="-c ${_cpu} -m ${_memory} ${_opts}"

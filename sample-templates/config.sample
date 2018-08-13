@@ -52,6 +52,23 @@ uefi=""
 #
 cpu="1"
 
+# cpu_sockets
+# manually configure the number of sockets that bhyve should
+# expose to the guest.
+# note that sockets*cores*threads should equal the above cpu count
+#
+cpu_sockets="1"
+
+# cpu_cores
+# the number of cores to create per physical processor
+#
+cpu_cores="1"
+
+# cpu_threads
+# the number of cpu threads per core
+#
+cpu_threads="1"
+
 # memory (required)
 # specify the amount of ram to give to the guest. This can be
 # followed by M or G.

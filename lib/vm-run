@@ -52,7 +52,6 @@ vm::run(){
     vm::confirm_stopped "${_name}" "1" || exit 10
 
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
-    config::get "_cpu" "cpu"
     config::get "_memory" "memory"
     config::get "_loader" "loader"
     config::get "_bootdisk" "disk0_name"
@@ -74,6 +73,8 @@ vm::run(){
         _uuid=$(uuidgen)
         config::set "${_name}" "uuid" "${_uuid}"
     fi
+
+    vm::__cpu "_cpu"
 
     util::log_rotate "guest" "${_name}"
     util::log "guest" "${_name}" \
@@ -106,7 +107,7 @@ vm::run(){
         fi
 
         # only 1 vcpu
-        if [ "${_cpu}" -gt "1" ]; then
+        if [ "${_cpu}" != "1" ]; then
             _cpu=1
             util::log "guest" "${_name}" "warning; no unrestricted guest support. reducing vcpu count to 1"
         fi
@@ -1000,4 +1001,30 @@ vm::generalise(){
         config::remove "${_name}" "network${_num}_mac"
         _num=$((_num + 1))
     done
+}
+
+# get number of cpus from the configuration file, and also
+# look for sockets/cores/threads options.
+# returns the bhyve cpu config string
+#
+# @param string _var variable to put cpu configuration into
+#
+vm::__cpu(){
+    local _var="$1"
+    local _c_cpu _c_socket _c_core _c_thread
+    local _config
+
+    config::get "_c_cpu" "cpu"
+    [ -n "${_c_cpu}" ] || util::err "fatal; unable to determine cpu count"
+    _config="${_c_cpu}"
+
+    config::get "_c_socket" "cpu_sockets"
+    config::get "_c_core" "cpu_cores"
+    config::get "_c_thread" "cpu_thread"
+
+    [ -n "${_c_socket}" ] && _config="${_config},sockets=${_c_socket}"
+    [ -n "${_c_core}" ] && _config="${_config},cores=${_c_core}"
+    [ -n "${_c_thread}" ] && _config="${_config},threads=${_c_thread}"
+
+    setvar "${_var}" "${_config}"
 }

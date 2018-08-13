@@ -1031,6 +1031,20 @@ the BIOS compatibility UEFI-CSM firmware will be used.
 .It cpu
 A numeric value specifying the number of virtual CPU cores to assign to the
 guest.
+.It cpu_sockets
+Specify the number of CPU sockets that should be exposed to the guest. The product
+of
+.Sy sockets * cores * threads
+should equal the number of cpus that has been configured. The ability to control
+CPU topology on a per-guest basis requires
+.Fx
+12 or newer. On older systems, there are
+.Sy vmm
+sysctl variables available to configure these settings globally.
+.It cpu_cores
+The number of cores to create per CPU socket.
+.It cpu_threads
+The number of threads to create per CPU core.
 .It memory
 The amount of memory to assign to the guest.
 This can be specified in megabytes or gigabytes using the

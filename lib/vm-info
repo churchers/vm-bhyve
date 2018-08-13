@@ -163,7 +163,7 @@ info::guest_show(){
     local _conf="${VM_DS_PATH}/${_name}/${_name}.conf"
     local _INDENT="  "
     local _RUN="0"
-    local _res_mem _b_res_mem _global_run _port
+    local _res_mem _b_res_mem _global_run _port _opt
 
     [ -z "${_name}" ] && return 1
     [ ! -f "${_conf}" ] && return 1
@@ -187,6 +187,19 @@ info::guest_show(){
     info::__output_config "uuid" "" "auto"
     info::__output_config "uefi" "" "no"
     info::__output_config "cpu"
+
+    # check for a cpu topology
+    config::get "_opt" "cpu_sockets"
+
+    if [ -n "${_opt}" ]; then
+        echo -n "${_INDENT}cpu-topology: sockets=${_opt}"
+        config::get "_opt" "cpu_cores"
+        [ -n "${_opt}" ] && echo -n ", cores=${_opt}"
+        config::get "_opt" "cpu_threads"
+        [ -n "${_opt}" ] && echo -n ", threads=${_opt}"
+        echo ""
+    fi
+
     info::__output_config "memory"
 
     # running system details

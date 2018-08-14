@@ -368,6 +368,12 @@ graphics_res="800x600"
 #
 graphics_wait="auto"
 
+# graphics_vga
+# valid options for this are on/off/io. io is the default
+# please see the bhyve man page for details on this option
+#
+graphics_vga="io"
+
 # xhci_mouse
 # When graphics are enabled, a PS2 mouse is created by default. This
 # doesn't track very well, and can be replaced with an XHCI mouse

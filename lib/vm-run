@@ -226,9 +226,17 @@ vm::run(){
         # run any prestart script while guest is fully down
         vm::prestart
 
-        # set full iso path
+        # add install iso or disk image
+        if [ -n "${_iso}" ]; then
+            if echo "${_iso}" | grep -iqs '.iso$'; then
+                _iso_dev="-s ${_install_slot}:0,ahci-cd,${_iso},ro"
+            else
+                _iso_dev="-s ${_install_slot}:0,ahci-hd,${_iso},ro"
+            fi
+        fi
+
         # use null.iso if not an install and uefi firmware
-        [ -n "${_iso}" ] && _iso_dev="-s ${_install_slot}:0,ahci-cd,${_iso}"
+        # old instructions but some windows versions apparently needed this present
         [ -z "${_iso}" -a -n "${_uefi}" -a "${_uefi}" != "csm" ] && \
             _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
@@ -612,7 +620,7 @@ vm::bhyve_device_rand(){
 # add frame buffer output
 #
 vm::bhyve_device_fbuf(){
-    local _graphics _port _listen _res _wait _pass
+    local _graphics _port _listen _res _wait _pass _vga
     local _fbuf_conf
 
     # only works in uefi mode
@@ -632,6 +640,7 @@ vm::bhyve_device_fbuf(){
     config::get "_listen" "graphics_listen"
     config::get "_res" "graphics_res"
     config::get "_wait" "graphics_wait" "auto"
+    config::get "_vga" "graphics_vga"
     config::get "_pass" "vnc_password"
 
     # check if graphics_wait is auto
@@ -654,6 +663,7 @@ vm::bhyve_device_fbuf(){
     # add ip, port, resolution, wait
     _fbuf_conf="tcp=${_listen:-0.0.0.0}:${_port}"
     [ -n "${_res}" ] && _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
+    [ -n "${_vga}" ] && _fbuf_conf="${_fbuf_conf},vga=${_vga}"
     [ -n "${_pass}" ] && _fbuf_conf="${_fbuf_conf},password=${_pass}"
     util::checkyesno "${_wait}" && _fbuf_conf="${_fbuf_conf},wait"
 

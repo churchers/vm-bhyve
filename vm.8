@@ -650,10 +650,10 @@ for each virtual interface.
 .Ar name Ar iso
 .Xc
 Start a guest installation for the named virtual machine, using the specified
-ISO file.
+ISO file or install disk image.
 The
 .Ar iso
-argument should be the filename of an ISO file already downloaded into the
+argument should be the filename of an ISO or image file already downloaded into the
 .Pa $vm_dir/.iso
 directory (or any media datastore), a full path, or a file in the current
 directory.
@@ -1372,6 +1372,16 @@ Note that after the first boot, the system will boot immediately as normal.
 To force the console to wait on each boot, the
 .Sy yes
 setting should be used.
+.It graphics_vga
+This configures how the graphics acrd is exposed to the guest. Valid options are
+.Sy io
+(default),
+.Sy on
+or
+.Sy off .
+Please see the
+.Xr bhyve 8
+man page for more details on this option.
 .It xhci_mouse
 Set this option to
 .Sy yes

@@ -352,7 +352,7 @@ util::checkyesno(){
 # check name of virtual machine
 #
 # @param _name name to check
-# @param _maxlen=16 maximum name length (NOTE should be 2 less than desired)
+# @param _maxlen=30 maximum name length (NOTE should be 2 less than desired)
 # @return int 0 if name is valid
 #
 util::check_name(){

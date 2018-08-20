@@ -60,16 +60,21 @@ util::load_module(){
 # @modifies VM_NO_UG
 #
 util::check_bhyve_support(){
-    local _result
 
-    # basic checks
-    [ ${VERSION_BSD} -lt 1000000 ] && util::err "please upgrade to FreeBSD 10 or newer for bhyve support"
+    # almost all our functionality requires access to things only root can do
+    [ `id -u` -ne 0 ] && util::err "virtual machines can only be managed by root"
 
     # try to load the vmm module
+    # we do this here to make sure the sysctls exist, and before disable_host_checks
+    # as we want this loaded anyway. FreeBSD version check removed as the
+    # module won't exist on systems too old for bhyve
     util::load_module "vmm"
 
+    # don't check if user wants to bypass host checks
+    util::checkyesno "$vm_disable_host_checks" && return 0
+
     # check sysctls
-    [ "`sysctl -n hw.vmm.vmx.initialized 2>/dev/null`" != "1" ] && util::err "kernel vmm not initialised (no VT-x / AMDVI cpu support?)"
+    [ "`sysctl -n hw.vmm.vmx.initialized 2>/dev/null`" != "1" ] && util::err "kernel vmm not initialised (no VT-x / AMD SVM cpu support?)"
     [ "`sysctl -n hw.vmm.vmx.cap.unrestricted_guest 2>/dev/null`" != "1" ] && VM_NO_UG="1"
 }
 

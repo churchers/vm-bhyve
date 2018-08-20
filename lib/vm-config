@@ -112,6 +112,7 @@ config::core::load(){
 
     # check config file exists
     # this is mainly for upgrades to make sure switch/datastore config are migrated
+    # DEPRECATED 1.3, remove after
     if [ ! -e "${vm_dir}/.config/system.conf" ]; then
         cat "${vm_dir}/.config/switch" > "${vm_dir}/.config/system.conf" 2>/dev/null
         cat "${vm_dir}/.config/datastore" >> "${vm_dir}/.config/system.conf" 2>/dev/null

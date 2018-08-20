@@ -27,7 +27,6 @@
 # make sure we have the right environment
 #
 util::setup(){
-    util::load_module "vmm"
     util::load_module "nmdm"
     util::load_module "if_bridge"
     util::load_module "if_tap"
@@ -61,41 +60,17 @@ util::load_module(){
 # @modifies VM_NO_UG
 #
 util::check_bhyve_support(){
-    local _mesg _mesg1 _mesg2 _result
+    local _result
 
     # basic checks
-    [ `id -u` -ne 0 ] && util::err "virtual machines can only be managed by root"
     [ ${VERSION_BSD} -lt 1000000 ] && util::err "please upgrade to FreeBSD 10 or newer for bhyve support"
 
-    # can't check any further if we don't have a dmesg.boot
-    [ ! -e "/var/run/dmesg.boot" ] && return 0
+    # try to load the vmm module
+    util::load_module "vmm"
 
-    # get features2 line which should include popcnt
-    _mesg=$(grep -E '^[ ]+Features2' /var/run/dmesg.boot | tail -n 1)
-
-    # only check if we found it
-    if [ -n "${_mesg}" ]; then
-
-        # look for pop cnt
-        _result=$(echo "${_mesg}" |grep "POPCNT")
-        [ -z "${_result}" ] && util::err "it doesn't look like your cpu supports bhyve (missing POPCNT)"
-    fi
-
-    # check ept for intel
-    _mesg1=$(grep -E '^[ ]+VT-x' /var/run/dmesg.boot | tail -n 1)
-    _mesg2=$(grep -E '^[ ]+Secondary Processor Controls' /var/run/dmesg.boot | tail -n 1)
-    _mesg="${_mesg1}${_mesg2}"
-
-    if [ -n "${_mesg}" ]; then
-
-        # look for ept
-        _result=$(echo "${_mesg}" |grep "EPT")
-        [ -z "${_result}" ] && util::err "it doesn't look like your cpu supports bhyve (missing EPT)"
-
-        # look for unrestricted guest
-        _result=$(echo "${_mesg}" |grep ",UG")
-        [ -z "${_result}" ] && VM_NO_UG="1"
-    fi
+    # check sysctls
+    [ "`sysctl -n hw.vmm.vmx.initialized 2>/dev/null`" != "1" ] && util::err "kernel vmm not initialised (no VT-x / AMDVI cpu support?)"
+    [ "`sysctl -n hw.vmm.vmx.cap.unrestricted_guest 2>/dev/null`" != "1" ] && VM_NO_UG="1"
 }
 
 # check for passthru support
@@ -107,6 +82,11 @@ util::check_bhyve_support(){
 util::check_bhyve_iommu(){
     local _vtd
     local _amdvi
+
+    # don't check if user wants to bypass host checks
+    # think this check is fairly solid but there's probably someone somewhere
+    # with iommu support that our tests fail for.
+    util::checkyesno "$vm_disable_host_checks" && return 0
 
     _vtd=$(acpidump -t |grep DMAR)
     _amdvi=$(sysctl hw |grep 'vmm.amdvi.enable: 1')

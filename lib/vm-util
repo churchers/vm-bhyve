@@ -56,7 +56,7 @@ util::load_module(){
 # check if system have bhyve support
 # look for sysctls set by the vmm module. I can't get confirmation that this
 # is a valid way to check vmm is working, even though it seems reasonable.
-# the vm_disable_host_checks="yes" rc settings allows bypassing all these checks
+# the vm_disable_host_checks="yes" rc settings allows bypassing all this
 # if your system should be supported but these checks break.
 # 
 # @modifies VM_NO_UG
@@ -347,7 +347,7 @@ util::check_name(){
     local _maxlen="$2"
 
     : ${_maxlen:=30}
-    echo "${_name}" | egrep -iqs "^[a-z0-9][.a-z0-9-]{0,${_maxlen}}[a-z0-9]\$"
+    echo "${_name}" | egrep -iqs "^[a-z0-9][.a-z0-9_-]{0,${_maxlen}}[a-z0-9]\$"
 }
 
 # check if the specified string is a valid core configuration

@@ -54,8 +54,10 @@ util::load_module(){
 }
 
 # check if system have bhyve support
-# we look for POPCNT feature which is required
-# and should be listed on both Intel & AMD systems
+# look for sysctls set by the vmm module. I can't get confirmation that this
+# is a valid way to check vmm is working, even though it seems reasonable.
+# the vm_disable_host_checks="yes" rc settings allows bypassing all these checks
+# if your system should be supported but these checks break.
 # 
 # @modifies VM_NO_UG
 #

@@ -411,7 +411,7 @@ vm::bhyve_device_disks(){
        [ ${VERSION_BSD} -ge 1101000 ] || \
        [ ${VERSION_BSD} -ge 1004000 ]; then
 
-       if [ -n "${_ahci_multi}" ]; then
+        if [ -n "${_ahci_multi}" ]; then
 
             # see if it's numeric
             echo "${_ahci_multi}" | egrep -iqs '^[0-9]+$'

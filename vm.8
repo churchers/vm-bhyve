@@ -603,7 +603,7 @@ Create a new virtual machine.
 Unless specified, the
 .Pa default.conf
 template will be used and a 20GB virtual disk image is created.
-This command will created the virtual machine directory
+This command will create the virtual machine directory
 .Pa $vm_dir/$name ,
 and create the configuration file and empty disk image within.
 .Bl -tag -width 12n
@@ -922,7 +922,7 @@ All images have a globally unique ID (UUID) which is used to identify them.
 The list command shows the UUID, the original machine name, the date it was
 created and a short description of the image.
 .Pp
-Please note that these commands rely on using ZFS featured to package/unpackage
+Please note that these commands rely on using ZFS features to package/unpackage
 the images, and as such are only available when using a ZFS dataset as the
 storage location.
 .It Xo
@@ -1194,7 +1194,7 @@ Other options include
 .Sy zvol
 &
 .Sy sparse-zvol ,
-which will used a ZVOL as the disk image, created directly under the guest
+which will use a ZVOL as the disk image, created directly under the guest
 dataset.
 Alternatively you can specify
 .Sy custom ,
@@ -1219,7 +1219,7 @@ command line option.
 .Pp
 NOTE: This setting is only supported in templates.
 It has no function in real guest configuration, and is not copied over when a
-new machine is provisioned
+new machine is provisioned.
 .It ahci_device_limit
 By default, all AHCI devices are added on their own controller in a unique
 slot/function.

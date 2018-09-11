@@ -27,7 +27,6 @@
 # make sure we have the right environment
 #
 util::setup(){
-    util::load_module "vmm"
     util::load_module "nmdm"
     util::load_module "if_bridge"
     util::load_module "if_tap"
@@ -55,47 +54,30 @@ util::load_module(){
 }
 
 # check if system have bhyve support
-# we look for POPCNT feature which is required
-# and should be listed on both Intel & AMD systems
+# look for sysctls set by the vmm module. I can't get confirmation that this
+# is a valid way to check vmm is working, even though it seems reasonable.
+# the vm_disable_host_checks="yes" rc settings allows bypassing all this
+# if your system should be supported but these checks break.
 # 
 # @modifies VM_NO_UG
 #
 util::check_bhyve_support(){
-    local _mesg _mesg1 _mesg2 _result
 
-    # basic checks
+    # almost all our functionality requires access to things only root can do
     [ `id -u` -ne 0 ] && util::err "virtual machines can only be managed by root"
-    [ ${VERSION_BSD} -lt 1000000 ] && util::err "please upgrade to FreeBSD 10 or newer for bhyve support"
 
-    # can't check any further if we don't have a dmesg.boot
-    [ ! -e "/var/run/dmesg.boot" ] && return 0
+    # try to load the vmm module
+    # we do this here to make sure the sysctls exist, and before disable_host_checks
+    # as we want this loaded anyway. FreeBSD version check removed as the
+    # module won't exist on systems too old for bhyve
+    util::load_module "vmm"
 
-    # get features2 line which should include popcnt
-    _mesg=$(grep -E '^[ ]+Features2' /var/run/dmesg.boot | tail -n 1)
+    # don't check if user wants to bypass host checks
+    util::checkyesno "$vm_disable_host_checks" && return 0
 
-    # only check if we found it
-    if [ -n "${_mesg}" ]; then
-
-        # look for pop cnt
-        _result=$(echo "${_mesg}" |grep "POPCNT")
-        [ -z "${_result}" ] && util::err "it doesn't look like your cpu supports bhyve (missing POPCNT)"
-    fi
-
-    # check ept for intel
-    _mesg1=$(grep -E '^[ ]+VT-x' /var/run/dmesg.boot | tail -n 1)
-    _mesg2=$(grep -E '^[ ]+Secondary Processor Controls' /var/run/dmesg.boot | tail -n 1)
-    _mesg="${_mesg1}${_mesg2}"
-
-    if [ -n "${_mesg}" ]; then
-
-        # look for ept
-        _result=$(echo "${_mesg}" |grep "EPT")
-        [ -z "${_result}" ] && util::err "it doesn't look like your cpu supports bhyve (missing EPT)"
-
-        # look for unrestricted guest
-        _result=$(echo "${_mesg}" |grep ",UG")
-        [ -z "${_result}" ] && VM_NO_UG="1"
-    fi
+    # check sysctls
+    [ "`sysctl -n hw.vmm.vmx.initialized 2>/dev/null`" != "1" ] && util::err "kernel vmm not initialised (no VT-x / AMD SVM cpu support?)"
+    [ "`sysctl -n hw.vmm.vmx.cap.unrestricted_guest 2>/dev/null`" != "1" ] && VM_NO_UG="1"
 }
 
 # check for passthru support
@@ -107,6 +89,11 @@ util::check_bhyve_support(){
 util::check_bhyve_iommu(){
     local _vtd
     local _amdvi
+
+    # don't check if user wants to bypass host checks
+    # think this check is fairly solid but there's probably someone somewhere
+    # with iommu support that our tests fail for.
+    util::checkyesno "$vm_disable_host_checks" && return 0
 
     _vtd=$(acpidump -t |grep DMAR)
     _amdvi=$(sysctl hw |grep 'vmm.amdvi.enable: 1')
@@ -135,7 +122,7 @@ util::restart_service(){
 # show version
 #
 util::version(){
-    echo "vm-bhyve: Bhyve virtual machine management v${VERSION} (build ${VERSION_INT})"
+    echo "vm-bhyve: Bhyve virtual machine management v${VERSION} (rev. ${VERSION_INT})"
 }
 
 # show version & usage information
@@ -164,10 +151,9 @@ Usage: vm ...
     datastore add <name> <path>
     list
     info [name] [...]
-    define <template.conf>
     create [-d datastore] [-t template] [-s size] <name>
-    [-fi] install <name> <iso>
-    [-fi] start <name> [...]
+    install [-fi] <name> <iso>
+    start [-fi] <name> [...]
     stop <name> [...]
     console <name> [com1|com2]
     configure <name>
@@ -175,9 +161,9 @@ Usage: vm ...
     add [-d device] [-t type] [-s size|switch] <name>
     startall
     stopall
-    [-f] reset <name>
-    [-f] poweroff <name>
-    [-f] destroy <name>
+    reset  [-f] <name>
+    poweroff [-f] <name>
+    destroy [-f] <name>
     passthru
     clone <name[@snapshot]> <new-name>
     snapshot [-f] <name[@snapshot]>
@@ -244,7 +230,7 @@ util::log_rotate(){
     esac
 
     if [ -e "${_file}" ]; then
-        _size=$(stat "${_file}" | cut -d' ' -f8)
+        _size=$(stat -f %z "${_file}")
 
         if [ -n "${_size}" -a "${_size}" -ge 1048576 ]; then
             unlink "${_file}.0.gz" >/dev/null 2>&1
@@ -271,16 +257,19 @@ util::log(){
     case "${_type}" in
         guest)
             _guest="$2"
-            _message="$3"
             _file="${VM_DS_PATH}/${_guest}/${_lf}"
+            shift 2
             ;;
         system)
-            _message="$2"
             _file="${vm_dir}/${_lf}"
+            shift 1
             ;;
     esac
 
-    echo "$(date +'%b %d %T'): ${_message}" >> "${_file}"
+    while [ -n "$1" ]; do
+      echo "$(date +'%b %d %T'): $1" >> "${_file}"
+      shift
+    done
 }
 
 # write content to a file, and log what we
@@ -346,8 +335,8 @@ util::checkyesno(){
     esac
 }
 
-# check a name contains no risky characters
-# currently limited to "0-9a-z.-", but without ".-" on the end or beginning
+# 'vm check name'
+# check name of virtual machine
 #
 # @param _name name to check
 # @param _maxlen=30 maximum name length (NOTE should be 2 less than desired)
@@ -358,5 +347,30 @@ util::check_name(){
     local _maxlen="$2"
 
     : ${_maxlen:=30}
-    echo "${_name}" | egrep -iqs "^[a-z0-9][.a-z0-9-]{0,${_maxlen}}[a-z0-9]\$"
+    echo "${_name}" | egrep -iqs "^[a-z0-9][.a-z0-9_-]{0,${_maxlen}}[a-z0-9]\$"
+}
+
+# check if the specified string is a valid core configuration
+# setting that the user can change
+#
+# @param string the setting name to look for
+#
+util::valid_config_setting(){
+    echo "${VM_CONFIG_USER}" | grep -iqs "${1};"
+}
+
+# __getpid
+# get a process id
+#
+# @param string _var variable to put pid into
+# @param string _proc process to look for
+#
+util::getpid(){
+    local _var="$1"
+    local _proc="$2"
+    local _ret
+
+    _ret=$(pgrep -f "${_proc}")
+    [ $? -eq 0 ] || return 1
+    setvar "${_var}" "${_ret}"
 }

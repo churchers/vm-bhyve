@@ -230,27 +230,6 @@ datastore::get_guest(){
     VM_DS_ZFS="${_zfs}"
     VM_DS_ZFS_DATASET="${_dataset}"
 }
-# Gets an uuid and checks if it's available or not
-# @param uuid
-# @return non-zero on unavailable uuid and sets _uuid_taken_by
-# @return 
-datastore::check_uuid_availability()
-{
-	local _taken_uuids _taken_uuid
-	_uuid_to_check=$1
-	
-	_taken_uuids=$(grep -iR "uuid" $vm_dir | grep ".conf" | grep -v ".templates" | cut -d= -f2 | tr -d '"') #Getting uuid for all currently defined machines.
-
-	for _taken_uuid in ${_taken_uuids}; do    
-   	if test "$_uuid_to_check" = "$_taken_uuid"; then
-               _uuid_taken_by=$(grep -iR "$_taken_uuid" /storage/vm | grep ".conf" | cut -d. -f1 | rev | cut -d/ -f1 | rev) # Getting the name of the guest which uses this uuid. 
-		return 1
-	fi
-	done
-
-
-}
-
 
 # get the path and details for a datastore
 # put into same variables as datastore_get_guest

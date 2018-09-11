@@ -77,7 +77,7 @@ core::list(){
                 # find out if we auto-start this vm, and get sequence number
                 for _vm in ${vm_list}; do
                     [ "${_vm}" = "${_name}" ] && _auto="Yes [${_num}]"
-                    _num=$((_num + 1))
+                    _num=$(($_num + 1))
                 done
 
                 # if stopped, see if it's locked by another host
@@ -90,6 +90,45 @@ core::list(){
             done
         done
     } | column -ts^
+}
+# 'vm define'
+# define a new virtual machine from template
+# @param string _template location of the template/config file
+core::define(){
+    local _template
+    local _name
+    local _disk_name _disk_dev _uuid
+    
+
+    if test "${1##*.}" = "conf"; # checking if a .conf file was passed as an argument.
+    then
+	_template=${1}
+        _name=$(echo "$1" | cut -d. -f1) # Getting virtual machine name from file name.
+    else
+	util::err "Template "*.conf" file is expected for defining a new guest!" 
+    fi
+    if [ ! -f "$_template" ]; then # checking if .conf file exists.
+	util::err "File does not exist!"
+    fi
+
+    config::load "$_template"
+    config::get "_disk_name" "disk0_name"
+    config::get "_disk_dev" "disk0_dev"
+    config::get "_uuid" "uuid"
+
+    datastore::get_guest "${_name}" && util::err "Failed to define guest domain from '$_template'. Virtual machine with name '$_name' already exists in ${vm_dir}/${_name}"
+    datastore::check_uuid_availability "${_uuid}" || util::err "Failed to define guest domain from '$_template'. Virtual machine with uuid '$_uuid' already exists in '${vm_dir}/${_uuid_taken_by}'."
+
+    #Checking if zfs volume exists when defining a new vm from teplate only when disk0_dev=custom
+    if test "$_disk_dev" = "custom"; then  
+           [ -e "$_disk_name" ] || util::err "Failed to define guest domain from '$_template'. ZFS volume name '$_disk_name' which was passed as disk0_name does not exist."
+    fi
+
+    [ ! -d "${vm_dir}/${_name}" ] && mkdir "${vm_dir}/${_name}" >/dev/null 2>&1
+    [ ! -d "${vm_dir}/${_name}" ] && util::err "unable to create virtual machine directory ${vm_dir}/${_name}"
+    cp $_template "${vm_dir}/${_name}/${_name}.conf"
+    [ $? -eq 0 ] || util::err "Failed to define guest domain from '$_template'. Unable to create virtual machine configuration file at '${vm_dir}/${_name}/'."
+
 }
 
 # 'vm create'
@@ -239,7 +278,7 @@ core::add_disk(){
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
     config::get "_zfs_opts" "zfs_zvol_opts"
 
-    while true; do
+    while [ 1 ]; do
         config::get "_curr" "disk${_num}_name"
         [ -z "${_curr}" ] && break
         config::get "_emulation" "disk${_num}_type"
@@ -290,7 +329,7 @@ core::add_network(){
 
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
 
-    while true; do
+    while [ 1 ]; do
         _emulation="${_curr}"
         config::get "_curr" "network${_num}_type"
         [ -z "${_curr}" ] && break
@@ -313,12 +352,9 @@ core::add_network(){
 # @param string _iso the iso file in $vm_dir/.iso to use
 #
 core::install(){
-    local _name _iso _fulliso
-
-    cmd::parse_args "$@"
-    shift $?
-    _name="$1"
-    _iso="$2"
+    local _name="$1"
+    local _iso="$2"
+    local _fulliso
 
     [ -z "${_name}" -o -z "${_iso}" ] && util::usage
 
@@ -340,77 +376,12 @@ core::startall(){
 # note this will also stop instances not started by vm-bhyve
 #
 core::stopall(){
-    local _pids=$(pgrep -f 'bhyve:' | tr '\n' ' ')
-    local _stop_parallel _stop_list _running _list_rev _curr
-    local _stop_p_pids _pid
+    local _pids=$(pgrep -f 'bhyve:')
 
-    cmd::parse_args "$@"
-    : ${vm_delay:=2}
-
-    # get a list of running bhyve instances
-    _running=$(pgrep -lf 'bhyve:' | cut -d" " -f3 | tr '\n' ' ')
-    [ -z "${_running}" ] && return 0
-
-    # do we have any guests to stop in order
-    if [ -z "${VM_OPT_FORCE}" -a -n "${vm_list}" ]; then
-        # reverse the configured start order
-        for _curr in ${vm_list}; do
-            _list_rev="${_curr} ${_list_rev}"
-        done
-
-        # go through each autostart guest
-        # if running add to stop list.
-        # we are searching in reverse start order, so should get an ordered shutdown
-        for _curr in ${_list_rev}; do
-            echo "${_running}" | grep -qs "${_curr} "
-
-            if [ $? -eq 0 ]; then
-                _stop_list="${_stop_list}${_stop_list:+ }${_curr}"
-            fi
-        done
-
-        # look for anything running that isn't in the ordered stop list
-        for _curr in ${_running}; do
-            echo "${_stop_list}" | grep -qs "${_curr}\b"
-            if [ $? -ne 0 ]; then
-                _stop_parallel="${_stop_parallel}${_stop_parallel:+ }${_curr}"
-                util::getpid "_pid" "bhyve: ${_curr}\$"
-                [ $? -eq 0 ] && _stop_p_pids="${_stop_p_pids}${_stop_p_pids:+ }${_pid}"
-            fi
-        done
-    else
-        # nothing ordered, or a force shutdown
-        # just do everything at once
-        _stop_parallel="${_running}"
-        _stop_p_pids="${_pids}"
-    fi
-
-    echo "Beginning shutdown process"
-
-    # have any guests to stop in parallel
-    if [ -n "${_stop_p_pids}" ]; then
-        echo "  * parallel shutdown of non-ordered guests: ${_stop_parallel}"
-        kill ${_stop_p_pids} >/dev/null 2>&1
-        sleep 1
-        kill ${_stop_p_pids} >/dev/null 2>&1
-    fi
-
-    if [ -n "${_stop_list}" ]; then
-        _pid=""
-        for _curr in ${_stop_list}; do
-            [ -n "${_pid}" ] && echo "  * waiting ${vm_delay} second(s)" && sleep ${vm_delay}
-            util::getpid "_pid" "bhyve: ${_curr}\$"
-
-            if [ $? -ne 0 ]; then
-                echo "  * stopping ${_curr}"
-                kill ${_pid} >/dev/null 2>&1
-                sleep 1
-                kill ${_pid} >/dev/null 2>&1
-            fi
-        done
-    fi
-
-    echo ""
+    echo "Shutting down all bhyve virtual machines"
+    killall bhyve
+    sleep 1
+    killall bhyve
     wait_for_pids ${_pids}
 }
 
@@ -420,15 +391,11 @@ core::stopall(){
 # @param string[multiple] _name the name of the guest(s) to start
 #
 core::start(){
-    local _name
+    local _name="$1"
     local _done
 
-    cmd::parse_args "$@"
-    shift $?
-    _name="$1"
-
     [ -z "${_name}" ] && util::usage
-    : ${vm_delay:=2}
+    : ${vm_delay:=5}
 
     # disable foreground/interactive if we're starting more than one
     if [ $# -ge 2 ]; then
@@ -517,7 +484,7 @@ core::__start(){
     # run background process to actually start bhyve
     # this will run as long as vm is running, including restarting bhyve after guest reboot
     if [ -n "${VM_OPT_FOREGROUND}" ]; then
-        $0 _run -f "${_name}" "${_iso}"
+        $0 -f _run "${_name}" "${_iso}"
     elif [ "${_console}" = "tmux" ]; then
         # can't have dots in tmux session :( (looks like it may use . to separate window.pane)
         # use ~ which we don't normally allow
@@ -525,9 +492,9 @@ core::__start(){
 
         # start session and connect if in interactive mode
         if [ -n "${VM_OPT_INTERACTIVE}" ]; then
-            ${_tmux_cmd} new -s "${_tmux_name}" $0 _run -tf "${_name}" "${_iso}"
+            ${_tmux_cmd} new -s "${_tmux_name}" $0 -tf _run "${_name}" "${_iso}"
         else
-            ${_tmux_cmd} new -ds "${_tmux_name}" $0 _run -tf "${_name}" "${_iso}"
+            ${_tmux_cmd} new -ds "${_tmux_name}" $0 -tf _run "${_name}" "${_iso}"
         fi
     else
         $0 _run "${_name}" "${_iso}" >/dev/null 2>&1 &
@@ -578,11 +545,7 @@ core::stop(){
 # @param string _name name of the guest
 #
 core::reset(){
-    local _name
-
-    cmd::parse_args "$@"
-    shift $?
-    _name="$1"
+    local _name="$1"
 
     [ -z "${_name}" ] && util::usage
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
@@ -600,11 +563,7 @@ core::reset(){
 # @param string _name name of the guest
 #
 core::poweroff(){
-    local _name
-
-    cmd::parse_args "$@"
-    shift $?
-    _name="$1"
+    local _name="$1"
 
     [ -z "${_name}" ] && util::usage
     [ ! -e "/dev/vmm/${_name}" ] && util::err "${_name} doesn't appear to be a running virtual machine"
@@ -622,11 +581,7 @@ core::poweroff(){
 # @param string _name name of the guest
 #
 core::destroy(){
-    local _name
-
-    cmd::parse_args "$@"
-    shift $?
-    _name="$1"
+    local _name="$1"
 
     [ -z "${_name}" ] && util::usage
 
@@ -646,8 +601,8 @@ core::destroy(){
         util::confirm "Are you sure you want to completely remove this virtual machine" || exit 0
     fi
 
-    zfs::destroy_dataset "${VM_DS_ZFS_DATASET:?}/${_name:?}"
-    [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH:?}/${_name:?}"
+    zfs::destroy_dataset "${VM_DS_ZFS_DATASET}/${_name}"
+    [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH}/${_name}"
 }
 
 # 'vm rename'
@@ -741,7 +696,7 @@ core::configure(){
     local _name="$1"
 
     [ -z "${_name}" ] && util::usage
-    [ -z "${EDITOR}" ] && EDITOR="vi"
+    [ -z "${EDITOR}" ] && EDITOR=vi
 
     datastore::get_guest "${_name}" || \
         util::err "cannot locate configuration file for virtual machine: ${_name}"
@@ -803,7 +758,7 @@ core::get(){
         done
     else
         while [ -n "${_var}" ]; do
-            if util::valid_config_setting "${_var}"; then
+            if core::__valid_config_setting "${_var}"; then
                 config::core::get "_val" "${_var}"
                 printf "${_format}" "${_var}" "${_val:--}"
             fi
@@ -825,7 +780,7 @@ core::set(){
         _key="${_pair%%=*}"
         _val="${_pair#*=}"
 
-        if util::valid_config_setting "${_key}"; then
+        if core::__valid_config_setting "${_key}"; then
             config::core::set "${_key}" "${_val}"
         else
             util::err "invalid configuration setting - '${_key}'"
@@ -834,4 +789,15 @@ core::set(){
         shift
         _pair="$1"
     done
+}
+
+# check if the specified string is a valid core configuration
+# setting that the user can change
+#
+# @param string the setting name to look for
+#
+
+
+core::__valid_config_setting(){
+    echo "${VM_CONFIG_USER}" | grep -iqs "${1};"
 }

@@ -243,7 +243,7 @@ datastore::check_uuid_availability()
 
         for _taken_uuid in ${_taken_uuids}; do
         if test "$_uuid_to_check" = "$_taken_uuid"; then
-               _uuid_taken_by=$(grep -iR "$_taken_uuid" /storage/vm | grep ".conf" | cut -d. -f1 | rev | cut -d/ -f1 | rev) # Getting the name of the guest which uses this uuid.
+               _uuid_taken_by=$(grep -iR "$_taken_uuid" "${vm_dir}" | grep ".conf" | cut -d. -f1 | rev | cut -d/ -f1 | rev) # Getting the name of the guest which uses this uuid.
                 return 1
         fi
         done

@@ -102,6 +102,11 @@ hostbridge=""
 #
 ignore_bad_msr="no"
 
+# bhyve binary path
+# if you build your custom bhyve
+
+bhyve_path=bhyve
+
 # bhyve_options
 # any additional bhyve command line options
 #

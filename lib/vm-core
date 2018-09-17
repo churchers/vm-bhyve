@@ -401,7 +401,7 @@ core::stopall(){
             [ -n "${_pid}" ] && echo "  * waiting ${vm_delay} second(s)" && sleep ${vm_delay}
             util::getpid "_pid" "bhyve: ${_curr}\$"
 
-            if [ $? -ne 0 ]; then
+            if [ $? -eq 0 ]; then
                 echo "  * stopping ${_curr}"
                 kill ${_pid} >/dev/null 2>&1
                 sleep 1

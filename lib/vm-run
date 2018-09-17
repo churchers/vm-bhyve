@@ -38,7 +38,7 @@ vm::run(){
     local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
     local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
-    local _ignore_msr _bhyve_options _use_wired
+    local _ignore_msr _bhyve_options _use_wired _action
 
     cmd::parse_args "$@"
     shift $?
@@ -279,9 +279,10 @@ vm::run(){
         # remove any console sockets
         rm ${VM_DS_PATH}/${_name}/vtcon.* >/dev/null 2>&1
 
-        # if 0, guest rebooted so continue loop
-        # anything else we break and shutdown
-        [ $_exit -ne 0 ] && break
+        # decide what to do with exit code
+        vm::handle_exit "_action" ${_exit}
+        [ "${_action}" != "restart" ] && break
+
         util::log "guest" "${_name}" "restarting"
 
         # remove install iso so guest reboots from disk
@@ -302,6 +303,28 @@ vm::run(){
 
     vm::unlock
     exit ${_exit}
+}
+
+# decide how to handle bhyve exit code
+#
+# @param string _var variable to put action into
+# @param int _code bhyve exit code
+#
+vm::handle_exit(){
+    local _var="$1"
+    local _code="$2"
+
+    # check exit code
+    # get relevant action from config, defaulting to the behaviour
+    # we'd normally expect. we don't currently allow overriding shutdown
+    # as it makes it impossible to actually stop a guest cleanly
+    #
+    case "${_code}" in
+        0) config::get "${_var}" "on_restart" "restart" ;;
+        1) ;&
+        2) setvar "${_var}" "shutdown" ;;
+        *) config::get "${_var}" "on_fault" "shutdown" ;;
+    esac
 }
 
 # lock a vm

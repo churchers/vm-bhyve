@@ -108,7 +108,7 @@ config::remove(){
 # @modifies VM_CORE_CONFIG VM_CONFIG_USER
 #
 config::core::load(){
-    VM_CONFIG_USER="console;"
+    VM_CONFIG_USER="console;compress;decompress;"
 
     # check config file exists
     # this is mainly for upgrades to make sure switch/datastore config are migrated

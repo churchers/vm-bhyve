@@ -333,6 +333,7 @@ zfs::clone(){
 zfs::image_create(){
     local _name _opt _desc
     local _uuid _snap _date _no_compress _filename
+    local _compress _decompress
 
     while getopts d:u _opt ; do
         case $_opt in
@@ -370,10 +371,20 @@ zfs::image_create(){
         echo "Creating guest image, this may take some time..."
         zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" > "${vm_dir}/images/${_filename}"
     else
-        _filename="${_uuid}.zfs.xz"
+        _filename="${_uuid}.zfs.z"
+
+        config::core::get "_compress" "compress"
+        config::core::get "_decompress" "decompress"
+
+        # use defaults if either of these settings are missing
+        # no point using user defined compress if we don't know how to decompress
+        if [ "${_compress}" = "" -o "${_decompress}" = "" ]; then
+            _compress="xz -T0"
+            _decompress="xz -d"
+        fi
 
         echo "Creating a compressed image, this may take some time..."
-        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | xz -T0 > "${vm_dir}/images/${_filename}"
+        zfs send -R "${VM_DS_ZFS_DATASET}/${_name}@${_snap}" | ${_compress} > "${vm_dir}/images/${_filename}"
     fi
 
     [ $? -ne 0 ] && exit 1
@@ -386,6 +397,7 @@ zfs::image_create(){
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "created=${_date}" >/dev/null 2>&1
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "name=${_name}" >/dev/null 2>&1
     sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "filename=${_filename}" >/dev/null 2>&1
+    sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" "decompress=${_decompress}" >/dev/null 2>&1
 
     echo "Image of ${_name} created with UUID ${_uuid}"
 }
@@ -398,7 +410,7 @@ zfs::image_create(){
 #
 zfs::image_provision(){
     local _uuid _name _file _oldname _entry _num=0 _type
-    local _datastore="default"
+    local _datastore="default" _decompress
 
     while getopts d: _opt ; do
         case $_opt in
@@ -432,7 +444,10 @@ zfs::image_provision(){
     # check format of image
     case ${_type} in
         zfs) cat "${vm_dir}/images/${_file}" | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
-        xz)  cat "${vm_dir}/images/${_file}" | xz -d | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
+        xz)  xz -dc "${vm_dir}/images/${_file}" 2>/dev/null | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
+        z)   _decompress=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" decompress)
+             [ -z "${_decompress}" ] && util::err "unable to locate decompression configuration"
+             ${_decompress} "${vm_dir}/images/${_file}" 2>/dev/null | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
         *)   util::err "unsupported guest image type - '${_type}'" ;;
     esac
 

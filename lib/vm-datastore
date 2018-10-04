@@ -267,6 +267,30 @@ datastore::get(){
     VM_DS_ZFS_DATASET="${_dataset}"
 }
 
+# get the path for an iso datastore
+#
+# @param string _ds datastore name
+#
+datastore::get_iso(){
+    local _ds="$1"
+
+    # default?
+    # we use the .iso subdir in that case
+    if [ "${_ds}" = "default" ]; then
+        VM_DS_PATH="${vm_dir}/.iso"
+        return 0
+    fi
+
+    config::core::get "_spec" "path_${_ds}"
+    [ -z "${_spec}" ] && return 1
+
+    # should be an iso ds
+    [ "${_spec%%:*}" = "iso" ] || return 1
+
+    datastore::__resolve_path "_path" "${_spec}" || return 1
+    VM_DS_PATH="${_path}"
+}
+
 # add a datastore for iso files
 #
 # @param string _name the name of the datastore

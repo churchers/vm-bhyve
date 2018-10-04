@@ -755,10 +755,21 @@ core::configure(){
 # @param string _url if specified, the url will be fetch'ed into $vm_dir/.iso
 #
 core::iso(){
-    local _url="$1"
+    local _url _ds="default"
+
+    while getopts d:u _opt ; do
+        case $_opt in
+            d) _ds=${OPTARG} ;;
+            *) util::usage ;;
+        esac
+    done
+
+    shift $((OPTIND - 1))
+    _url=$1
 
     if [ -n "${_url}" ]; then
-        fetch -o "${vm_dir}/.iso" "${_url}"
+        datastore::get_iso "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
+        fetch -o "${VM_DS_PATH}" "${_url}"
     else
         datastore::iso_list
     fi

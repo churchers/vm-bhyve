@@ -24,13 +24,13 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-CMD_VALID_LIST="init,switch,datastore,image,get,set,list,create,destroy,rename,install,start,stop,add"
+CMD_VALID_LIST="init,switch,datastore,image,get,set,list,define,create,destroy,rename,install,start,stop,add"
 CMD_VALID_LIST="${CMD_VALID_LIST},reset,poweroff,startall,stopall,console,iso,configure,passthru,_run"
 CMD_VALID_LIST="${CMD_VALID_LIST},info,clone,snapshot,rollback,send,recv,version,usage"
 
 # cmd: vm ...
 #
-# handle simple information commands that don't need any 
+# handle simple information commands that don't need any
 # priviledged access or bhyve support
 #
 # @param string _cmd the command right after 'vm '
@@ -68,6 +68,7 @@ cmd::parse(){
         get)       core::get "$@" ;;
         set)       core::set "$@" ;;
         list)      core::list ;;
+	define)    core::define "$@" ;;
         create)    core::create "$@" ;;
         destroy)   core::destroy "$@" ;;
         rename)    core::rename "$@" ;;

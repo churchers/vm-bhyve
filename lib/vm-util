@@ -151,6 +151,7 @@ Usage: vm ...
     datastore add <name> <path>
     list
     info [name] [...]
+    define <name.conf>
     create [-d datastore] [-t template] [-s size] <name>
     install [-fi] <name> <iso>
     start [-fi] <name> [...]

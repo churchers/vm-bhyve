@@ -92,6 +92,45 @@ core::list(){
     } | column -ts^
 }
 
+# 'vm define'
+# define a new virtual machine from template
+# @param string _template location of the template/config file
+core::define(){
+    local _template
+    local _name
+    local _disk_name _disk_dev _uuid
+
+    if test "${1##*.}" = "conf"; # checking if a .conf file was passed as an argument.
+    then
+        _template=${1}
+        _name=$(echo "$1" | cut -d. -f1) # Getting virtual machine name from file name.
+    else
+        util::err "Template "*.conf" file is expected for defining a new guest!"
+    fi
+    if [ ! -f "$_template" ]; then # checking if .conf file exists.
+        util::err "File does not exist!"
+    fi
+
+    config::load "$_template"
+    config::get "_disk_name" "disk0_name"
+    config::get "_disk_dev" "disk0_dev"
+    config::get "_uuid" "uuid"
+
+    datastore::get_guest "${_name}" && util::err "Failed to define guest domain from '$_template'. Virtual machine with name '$_name' already exists in ${vm_dir}/${_name}"
+    datastore::check_uuid_availability "${_uuid}" || util::err "Failed to define guest domain from '$_template'. Virtual machine with uuid '$_uuid' already exists in '${vm_dir}/${_uuid_taken_by}'."
+
+    #Checking if zfs volume exists when defining a new vm from teplate only when disk0_dev=custom
+    if test "$_disk_dev" = "custom"; then
+           [ -e "$_disk_name" ] || util::err "Failed to define guest domain from '$_template'. ZFS volume name '$_disk_name' which was passed as disk0_name does not exist."
+    fi
+
+    [ ! -d "${vm_dir}/${_name}" ] && mkdir "${vm_dir}/${_name}" >/dev/null 2>&1
+    [ ! -d "${vm_dir}/${_name}" ] && util::err "unable to create virtual machine directory ${vm_dir}/${_name}"
+    cp $_template "${vm_dir}/${_name}/${_name}.conf"
+    [ $? -eq 0 ] || util::err "Failed to define guest domain from '$_template'. Unable to create virtual machine configuration file at '${vm_dir}/${_name}/'."
+
+}
+
 # 'vm create'
 # create a new virtual machine
 #

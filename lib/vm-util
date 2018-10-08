@@ -76,8 +76,14 @@ util::check_bhyve_support(){
     util::checkyesno "$vm_disable_host_checks" && return 0
 
     # check sysctls
-    [ "`sysctl -n hw.vmm.vmx.initialized 2>/dev/null`" != "1" ] && util::err "kernel vmm not initialised (no VT-x / AMD SVM cpu support?)"
-    [ "`sysctl -n hw.vmm.vmx.cap.unrestricted_guest 2>/dev/null`" != "1" ] && VM_NO_UG="1"
+    # these only work for intel
+    # for AMD we give up trying to check for the time being
+    sysctl hw.model |grep Intel >/dev/null 2>&1
+
+    if [ $? -eq 0 ]; then
+        [ "`sysctl -n hw.vmm.vmx.initialized 2>/dev/null`" != "1" ] && util::err "kernel vmm not initialised (no VT-x / AMD SVM cpu support?)"
+        [ "`sysctl -n hw.vmm.vmx.cap.unrestricted_guest 2>/dev/null`" != "1" ] && VM_NO_UG="1"
+    fi
 }
 
 # check for passthru support

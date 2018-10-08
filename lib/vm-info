@@ -185,7 +185,7 @@ info::guest_show(){
     # basic guest configuration
     info::__output_config "loader" "" "none"
     info::__output_config "uuid" "" "auto"
-    info::__output_config "uefi" "" "no"
+    info::__output_config "uefi" "" "default"
     info::__output_config "cpu"
 
     # check for a cpu topology

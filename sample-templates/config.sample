@@ -14,7 +14,7 @@
 # If the guest you are using requires either bhyveload or grub-bhyve,
 # specify the loader to use here.
 #
-# Valid Options: bhyveload,grub
+# Valid Options: bhyveload,grub,uefi
 #
 loader=""
 
@@ -35,15 +35,11 @@ bhyveload_loader=""
 loader_timeout="3"
 
 # uefi
-# Tells bhyve that it should load the UEFI firmware. To use UEFI
-# this can be any value other than [empty]/off/false/no/0. If
-# it contains the string 'csm', the UEFI BIOS compatability (CSM)
-# firmware will be used.
 #
-# Please note when using UEFI firmware, no loader is required
-# regardless of the guest operating system.
+# When using a UEFI loader, this can be used to specify the CSM firmware
+# should be used instead of the default.
 #
-# Default: no
+# Valid Options: csm
 #
 uefi=""
 

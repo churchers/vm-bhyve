@@ -990,22 +990,12 @@ The settings for each guest are stored in
 An overview of the available configuration options is listed below.
 .Bl -tag -width 17n
 .It loader
-Windows, Linux &
-.Fx
-guests will use the correct loader by default.
-For other guests that require a loader to be used, this can set to
-.Sy bhyveload
+This option sets the loader to use for a guest and must be specified.
+The valid options are
+.Sy bhyveload ,
+.Sy grub ,
 or
-.Sy grub .
-As an example,
-.Nx
-&
-.Ox
-can be supported by using the
-.Sy generic
-guest type, and specifying the
-.Sy grub
-loader.
+.Sy uefi .
 .It bhyveload_loader
 This option allows a custom path to be used for the loader inside the guest.
 Passed to
@@ -1024,13 +1014,11 @@ time to connect to the console.
 If access to the grub console is not required, it can also be reduced to speed
 up overall boot.
 .It uefi
-Set this (any non-empty value) for guests that need UEFI firmware.
-If set to
+This option can be used to choose the UEFI firmware to use. The only applicable
+value here is
 .Sy csm ,
-the BIOS compatibility UEFI-CSM firmware will be used.
-.It cpu
-A numeric value specifying the number of virtual CPU cores to assign to the
-guest.
+which configures the guest to use the firmware that includes traditional BIOS
+compatability.
 .It cpu_sockets
 Specify the number of CPU sockets that should be exposed to the guest. The product
 of

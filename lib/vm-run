@@ -56,7 +56,7 @@ vm::run(){
     config::get "_loader" "loader"
     config::get "_bootdisk" "disk0_name"
     config::get "_bootdisk_dev" "disk0_dev" "file"
-    config::get "_uefi" "uefi" "no"
+    config::get "_uefi" "uefi"
     config::get "_hostbridge" "hostbridge" "standard"
     config::get "_comports" "comports" "com1"
     config::get "_uuid" "uuid"
@@ -74,13 +74,16 @@ vm::run(){
         config::set "${_name}" "uuid" "${_uuid}"
     fi
 
+    # get cpu topology
     vm::__cpu "_cpu"
+
+    # old uefi flag just sets loader="uefi"
+    util::checkyesno "${_uefi}" && _loader="uefi"
 
     util::log_rotate "guest" "${_name}"
     util::log "guest" "${_name}" \
       "initialising" \
-      " [loader: ${_loader:-none}]" \
-      " [uefi: ${_uefi}]" \
+      " [loader: ${_loader}]" \
       " [cpu: ${_cpu}]" \
       " [memory: ${_memory}]" \
       " [hostbridge: ${_hostbridge}]" \
@@ -92,7 +95,7 @@ vm::run(){
       " [primary disk dev: ${_bootdisk_dev}]"
 
     # check basic settings
-    if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+    if [ -z "${_loader}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
         util::log "guest" "${_name}" "fatal; unable to start - missing required configuration"
         exit 15
     fi
@@ -120,7 +123,7 @@ vm::run(){
     util::checkyesno "${_ignore_msr}" && _opts="${_opts}w"
 
     # if uefi, make sure we have bootrom, then update options for uefi support
-    if util::checkyesno "${_uefi}"; then
+    if [ "${_loader}" = "uefi" ]; then
         if [ ${VERSION_BSD} -lt 1002509 ]; then
             util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
             exit 15
@@ -128,32 +131,23 @@ vm::run(){
 
         case "${_uefi}" in
             csm)
-                _bootrom="BHYVE_UEFI_CSM.fd"
-                ;&
+                _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CSM.fd"
+                ;;
             *)
-                [ -z "${_bootrom}" ] && _bootrom="BHYVE_UEFI.fd"
-
-                # look in sysutils/uefi-edk2-bhyve install location and our own .config dir
-                if [ -e "${vm_dir}/.config/${_bootrom}" ]; then
-                    _bootrom="${vm_dir}/.config/${_bootrom}"
-                elif [ -e "/usr/local/share/uefi-firmware/${_bootrom}" ]; then
-                    _bootrom="/usr/local/share/uefi-firmware/${_bootrom}"
-                else
-                    util::log "guest" "${_name}" "fatal; unable to locate relevant uefi firmware"
-                    exit 15
-                fi
-
-                _opts="-Hwl bootrom,${_bootrom}"
+                _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI.fd"
+                _uefi="yes"
                 ;;
         esac
-    else
-        _uefi=""
 
-        # we must have a loader
-        if [ -z "${_loader}" ]; then
-            util::log "guest" "${_name}" "fatal; guest does not have a loader specified"
+        if [ ! -e "${_bootrom}" ]; then
+            util::log "guest" "${_name}" "fatal; unable to locate firmware ${_bootrom}"
             exit 15
         fi
+
+        _opts="-Hwl bootrom,${_bootrom}"
+    else
+        # make sure uefi is unset as it affects various functions
+        _uefi=""
     fi
 
     # add any custom bhyve options
@@ -244,7 +238,7 @@ vm::run(){
         [ "${_run}" -eq "2" ] && vm::bhyve_device_fbuf_clear_wait
 
         # load guest
-        if [ -n "${_loader}" ]; then
+        if [ -z "${_uefi}" ]; then
             guest::load "${_iso}"
             _exit=$?
 

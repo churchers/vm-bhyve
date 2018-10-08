@@ -29,7 +29,7 @@
 #
 core::list(){
     local _name _loader _cpu _our_host
-    local _memory _run _vm _auto _num _uefi _graphics _vnc
+    local _memory _run _vm _auto _num _graphics _vnc
     local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
 
     _our_host=$(hostname)
@@ -51,11 +51,7 @@ core::list(){
                 config::get "_loader" "loader" "none"
                 config::get "_cpu" "cpu"
                 config::get "_memory" "memory"
-                config::get "_uefi" "uefi"
                 config::get "_graphics" "graphics"
-
-                # show uefi in loader column if it's a uefi guest
-                util::checkyesno "${_uefi}" && _loader="uefi"
 
                 # defaults
                 _vnc="-"

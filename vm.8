@@ -1424,6 +1424,12 @@ look in the guest directory for the script.
 Note that although the guest is technically stopped when this process runs, calls to
 .Nm
 will still consider the guest locked.
+.It priority
+Allows a priority to be set for a guest by using the
+.Xr nice 8
+facility. The default value is 0, and has a range from -20, which is the highest
+priority, to 20. A priority of 20 will cause the guest to only run when the host
+system is idle.
 .It limit_pcpu
 Limit the bhyve process to the specified cpu percentage.
 .Pp

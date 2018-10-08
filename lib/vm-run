@@ -256,7 +256,7 @@ vm::run(){
         util::log "guest" "${_name}" "starting bhyve (run ${_run})"
 
         # call rctl now as next line will block until bhyve exits
-        rctl::set_limits &
+        rctl::set &
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit

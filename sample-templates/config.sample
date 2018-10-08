@@ -466,6 +466,13 @@ zfs_zvol_opts=""
 #
 prestart="myscript.pl"
 
+# priority
+# set a priority (nice value) for a guest
+# valid range is -20 (highest) to 20 (only run when system idle), with
+# 0 being the default system priority
+#
+priority="10"
+
 # limit_pcpu
 # use rctl to limit guest to the specified cpu percentage
 #

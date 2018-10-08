@@ -271,7 +271,7 @@ Restart your vm.
 
 ## Windows Support
 
-Please see the Windows section in the Wiki
+Please see the Windows section in the [Wiki](https://github.com/churchers/vm-bhyve/wiki/Running-Windows)
 
 ## Autocomplete
 

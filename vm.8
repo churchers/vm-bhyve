@@ -101,6 +101,9 @@
 .Ar name
 .Ar ...
 .Nm
+.Cm restart
+.Ar name
+.Nm
 .Cm console
 .Ar name
 .Op Ar com1|com2
@@ -725,6 +728,15 @@ If a guest is stuck in the bootloader stage, you are given the option to forcibl
 .Pp
 Multiple guests can be specified to this command at the same time.
 Each one will be sent a poweroff event.
+.It Cm restart Ar name
+Attempt to restart the specified guest. This causes a shutdown event to be sent to the
+guest, however, vm-bhyve will restart the guest rather than stopping completely.
+.Pp
+A benfit of using this function is that vm-bhyve will not destroy and recreate network devices like
+it would when using
+.Sy stop/start .
+Note that guest configuration is not re-loaded, so all guest settings will be as they were
+when the guest was originally started.
 .It Cm console Ar name Op Ar com1|com2
 Connect to the console of the named virtual machine.
 Without network access, this is the primary way of connecting to the guest once

@@ -530,6 +530,21 @@ core::__start(){
     fi
 }
 
+# 'vm restart'
+# restart a guest
+# all we do is create a "restart" file which vm-run looks for
+#
+# @param string _name name of the guest to restart
+#
+core::restart(){
+    local _name="$1"
+
+    datastore::get_guest "${_name}" || util::err "unable to locate specified guest"
+    echo "Setting guest restart flag"
+    touch "${VM_DS_PATH}/${_name}/restart" >/dev/null 2>&1
+    core::stop "${_name}"
+}
+
 # 'vm stop'
 # send a kill signal to the specified guest
 #

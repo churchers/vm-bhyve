@@ -152,7 +152,7 @@ vm::run(){
         _opts="-Hwl bootrom,${_bootrom}"
         _uefi="yes"
     else
-        _uefi="no"
+        _uefi=""
     fi
 
     # add any custom bhyve options
@@ -321,7 +321,13 @@ vm::handle_exit(){
     case "${_code}" in
         0) config::get "${_var}" "on_restart" "restart" ;;
         1) ;&
-        2) setvar "${_var}" "shutdown" ;;
+        2) if [ -e "${VM_DS_PATH}/${_name}/restart" ]; then
+               setvar "${_var}" "restart"
+               unlink "${VM_DS_PATH}/${_name}/restart" >/dev/null 2>&1
+           else
+               setvar "${_var}" "shutdown"
+           fi
+           ;;
         *) config::get "${_var}" "on_fault" "shutdown" ;;
     esac
 }

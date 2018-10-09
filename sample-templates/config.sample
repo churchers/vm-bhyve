@@ -11,10 +11,11 @@
 # double-quotes, and so cannot be used inside any values.
 
 # loader
-# If the guest you are using requires either bhyveload or grub-bhyve,
-# specify the loader to use here.
+# Specify the loader to use for the guest. This can either be
+# one of the original bhyve loaders (bhyveload/grub), or
+# you can specify to use uefi firmware to load the guest
 #
-# Valid Options: bhyveload,grub,uefi
+# Valid Options: bhyveload,grub,uefi,uefi-csm
 #
 loader=""
 
@@ -33,15 +34,6 @@ bhyveload_loader=""
 # the grub console before it starts booting
 #
 loader_timeout="3"
-
-# uefi
-#
-# When using a UEFI loader, this can be used to specify the CSM firmware
-# should be used instead of the default.
-#
-# Valid Options: csm
-#
-uefi=""
 
 # cpu (required)
 # specify the number of cpu cores to give to the guest

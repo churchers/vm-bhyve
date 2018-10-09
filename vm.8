@@ -994,8 +994,9 @@ This option sets the loader to use for a guest and must be specified.
 The valid options are
 .Sy bhyveload ,
 .Sy grub ,
+.Sy uefi ,
 or
-.Sy uefi .
+.Sy uefi-csm .
 .It bhyveload_loader
 This option allows a custom path to be used for the loader inside the guest.
 Passed to
@@ -1013,12 +1014,6 @@ If access to the grub console is needed, this can be increased to give more
 time to connect to the console.
 If access to the grub console is not required, it can also be reduced to speed
 up overall boot.
-.It uefi
-This option can be used to choose the UEFI firmware to use. The only applicable
-value here is
-.Sy csm ,
-which configures the guest to use the firmware that includes traditional BIOS
-compatability.
 .It cpu_sockets
 Specify the number of CPU sockets that should be exposed to the guest. The product
 of

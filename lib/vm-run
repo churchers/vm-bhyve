@@ -77,8 +77,14 @@ vm::run(){
     # get cpu topology
     vm::__cpu "_cpu"
 
-    # old uefi flag just sets loader="uefi"
-    util::checkyesno "${_uefi}" && _loader="uefi"
+    # check old uefi flag
+    if util::checkyesno "${_uefi}"; then
+        if [ "${_uefi}" = "csm" ]; then
+            _loader="uefi-csm"
+        else
+            _loader="uefi"
+        fi
+    fi
 
     util::log_rotate "guest" "${_name}"
     util::log "guest" "${_name}" \
@@ -123,19 +129,18 @@ vm::run(){
     util::checkyesno "${_ignore_msr}" && _opts="${_opts}w"
 
     # if uefi, make sure we have bootrom, then update options for uefi support
-    if [ "${_loader}" = "uefi" ]; then
+    if [ "${_loader%-*}" = "uefi" ]; then
         if [ ${VERSION_BSD} -lt 1002509 ]; then
             util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
             exit 15
         fi
 
-        case "${_uefi}" in
-            csm)
+        case "${_loader}" in
+            uefi-csm)
                 _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CSM.fd"
                 ;;
             *)
                 _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI.fd"
-                _uefi="yes"
                 ;;
         esac
 
@@ -145,9 +150,9 @@ vm::run(){
         fi
 
         _opts="-Hwl bootrom,${_bootrom}"
+        _uefi="yes"
     else
-        # make sure uefi is unset as it affects various functions
-        _uefi=""
+        _uefi="no"
     fi
 
     # add any custom bhyve options
@@ -231,7 +236,7 @@ vm::run(){
 
         # use null.iso if not an install and uefi firmware
         # old instructions but some windows versions apparently needed this present
-        [ -z "${_iso}" -a -n "${_uefi}" -a "${_uefi}" != "csm" ] && \
+        [ -z "${_iso}" -a -n "${_uefi}" -a "${_loader}" != "uefi-csm" ] && \
             _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run

@@ -524,7 +524,7 @@ removed from the bridge, reconfigured, then re-added.
 To remove the VLAN configuration from a virtual switch, specify a
 .Ar vlan-id
 of 0.
-.It Cm switch address Ar a.b.c.d/xx|none
+.It Cm switch address Ar name Ar a.b.c.d/xx|none
 Configure an IP address for the specified virtual switch. The address should
 be specified in CIDR notation. To remove an address, specify
 .Pa none
@@ -534,7 +534,7 @@ If NAT funtionality is required, please configure an address on the switch to
 become the gateway address for guests. Source NAT rules can then be created
 using your choice of firewall or NAT daemon. If DHCP is desired, we recommend
 using a manual switch and configuring this by hand.
-.It Cm switch private Ar on|off
+.It Cm switch private Ar name Ar on|off
 Enable of disable private mode for a virtual switch.
 In private mode, guests will only be able to communicate with the physical
 interface(s), not with each other.

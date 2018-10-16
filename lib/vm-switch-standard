@@ -57,7 +57,9 @@ switch::standard::init(){
 
     # try to set ip address
     config::core::get "_addr" "addr_${_name}"
-    [ -n "${_addr}" ] && ifconfig "${_id}" inet ${_addr}
+    [ -n "${_addr}" ] && ifconfig "${_id}" inet ${_addr} 2>/dev/null
+    config::core::get "_addr" "addr6_${_name}"
+    [ -n "${_addr}" ] && ifconfig "${_id}" inet6 ${_addr} 2>/dev/null
 
     # custom mtu?
     config::core::get "_mtu" "mtu_${_name}"

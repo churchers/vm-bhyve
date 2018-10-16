@@ -450,7 +450,7 @@ core::__start(){
     local _name="$1"
     local _iso="$2"
     local _cpu _memory _disk _guest _loader _console
-    local _tmux_cmd _tmux_name _util
+    local _tmux_cmd _tmux_name _util _uefi
 
     [ -z "${_name}" ] && util::usage
 
@@ -476,6 +476,7 @@ core::__start(){
     config::get "_memory" "memory"
     config::get "_disk" "disk0_name"
     config::get "_loader" "loader"
+    config::get "_uefi" "uefi"
 
     # check minimum configuration
     if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
@@ -488,6 +489,10 @@ core::__start(){
         echo "  ! no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
         return 1
     fi
+
+    # check loader
+    # uefi="" deprecated in 1.3, must be set via loader in 1.4
+    [ -z "${_loader}" -a -n "${_uefi}" ] && echo "  ! uefi setting is deprecated. please set loader=\"uefi\" or loader=\"uefi-csm\""
 
     # check loader
     if [ "${_loader}" = "grub" ]; then

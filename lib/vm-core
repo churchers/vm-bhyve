@@ -155,11 +155,11 @@ core::create(){
         case "${_disk_dev}" in 
             zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
-                [ _num=0 ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
+                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
                 ;;			
             sparse-zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
-                [ _num=0 ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
+                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
                 ;;
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
@@ -167,7 +167,7 @@ core::create(){
 
                 # make sure only owner can read the disk image
                 chmod 600 "${VM_DS_PATH}/${_name}/${_disk}"
-                [ _num=0 ] && core::write_img "${VM_DS_PATH}/${_name}/${_disk}" "${_img}"
+                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "${VM_DS_PATH}/${_name}/${_disk}" "${_img}"
                 ;;
         esac
 

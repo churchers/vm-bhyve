@@ -97,13 +97,14 @@ core::list(){
 #
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
-    local _zfs_opts _disk_size _template="default" _ds="default" _ds_path
+    local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img
 
-    while getopts d:t:s: _opt ; do
+    while getopts d:t:s:i: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
             d) _ds=${OPTARG} ;;
+            i) _img=${OPTARG} ;;
             *) util::usage ;;
         esac
     done
@@ -154,9 +155,11 @@ core::create(){
         case "${_disk_dev}" in 
             zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
+                [ _num=0 ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
                 ;;			
             sparse-zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
+                [ _num=0 ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
                 ;;
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
@@ -164,6 +167,7 @@ core::create(){
 
                 # make sure only owner can read the disk image
                 chmod 600 "${VM_DS_PATH}/${_name}/${_disk}"
+                [ _num=0 ] && core::write_img "${VM_DS_PATH}/${_name}/${_disk}" "${_img}"
                 ;;
         esac
 
@@ -176,6 +180,25 @@ core::create(){
         config::get "_disk_dev" "disk${_num}_dev"
         config::get "_disk_size" "disk${_num}_size" "20G"
     done
+}
+
+# write cloud image to disk image
+#
+# @private
+# @param string _disk_dev device to write image to
+# @param string _img the img file in $vm_dir/.img to use
+#
+core::write_img(){
+    local _disk_dev _img _imgpath
+
+    cmd::parse_args "$@"
+    shift $?
+    _disk_dev="${1}"
+    _img="$2"
+
+    # just run start with an iso
+    datastore::img_find "_imgpath" "${_img}" || util::err "unable to locate img file - '${_img}'"
+    dd if="${_imgpath}" of="${_disk_dev}" bs=1M
 }
 
 # 'vm add'
@@ -788,6 +811,38 @@ core::iso(){
         fetch -o "${VM_DS_PATH}" "${_url}"
     else
         datastore::iso_list
+    fi
+}
+
+# 'vm img'
+# list cloud images or get a new one
+#
+# @param string _url if specified, the url will be fetch'ed into $vm_dir/.img
+#
+core::img(){
+    local _url _ds="default" _filename
+
+    while getopts d:u _opt ; do
+        case $_opt in
+            d) _ds=${OPTARG} ;;
+            *) util::usage ;;
+        esac
+    done
+
+    shift $((OPTIND - 1))
+    _url=$1
+
+    if [ -n "${_url}" ]; then
+        datastore::get_img "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
+        _filename=$(echo "${_url}" | awk -F/ '{print $NF}')
+        fetch -o "${VM_DS_PATH}" "${_url}"
+        # TODO: Move to function and add support for more compression formats
+        if echo "$_filename" | grep "\.xz$" > /dev/null; then
+          echo "Decompressing ${_filename} in ${VM_DS_PATH}"
+          xz -d "${VM_DS_PATH}/${_filename}"
+        fi
+    else
+        datastore::img_list
     fi
 }
 

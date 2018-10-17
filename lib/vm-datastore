@@ -161,10 +161,7 @@ datastore::__resolve_path(){
             setvar "${_var}" "${_mount}"
             return 0
         fi
-    elif [ "${_spec%%:*}" = "iso" ]; then
-        setvar "${_var}" "${_spec#*:}"
-        return 0
-    elif [ "${_spec%%:*}" = "img" ]; then
+    elif [ "${_spec%%:*}" = "iso" ] || [ "${_spec%%:*}" = "img" ]; then
         setvar "${_var}" "${_spec#*:}"
         return 0
     else
@@ -215,8 +212,9 @@ datastore::get_guest(){
             [ "${_ds}" = "default" ] && continue
 
             config::core::get "_spec" "path_${_ds}"
-            [ "${_spec%%:*}" = "iso" ] && continue
-            [ "${_spec%%:*}" = "img" ] && continue
+            if [ "${_spec%%:*}" = "iso" ] || [ "${_spec%%:*}" = "img" ]; then
+                continue
+            fi
 
             datastore::__resolve_path "_path" "${_spec}"
 
@@ -262,11 +260,10 @@ datastore::get(){
     config::core::get "_spec" "path_${_ds}"
     [ -z "${_spec}" ] && return 1
 
-    # don't find iso stores
-    [ "${_spec%%:*}" = "iso" ] && return 1
-    
-    # don't find img stores
-    [ "${_spec%%:*}" = "img" ] && return 1
+    # skip iso and img stores
+    if [ "${_spec%%:*}" = "iso" ] || [ "${_spec%%:*}" = "img" ]; then
+        return 1
+    fi 
 
     datastore::__resolve_path "_path" "${_spec}" || return 1
     [ "${_spec%%:*}" = "zfs" ] && _zfs="1" && _dataset="${_spec#*:}"

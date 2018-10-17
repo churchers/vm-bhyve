@@ -198,7 +198,7 @@ core::write_img(){
 
     # just run start with an iso
     datastore::img_find "_imgpath" "${_img}" || util::err "unable to locate img file - '${_img}'"
-    dd if="${_imgpath}" of="${_disk_dev}" bs=1M
+    qemu-img dd -O raw if="${_imgpath}" of="${_disk_dev}" bs=1M
 }
 
 # 'vm add'

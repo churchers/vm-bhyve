@@ -843,6 +843,9 @@ core::decompress(){
 #
 core::img(){
     local _url _ds="default" _filename
+    if ! which qemu-img > /dev/null; then
+        util::err "Error: qemu-img is required to work with cloud images! Run 'pkg install qemu-utils'."
+    fi
 
     while getopts d:u _opt ; do
         case $_opt in

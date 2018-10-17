@@ -828,6 +828,9 @@ core::decompress(){
 
     if echo "${_filepath}" | grep "\.xz$" > /dev/null; then
         xz -d "${_filepath}"
+    elif echo "${_filepath}" | grep "\.tar\.gz$" > /dev/null; then
+        tar Szxf "${_filepath}" -C "$(dirname "${_filepath}")"
+        rm -f "${_filepath}"
     elif echo "${_filepath}" | grep "\.gz$" > /dev/null; then
         gunzip "${_filepath}"
     fi

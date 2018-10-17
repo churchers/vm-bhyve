@@ -814,6 +814,25 @@ core::iso(){
     fi
 }
 
+# uncompress cloud image
+#
+# @private
+# @param string _filepath path to file to decompress
+#
+core::decompress(){
+    local _filepath
+
+    cmd::parse_args "$@"
+    shift $?
+    _filepath="${1}"
+
+    if echo "${_filepath}" | grep "\.xz$" > /dev/null; then
+        xz -d "${_filepath}"
+    elif echo "${_filepath}" | grep "\.gz$" > /dev/null; then
+        gunzip "${_filepath}"
+    fi
+}
+
 # 'vm img'
 # list cloud images or get a new one
 #
@@ -834,13 +853,9 @@ core::img(){
 
     if [ -n "${_url}" ]; then
         datastore::get_img "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
-        _filename=$(echo "${_url}" | awk -F/ '{print $NF}')
+        _filename=$(basename "${_url}")
         fetch -o "${VM_DS_PATH}" "${_url}"
-        # TODO: Move to function and add support for more compression formats
-        if echo "$_filename" | grep "\.xz$" > /dev/null; then
-          echo "Decompressing ${_filename} in ${VM_DS_PATH}"
-          xz -d "${VM_DS_PATH}/${_filename}"
-        fi
+        core::decompress "${VM_DS_PATH}/${_filename}"
     else
         datastore::img_list
     fi

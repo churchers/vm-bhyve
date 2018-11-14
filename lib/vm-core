@@ -176,6 +176,8 @@ core::create(){
         config::get "_disk_dev" "disk${_num}_dev"
         config::get "_disk_size" "disk${_num}_size" "20G"
     done
+
+    exit 0
 }
 
 # 'vm add'
@@ -664,6 +666,8 @@ core::destroy(){
 
     zfs::destroy_dataset "${VM_DS_ZFS_DATASET:?}/${_name:?}"
     [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH:?}/${_name:?}"
+
+    exit 0
 }
 
 # 'vm rename'

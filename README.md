@@ -249,6 +249,27 @@ a full shutdown and restart of the guest
 See the man page for a full description of all available commands.
 
     # man vm
+
+## Using cloud images
+
+You can use cloud images to create virtual machines. The `vm img` command will download the image to datastore and 
+uncompress it if needed (.xz, .tar.gz, and .gz files are supported). The image should be in RAW or QCOW2 format.
+
+To launch FreeBSD using official cloud image:
+
+    # vm img ftp://ftp.icm.edu.pl/pub/FreeBSD/releases/VM-IMAGES/11.2-RELEASE/amd64/Latest/FreeBSD-11.2-RELEASE-amd64.raw.xz
+    # vm create -t freebsd-zvol -i FreeBSD-11.2-RELEASE-amd64.raw freebsd-cloud
+    # vm start freebsd-cloud
+
+To list downloaded images:
+
+    # vm img
+    DATASTORE           FILENAME
+    default             CentOS-7-x86_64-GenericCloud-20180930_02.raw
+    default             debian-9-openstack-amd64.qcow2
+    default             Fedora-AtomicHost-28-1.1.x86_64.raw
+    default             FreeBSD-11.2-RELEASE-amd64.raw
+    default             xenial-server-cloudimg-amd64-uefi1.img
     
 ## Adding custom disks
 

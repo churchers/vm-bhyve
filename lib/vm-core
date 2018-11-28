@@ -97,13 +97,15 @@ core::list(){
 #
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
-    local _zfs_opts _disk_size _template="default" _ds="default" _ds_path
+    local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _cpu _memory
 
     while getopts d:t:s: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
             d) _ds=${OPTARG} ;;
+            c) _cpu=${OPTARG} ;;
+            m) _memory=${OPTARG} ;;
             *) util::usage ;;
         esac
     done
@@ -146,6 +148,9 @@ core::create(){
     # get any zvol options
     config::get "_zfs_opts" "zfs_zvol_opts"
 
+    # Optional overrides
+    [ -n "${_cpu}" ] && config::set "${_name}" "cpu" "${_cpu}"
+    [ -n "${_memory}" ] && config::set "${_name}" "memory" "${_memory}"
     # use cmd line size for disk 0 if specified
     [ -n "${_size}" ] && _disk_size="${_size}"
 

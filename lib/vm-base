@@ -51,6 +51,7 @@ zfs::init
 [ ! -e "${vm_dir}/.config/null.iso" ] && touch "${vm_dir}/.config/null.iso"
 [ ! -d "${vm_dir}/.templates" ] && mkdir "${vm_dir}/.templates"
 [ ! -d "${vm_dir}/.iso" ] && mkdir "${vm_dir}/.iso"
+[ ! -d "${vm_dir}/.img" ] && mkdir "${vm_dir}/.img"
 
 # load core configuration
 config::core::load

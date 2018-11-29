@@ -176,6 +176,7 @@ Usage: vm ...
     snapshot [-f] <name[@snapshot]>
     rollback [-r] <name@snapshot>
     iso [url]
+    img [url]
     image list
     image create [-d description] [-u] <name>
     image destroy <uuid>

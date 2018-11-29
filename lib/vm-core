@@ -99,7 +99,7 @@ core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img _cpu _memory
 
-    while getopts d:t:s:i: _opt ; do
+    while getopts d:t:s:i:c:m: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;

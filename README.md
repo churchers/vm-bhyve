@@ -254,6 +254,9 @@ See the man page for a full description of all available commands.
 
 You can use cloud images to create virtual machines. The `vm img` command will download the image to datastore and 
 uncompress it if needed (.xz, .tar.gz, and .gz files are supported). The image should be in RAW or QCOW2 format.
+To use this feature you'll need install qemu-utils package:
+
+    # pkg install qemu-utils
 
 To launch FreeBSD using official cloud image:
 

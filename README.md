@@ -44,9 +44,9 @@ See the sections below for more in-depth details.
     6. cp /usr/local/share/examples/vm-bhyve/* /mountpoint/for/pool/vm/.templates/
     7. vm switch create public
     8. vm switch add public em0
-    9. vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.3/FreeBSD-10.3-RELEASE-amd64-bootonly.iso
+    9. vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/11.2/FreeBSD-11.2-RELEASE-amd64-bootonly.iso
     10. vm create myguest
-    11. vm [-f] install myguest FreeBSD-10.3-RELEASE-amd64-bootonly.iso
+    11. vm [-f] install myguest FreeBSD-11.2-RELEASE-amd64-bootonly.iso
     12. vm console myguest
 
 - [ ] Line 1
@@ -188,17 +188,17 @@ example specifies the templatename.conf template, and tells vm-bhyve to create a
 
 You will need an ISO to install the guest with, so download one using the iso command:
 
-    # vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.1/FreeBSD-10.1-RELEASE-amd64-disc1.iso
+    # vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/11.2/FreeBSD-11.2-RELEASE-amd64-disc1.iso
 
 To start a guest install, run the following command. vm-bhyve will run the machine in the background,
 so use the console command to connect to it and finish installation.
 
-    # vm install testvm FreeBSD-10.1-RELEASE-amd64-disc1.iso
+    # vm install testvm FreeBSD-11.2-RELEASE-amd64-disc1.iso
     # vm console testvm
 
 You can also specify the foreground option to run the guest directly on your terminal:
 
-    # vm -f install testvm FreeBSD-10.1-RELEASE-amd64-disc1.iso
+    # vm -f install testvm FreeBSD-11.2-RELEASE-amd64-disc1.iso
 
 Once installation has finished, you can reboot the guest from inside the console and it will boot up into
 the new OS (assuming installation was successful). Further reboots will work as expected and
@@ -257,7 +257,7 @@ uncompress it if needed (.xz, .tar.gz, and .gz files are supported). The image s
 
 To launch FreeBSD using official cloud image:
 
-    # vm img ftp://ftp.icm.edu.pl/pub/FreeBSD/releases/VM-IMAGES/11.2-RELEASE/amd64/Latest/FreeBSD-11.2-RELEASE-amd64.raw.xz
+    # vm img https://download.freebsd.org/ftp/releases/VM-IMAGES/11.2-RELEASE/amd64/Latest/FreeBSD-11.2-RELEASE-amd64.raw.xz
     # vm create -t freebsd-zvol -i FreeBSD-11.2-RELEASE-amd64.raw freebsd-cloud
     # vm start freebsd-cloud
 

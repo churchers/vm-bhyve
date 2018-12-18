@@ -114,7 +114,7 @@ core::create(){
     [ -z "${_name}" ] && util::usage
 
     # check guest name
-    util::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_name}" 37 || util::err "invalid virtual machine name - '${_name}'"
     datastore::get_guest "${_name}" && util::err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
     datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
 

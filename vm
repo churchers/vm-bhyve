@@ -30,7 +30,7 @@ if [ -e "./lib/vm-core" ]; then
 elif [ -e "/usr/local/lib/vm-bhyve" ]; then
     LIB="/usr/local/lib/vm-bhyve"
 else
-    echo "unable to locate vm-bhyve libriaries"
+    echo "unable to locate vm-bhyve libraries"
     exit 1
 fi
 

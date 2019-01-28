@@ -1,3 +1,4 @@
+#!/bin/sh
 #-------------------------------------------------------------------------+
 # Copyright (C) 2016 Matt Churchyard (churchers@gmail.com)
 # All rights reserved
@@ -97,9 +98,9 @@ core::list(){
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img _cpu _memory _uuid
-    local _cloud_init_dir _ssh_public_key _ssh_key_file
+    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file
 
-    while getopts d:t:s:i:c:m:k: _opt ; do
+    while getopts d:t:s:i:c:m:Ck: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
@@ -108,6 +109,7 @@ core::create(){
             m) _memory=${OPTARG} ;;
             i) _img=${OPTARG} ;;
             k) _ssh_key_file=${OPTARG} ;;
+            C) _enable_cloud_init='true' ;;
 
             *) util::usage ;;
         esac
@@ -136,8 +138,16 @@ core::create(){
     # make sure template has a disk before we start creating anything
     [ -z "${_disk}" ] && util::err "template is missing disk0_name specification"
 
+    if [ -n "${_enable_cloud_init}" ]; then
+        if ! which genisoimage > /dev/null; then
+            util::err "Error: genisoimage is required to work with cloud init! Run 'pkg install cdrkit-genisoimage'."
+        fi
+    fi
+
     # get ssh public key for cloud-init from file
     if [ -n "${_ssh_key_file}" ]; then
+
+      [ -z "${_enable_cloud_init}" ] && util::err "cloud-init is required for injecting public key. Use -C to enable it."
       [ ! -r "${_ssh_key_file}" ] && util::err "can't read file with public key (${_ssh_key_file})"
       _ssh_public_key="$(cat "${_ssh_key_file}")"
     fi
@@ -195,31 +205,33 @@ core::create(){
         config::get "_disk_size" "disk${_num}_size" "20G"
     done
 
-    # create disk with metadata for cloud-init
-    _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
-    mkdir -p "${_cloud_init_dir}"
+    if [ -n "${_enable_cloud_init}" ]; then
+        # create disk with metadata for cloud-init
+        _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
+        mkdir -p "${_cloud_init_dir}"
 
-    cat << EOF > "${_cloud_init_dir}/meta-data"
+        cat << EOF > "${_cloud_init_dir}/meta-data"
 instance-id: ${_uuid}
 local-hostname: ${_name}
 EOF
 
-    if [ -n "${_ssh_public_key}" ]; then
-
-      cat << EOF > "${_cloud_init_dir}/user-data"
+        cat << EOF > "${_cloud_init_dir}/user-data"
 #cloud-config
-ssh_authorized_keys:
-  - ${_ssh_public_key}
 resize_rootfs: True
 manage_etc_hosts: localhost
 EOF
+        if [ -n "${_ssh_public_key}" ]; then
+            cat << EOF >> "${_cloud_init_dir}/user-data"
+ssh_authorized_keys:
+  - ${_ssh_public_key}
+EOF
+        fi
 
+        genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
+        config::set "${_name}" "disk${_num}_type" "ahci-cd"
+        config::set "${_name}" "disk${_num}_name" "seed.iso"
+        config::set "${_name}" "disk${_num}_dev" "file"
     fi
-
-    genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" > /dev/null 2>&1 || util:err "Can't write seed.iso for cloud-init"
-    config::set "${_name}" "disk${_num}_type" "ahci-cd"
-    config::set "${_name}" "disk${_num}_name" "seed.iso"
-    config::set "${_name}" "disk${_num}_dev" "file"
 
     exit 0
 }

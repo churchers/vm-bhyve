@@ -88,7 +88,7 @@ switch::vxlan::show(){
     config::core::get "_addr" "addr_${_name}"
     config::core::get "_priv" "private_${_name}" "no"
 
-    printf "${_format}" "${_name}" "vxlan" "${_id:--}" "${_addr}" "${_priv}" "n/a" "${_vlan}" "${_port}"
+    printf "${_format}" "${_name}" "vxlan" "${_id:--}" "${_addr:--}" "${_priv}" "n/a" "${_vlan}" "${_port}"
 }
 
 # create a vxlan switch

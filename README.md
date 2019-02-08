@@ -273,6 +273,26 @@ To list downloaded images:
     default             Fedora-AtomicHost-28-1.1.x86_64.raw
     default             FreeBSD-11.2-RELEASE-amd64.raw
     default             xenial-server-cloudimg-amd64-uefi1.img
+
+## Using cloud init
+
+vm-bhyve has basic support for providing cloud-init configuration to the guest. You can enable it with `-C` option
+to `vm create` command. You can also pass public SSH key to be injected into the guest with option `-k <file>`. 
+
+Example:
+
+    # vm create -t linux -i xenial-server-cloudimg-amd64-uefi1.img -C -k ~/.ssh/id_rsa.pub cloud-init-ubuntu
+    # vm start cloud-init-ubuntu
+    Starting cloud-init-ubuntu
+    * found guest in /zroot/vm/cloud-init-ubuntu
+    * booting...
+    # ssh ubuntu@192.168.0.91
+    The authenticity of host '192.168.0.91 (192.168.0.91)' can't be established.
+    ECDSA key fingerprint is SHA256:6s9uReyhsIXRv0dVRcBCKMHtY0kDYRV7zbM7ot6u604.
+    No matching host key fingerprint found in DNS.
+    Are you sure you want to continue connecting (yes/no)? yes
+    Warning: Permanently added '192.168.0.91' (ECDSA) to the list of known hosts.
+    Welcome to Ubuntu 16.04.5 LTS (GNU/Linux 4.4.0-141-generic x86_64)
     
 ## Adding custom disks
 

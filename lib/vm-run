@@ -502,11 +502,6 @@ vm::bhyve_device_disks(){
             if [ -n "${_uefi}" ]; then
                 _slot=$((_slot + 1))
 
-                # stop at slot 6 on uefi
-                if [ ${_slot} -ge 7 ]; then
-                    util::log "guest" "${_name}" "ending disks at disk${_num} due to UEFI firmware limitations"
-                    break
-                fi
             else
                 _func=$((_func + 1))
             fi

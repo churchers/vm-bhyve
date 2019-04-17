@@ -744,7 +744,7 @@ core::destroy(){
         util::confirm "Are you sure you want to completely remove this virtual machine" || exit 0
     fi
 
-    zfs::destroy_dataset "${VM_DS_ZFS_DATASET:?}/${_name:?}"
+    [ -n "${VM_DS_ZFS_DATASET}" ] && zfs::destroy_dataset "${VM_DS_ZFS_DATASET:?}/${_name:?}"
     [ -e "${VM_DS_PATH}/${_name}" ] && rm -R "${VM_DS_PATH:?}/${_name:?}"
 
     exit 0

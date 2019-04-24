@@ -139,6 +139,9 @@ vm::run(){
             uefi-csm)
                 _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CSM.fd"
                 ;;
+            uefi-custom)
+                _bootrom="${VM_DS_PATH}/.config/BHYVE_UEFI.fd"
+                ;;                
             *)
                 _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI.fd"
                 ;;

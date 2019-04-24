@@ -317,7 +317,8 @@ You will also need a copy of the UEFI firmware.
 This can either be installed using the
 .Pa sysutils/uefi-edk2-bhyve
 port, or you can manually download a copy (see URL below) to
-.Pa $vm_dir/.config/BHYVE_UEFI.fd .
+.Pa $vm_dir/.config/BHYVE_UEFI.fd and configure a guest to use it by setting
+.Sy loader="uefi-custom" .
 .Pp
 If you are running
 .Fx 10
@@ -1007,8 +1008,9 @@ The valid options are
 .Sy bhyveload ,
 .Sy grub ,
 .Sy uefi ,
+.Sy uefi-csm ,
 or
-.Sy uefi-csm .
+.Sy uefi-custom .
 .It bhyveload_loader
 This option allows a custom path to be used for the loader inside the guest.
 Passed to

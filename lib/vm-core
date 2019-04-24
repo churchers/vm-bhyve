@@ -574,7 +574,7 @@ core::__start(){
 
     # check loader
     # uefi="" deprecated in 1.3, must be set via loader in 1.4
-    [ -z "${_loader}" -a -n "${_uefi}" ] && echo "  ! uefi setting is deprecated. please set loader=\"uefi\" or loader=\"uefi-csm\""
+    [ -z "${_loader}" -a -n "${_uefi}" ] && echo "  ! uefi setting is deprecated. please set loader=\"uefi\", loader=\"uefi-csm\" or loader=\"uefi-custom\""
 
     # check loader
     if [ "${_loader}" = "grub" ]; then

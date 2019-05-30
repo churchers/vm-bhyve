@@ -1056,7 +1056,7 @@ vm::__cpu(){
 
     config::get "_c_socket" "cpu_sockets"
     config::get "_c_core" "cpu_cores"
-    config::get "_c_thread" "cpu_thread"
+    config::get "_c_thread" "cpu_threads"
 
     [ -n "${_c_socket}" ] && _config="${_config},sockets=${_c_socket}"
     [ -n "${_c_core}" ] && _config="${_config},cores=${_c_core}"

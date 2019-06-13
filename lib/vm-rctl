@@ -42,7 +42,7 @@ rctl::set(){
 
     # wait till bhyve starts and get pid
     sleep 1
-    _pid=$(pgrep -fx "bhyve: ${_name}")
+    _pid=$(pgrep -fx "bhyve[: ].* ${_name}")
     [ -z "${_pid}" ] && return 1
 
     # check for a priority

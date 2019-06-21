@@ -34,7 +34,7 @@ install:
 	gzip -fk $(MAN)
 	$(INSTALL) $(MAN).gz $(MANDIR)/
 	rm -f -- $(MAN).gz
-	$(LN) -s $(MANDIR)/$(MAN).gz $(MANDIR)/vm-bhyve.8.gz
+	$(LN) -sf $(MANDIR)/$(MAN).gz $(MANDIR)/vm-bhyve.8.gz
 
 vmdir:
 	@if [ -z "${PATH}" ]; then \

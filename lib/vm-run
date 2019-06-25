@@ -830,6 +830,7 @@ vm::get_disk_path(){
         zvol)        ;&
         sparse-zvol) setvar "${_var}" "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" ;;
         custom)      setvar "${_var}" "${_disk}" ;;
+        iscsi)       info::__find_iscsi "${_var}" "${_disk}" ;;
         *)           setvar "${_var}" "${VM_DS_PATH}/${_name}/${_disk}" ;;
     esac
 }

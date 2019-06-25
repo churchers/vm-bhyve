@@ -325,6 +325,9 @@ info::guest_disks(){
                     _size=$(zfs get -Hp volsize "${_path#/dev/zvol/}" |cut -f3)
                     _used=$(zfs get -Hp refer "${_path#/dev/zvol/}" |cut -f3)
                     ;;
+                iscsi)
+                    _size=$(sysctl -b kern.geom.conftxt | awk "/ ${_path#/dev/} /{print \$4}")
+                    _used=${_size}
             esac
 
             if [ -n "${_size}" -a -n "${_used}" ]; then
@@ -463,4 +466,34 @@ info::__bytes_human(){
 
     export LC_ALL="C"
     printf "%.3f%s" "${_val}" "${_ext}"
+}
+
+info::__find_iscsi() {
+    local _var="$1"
+    # _target format: [iqn.*]unique_name[/N] where N is the lun# and defaults
+    # to 0. The address before the unique_name can be omitted so long as
+    # the unique_name is sufficient to select only one output of iscsictl -L.
+    local _target="$2"
+    local _lun _col _found
+
+    # If no lun is specified, assume /0
+    _lun=${_target##*/}
+    [ "${_lun}" = "${_target}" ] && _lun=0
+    _target=${_target%/*}
+
+    _found=$(iscsictl -L -w 10 | grep ${_target} | wc -l)
+    if [ "${_found}" -ne 1 ]; then
+        setvar "${_var}" ""
+        util::err "Unable to locate unique iSCSI device ${_target}"
+    fi
+
+    # _col to be the column of iscsictl -L we want
+    _col=$((_lun + 4))
+    _found=$(iscsictl -L | awk "/${_target}/{print \$${_col}}")
+    if echo "${_found}" | egrep -q '^da[0-9]+$'; then
+        setvar "${_var}" /dev/"${_found}"
+        return 0
+    fi
+
+    util::err "Unable to locate iSCSI device ${_target}/${_lun}"
 }

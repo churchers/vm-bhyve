@@ -187,6 +187,8 @@ core::create(){
                 ;;
             custom)
                 ;;
+            iscsi)
+                ;;
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
                 [ $? -eq 0 ] || util::err "failed to create sparse file for disk image"

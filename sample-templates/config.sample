@@ -171,9 +171,11 @@ disk0_type="virtio-blk"
 # For the zvol options, the zvol must be directly under the guest dataset.
 # There is also a 'custom' option, in which case the disk name should be the full path
 # to the file or device you want to use.
+# For 'iscsi', the disk name must be set to a unique target and lun combination
+# when matched against iscsictl -L output.
 #
 # Default: file
-# Valid Options: file,zvol,sparse-zvol,custom
+# Valid Options: file,zvol,sparse-zvol,custom,iscsi
 #
 disk0_dev=""
 
@@ -187,6 +189,7 @@ disk0_dev=""
 # file              'disk0.img' -> '$vm_dir/$name/disk0.img'
 # zvol|sparse-zvol  'disk0'     -> '/dev/zvol/pool/dataset/path/guest/disk0'
 # custom            '/dev/da10' -> '/dev/da10'
+# iscsi             'tgt[/lun]' -> '/dev/daNN' (lun defaults to 0 if omitted) 
 #
 disk0_name="disk0.img"
 

@@ -1180,24 +1180,41 @@ command, which will create the disk image for you.
 Normally disk images or zvols are stored directly inside the guest.
 To use a disk image that is stored anywhere else, you can specify the full path
 in this option, and configure the device as
-.Sy custom
+.Sy custom .
+.Pp
+To use an established iscsi device, specify a target 'session[/lun]' 
+(default /0) which matches a unique session from the 
+.Pf ' Xr iscsictl 8
+-L' command output, and configure the device as
+.Sy iscsi .
 .It disk0_dev
 The type of device to use for the disk.
 If not specified, this will default to
 .Sy file ,
 and a sparse file, located in the guest directory, will be used as the disk
 image.
-Other options include
+Other options include:
 .Sy zvol
-&
-.Sy sparse-zvol ,
-which will use a ZVOL as the disk image, created directly under the guest
-dataset.
-Alternatively you can specify
+or 
+.Sy sparse-zvol
+(which will use a ZVOL as the disk image, created directly under the guest
+dataset),
+.Sy custom , 
+and 
+.Sy iscsi .
+.Pp
+When using
 .Sy custom ,
-in which case
+the 
 .Pa diskX_name
-should be the full path to the image file or device.
+parameter must be set to the full path to the image file or device.
+.Pp
+Already attached iscsi devices can have their device nodes dynamically
+detected and used by setting this option to
+.Sy iscsi
+and
+.Pa diskX_name
+as described above.
 .It disk0_opts
 Any additional options to use for this disk device.
 Multiple options can be specified, separated by a comma.

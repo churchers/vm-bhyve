@@ -161,7 +161,7 @@ ahci_device_limit="8"
 # This specifies the emulation type for disk0. Please note that each disk requires
 # at least a type and name.
 #
-# Valid Options: virtio-blk,ahci-hd,ahci-cd
+# Valid Options: virtio-blk,ahci-hd,ahci-cd,nvme
 #
 disk0_type="virtio-blk"
 

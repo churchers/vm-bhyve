@@ -460,10 +460,30 @@ prestart="myscript.pl"
 
 # priority
 # set a priority (nice value) for a guest
-# valid range is -20 (highest) to 20 (only run when system idle), with
-# 0 being the default system priority
+# valid range is -20 (highest) to 20 (only run when system idle), with 0 being
+# the default system priority. Setting this value will override the
+# low_priority setting.
+# 
+# See also: low_priority and high_priority
 #
 priority="10"
+
+# high_priority
+# run with a real-time priority
+# Set this to yes (default is no) to use 'rtprio 31' to run in the (lowest
+# priority) real-time queue. This is an even higher priority than setting
+# priority="-20". Setting to "yes" overrides priority and low_priority.
+# settings.
+#
+high_priority="no"
+
+# low_priority
+# run in the idle scheduling class
+# Set this to yes (default is no) to use 'idprio 0' to run only in the
+# idle queue. This is below priority="20". Setting 'priority' or enabling
+# 'high_priority' will override the value of this option.
+#
+low_priority="no"
 
 # limit_pcpu
 # use rctl to limit guest to the specified cpu percentage

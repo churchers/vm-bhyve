@@ -885,10 +885,12 @@ vm::running_check(){
     local _name="$2"
     local IFS=$'\n'
     local _entry
+    local _cpuusage
 
     for _entry in ${VM_RUN_BHYVE}; do
         if [ "${_entry##* }" = "${_name}" ]; then
-            setvar "${_var}" "Running (${_entry%% *})"
+            setvar _cpuusage `ps -o '%cpu=' -p ${_entry%% *}`
+            setvar "${_var}" `printf "Running %-8s%4s%%" "(${_entry%% *})" "${_cpuusage}"`
             return 0
         fi
     done

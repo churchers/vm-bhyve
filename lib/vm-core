@@ -98,9 +98,9 @@ core::list(){
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img _cpu _memory _uuid
-    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file
+    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file _network_config _mac
 
-    while getopts d:t:s:i:c:m:Ck: _opt ; do
+    while getopts d:t:s:i:c:m:Ck:n: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
@@ -110,6 +110,7 @@ core::create(){
             i) _img=${OPTARG} ;;
             k) _ssh_key_file=${OPTARG} ;;
             C) _enable_cloud_init='true' ;;
+            n) _network_config=${OPTARG} ;;
 
             *) util::usage ;;
         esac
@@ -168,6 +169,9 @@ core::create(){
     # get any zvol options
     config::get "_zfs_opts" "zfs_zvol_opts"
 
+    # generate mac address - it's saved in _mac variable
+    vm::generate_static_mac
+
     # Optional overrides
     [ -n "${_cpu}" ] && config::set "${_name}" "cpu" "${_cpu}"
     [ -n "${_memory}" ] && config::set "${_name}" "memory" "${_memory}"
@@ -223,13 +227,34 @@ resize_rootfs: True
 manage_etc_hosts: localhost
 EOF
         if [ -n "${_ssh_public_key}" ]; then
-            cat << EOF >> "${_cloud_init_dir}/user-data"
+	    cat << EOF >> "${_cloud_init_dir}/user-data"
 ssh_authorized_keys:
   - ${_ssh_public_key}
 EOF
+	fi
+
+	if [ -n "${_network_config}" ]; then
+               # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
+               _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
+               _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
+               _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
+
+               cat << EOF > "${_cloud_init_dir}/network-config"
+version: 2
+ethernets:
+  id0:
+    set-name: eth0
+    match:
+      macaddress: "${_mac}"
+    addresses:
+    - ${_network_config_ipaddress}
+    gateway4: ${_network_config_gateway}
+    nameservers:
+      addresses: [${_network_config_nameservers}]
+EOF
         fi
 
-        genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
+        genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" "${_cloud_init_dir}/network-config"> /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
         config::set "${_name}" "disk${_num}_type" "ahci-cd"
         config::set "${_name}" "disk${_num}_name" "seed.iso"
         config::set "${_name}" "disk${_num}_dev" "file"

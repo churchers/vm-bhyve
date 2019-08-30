@@ -212,34 +212,41 @@ core::create(){
     done
 
     if [ -n "${_enable_cloud_init}" ]; then
-        # create disk with metadata for cloud-init
-        _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
-        mkdir -p "${_cloud_init_dir}"
+        core::create_cloud_init
+    fi
 
-        cat << EOF > "${_cloud_init_dir}/meta-data"
+    exit 0
+}
+
+core::create_cloud_init(){
+    # create disk with metadata for cloud-init
+    _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
+    mkdir -p "${_cloud_init_dir}"
+
+    cat << EOF > "${_cloud_init_dir}/meta-data"
 instance-id: ${_uuid}
 local-hostname: ${_name}
 EOF
 
-        cat << EOF > "${_cloud_init_dir}/user-data"
+    cat << EOF > "${_cloud_init_dir}/user-data"
 #cloud-config
 resize_rootfs: True
 manage_etc_hosts: localhost
 EOF
-        if [ -n "${_ssh_public_key}" ]; then
-	    cat << EOF >> "${_cloud_init_dir}/user-data"
+    if [ -n "${_ssh_public_key}" ]; then
+        cat << EOF >> "${_cloud_init_dir}/user-data"
 ssh_authorized_keys:
   - ${_ssh_public_key}
 EOF
-	fi
+    fi
 
-	if [ -n "${_network_config}" ]; then
-               # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
-               _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
-               _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
-               _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
+    if [ -n "${_network_config}" ]; then
+        # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
+        _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
+        _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
+        _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
 
-               cat << EOF > "${_cloud_init_dir}/network-config"
+        cat << EOF > "${_cloud_init_dir}/network-config"
 version: 2
 ethernets:
   id0:
@@ -252,15 +259,12 @@ ethernets:
     nameservers:
       addresses: [${_network_config_nameservers}]
 EOF
-        fi
-
-        genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" "${_cloud_init_dir}/network-config"> /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
-        config::set "${_name}" "disk${_num}_type" "ahci-cd"
-        config::set "${_name}" "disk${_num}_name" "seed.iso"
-        config::set "${_name}" "disk${_num}_dev" "file"
     fi
 
-    exit 0
+    genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" "${_cloud_init_dir}/network-config"> /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
+    config::set "${_name}" "disk${_num}_type" "ahci-cd"
+    config::set "${_name}" "disk${_num}_name" "seed.iso"
+    config::set "${_name}" "disk${_num}_dev" "file"
 }
 
 # write cloud image to disk image

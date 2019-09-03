@@ -261,7 +261,7 @@ ethernets:
 EOF
     fi
 
-    genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" "${_cloud_init_dir}/network-config"> /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
+    genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock ${_cloud_init_dir}/* > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
     config::set "${_name}" "disk${_num}_type" "ahci-cd"
     config::set "${_name}" "disk${_num}_name" "seed.iso"
     config::set "${_name}" "disk${_num}_dev" "file"

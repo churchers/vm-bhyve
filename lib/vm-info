@@ -270,7 +270,7 @@ info::guest_zfs(){
 
    [ -z "${VM_DS_ZFS}" ] && return 1
 
-   _data=$(zfs list -o name,used,creation -rHt snapshot "${VM_DS_ZFS_DATASET}/${_name}" | sed "s/^/${_INDENT}/")
+   _data=$(zfs list -o name,used,creation -s creation -rHt snapshot "${VM_DS_ZFS_DATASET}/${_name}" | sed "s/^/${_INDENT}/")
 
    if [ -n "${_data}" ]; then
        echo ""

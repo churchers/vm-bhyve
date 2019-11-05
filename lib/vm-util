@@ -29,13 +29,13 @@
 util::setup(){
     util::load_module "nmdm"
     util::load_module "if_bridge"
+
     # tap(4) & tun(4) were unified in r347241, this is closest ABI bump
     if [ `uname -U` -ge 1300029 ]; then
-        if_tap="if_tuntap"
+        util::load_module "if_tuntap"
     else
-        if_tap="if_tap"
+        util::load_module "if_tap"
     fi
-    util::load_module "${if_tap}"
 
     sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
 

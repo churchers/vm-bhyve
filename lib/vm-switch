@@ -179,6 +179,10 @@ switch::remove(){
     else
         util::err "failed to remove virtual switch"
     fi
+
+    # make sure the exit status indicates success,
+    # even if config::core::remove did not
+    return 0
 }
 
 # add a new interface to a switch

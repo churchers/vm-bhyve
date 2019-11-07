@@ -67,6 +67,7 @@ vm::run(){
     config::get "_slot" "start_slot" "4"
     config::get "_install_slot" "install_slot" "3"
     config::get "_use_wired" "wired_memory"
+    config::get "_bhyve_path" "bhyve_path"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -160,6 +161,9 @@ vm::run(){
 
     # add any custom bhyve options
     [ -n "${_bhyve_options}" ] && _opts="${_opts} ${_bhyve_options}"
+
+    # check custom bhyve binary path
+    [ -z "${_bhyve_path}" ] && _bhyve_path=bhyve
 
     # if we have passthru, check vt-d or amdvi support now and exit
     config::get "_passdev" "passthru0"
@@ -261,14 +265,14 @@ vm::run(){
           " [bhyve devices: ${_devices}]" \
           " [bhyve console: ${_comstring}]"
         [ -n "${_iso_dev}" ] && util::log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
-        util::log "guest" "${_name}" "starting bhyve (run ${_run})"
+        util::log "guest" "${_name}" "starting ${_bhyve_path} (run ${_run})"
 
         # call rctl now as next line will block until bhyve exits
         rctl::set &
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
-        bhyve ${_opts} \
+        ${_bhyve_path} ${_opts} \
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \

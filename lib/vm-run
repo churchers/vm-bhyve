@@ -272,7 +272,7 @@ vm::run(){
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \
-              ${_name} >>"${_logpath}" 2>&1
+              ${_name} 2> "${_logpath}"
 
         # get bhyve exit code
         _exit=$?

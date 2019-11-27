@@ -207,6 +207,11 @@ vm::run(){
     vm::bhyve_device_mouse
     vm::bhyve_device_console
 
+    _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
+    if [ -d ${_cloud_init_dir} ];then
+        genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock ${_cloud_init_dir}/* > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
+    fi
+
     vm::lock
     util::log "guest" "${_name}" "booting"
     cd /
@@ -270,11 +275,20 @@ vm::run(){
 
         # actually run bhyve!
         # we're already in the background so we just wait for it to exit
-        ${_bhyve_path} ${_opts} \
+
+        if [ ${VERSION_BSD} -ge 1201000 ]; then
+           ${_bhyve_path} ${_opts} \
+              ${_devices} \
+              ${_iso_dev} \
+              ${_comstring} \
+              ${_name} 2> "${_logpath}"
+        else
+           ${_bhyve_path} ${_opts} \
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \
               ${_name} >>"${_logpath}" 2>&1
+        fi
 
         # get bhyve exit code
         _exit=$?

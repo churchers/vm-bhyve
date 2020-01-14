@@ -101,7 +101,7 @@ vm::run(){
       " [primary disk dev: ${_bootdisk_dev}]"
 
     # check basic settings
-    if [ -z "${_loader}" -o -z "${_cpu}" -o -z "${_memory}" -o -z "${_bootdisk}" ]; then
+    if [ -z "${_loader}" -o -z "${_cpu}" -o -z "${_memory}" ]; then
         util::log "guest" "${_name}" "fatal; unable to start - missing required configuration"
         exit 15
     fi
@@ -192,7 +192,7 @@ vm::run(){
     util::checkyesno "${_debug}" && _logpath="${VM_DS_PATH}/${_name}/bhyve.log"
 
     # complete the boot disk path
-    vm::get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
+    [ -n "${_bootdisk}" ] && vm::get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
 
     # build bhyve device string
     vm::bhyve_device_comports

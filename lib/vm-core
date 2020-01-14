@@ -592,7 +592,7 @@ core::__start(){
     config::get "_uefi" "uefi"
 
     # check minimum configuration
-    if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
+    if [ -z "${_cpu}" -o -z "${_memory}" ]; then
         echo "  ! incomplete virtual machine configuration"
         return 1
     fi

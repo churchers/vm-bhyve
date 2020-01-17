@@ -82,6 +82,8 @@
 .Op Fl f
 .Ar name
 .Nm
+.Cm top
+.Nm
 .Cm list
 .Nm
 .Cm info
@@ -631,6 +633,9 @@ Unless specified, the guest image will be a sparse file 20GB in size.
 .It Cm destroy Ar name
 Removes the specified virtual machine from the system, deleting all associated
 disk images & configuration.
+.It Cm top
+.br
+Add VM Name to System top output for management purpose. Ctrl+C to quit.
 .It Cm list
 .br
 List all the virtual machines in the

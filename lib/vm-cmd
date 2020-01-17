@@ -26,7 +26,7 @@
 
 CMD_VALID_LIST="init,switch,datastore,image,get,set,list,create,destroy,rename,install,start,stop,restart"
 CMD_VALID_LIST="${CMD_VALID_LIST},add,reset,poweroff,startall,stopall,console,iso,img,configure,passthru,_run"
-CMD_VALID_LIST="${CMD_VALID_LIST},info,clone,snapshot,rollback,send,recv,version,usage"
+CMD_VALID_LIST="${CMD_VALID_LIST},top,info,clone,snapshot,rollback,send,recv,version,usage"
 
 # cmd: vm ...
 #
@@ -67,6 +67,7 @@ cmd::parse(){
         image)     cmd::parse_image "$@" ;;
         get)       core::get "$@" ;;
         set)       core::set "$@" ;;
+        top)       core::top ;;
         list)      core::list ;;
         create)    core::create "$@" ;;
         destroy)   core::destroy "$@" ;;

@@ -24,6 +24,36 @@
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# 'vm top'
+# Wrap system top output
+# by adding vm name after process name
+#
+core::top(){
+
+    local _run
+
+    _run=$(pgrep -fl "bhyve:" | awk '{printf $1","$NF"|"}')
+    while sleep 1;
+    do
+        top -b | awk -v run="$_run" '
+        BEGIN{
+          split(run,runlist,"|");
+          for(i=1;i<length(runlist);i++){
+            split(runlist[i],idname,",");
+            idnamemap[idname[1]]=idname[2];
+          }
+        }
+        {
+          if($1 in idnamemap){
+            print $0 "("idnamemap[$1]")"
+          }
+          else{
+            print $0
+          }
+        }';
+    done
+}
+
 # 'vm list'
 # list virtual machines
 #

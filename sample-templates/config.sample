@@ -481,3 +481,10 @@ limit_rbps=""
 limit_wbps=""
 limit_riops=""
 limit_wiops=""
+
+# nulliso_fix, traditionally, uefi windows guest unable boot
+# without attaching a null.iso image.
+# vm-bhyve will attach a null.iso when uefi boot.
+# setting this to no will disable this behavior
+#
+nulliso_fix=""

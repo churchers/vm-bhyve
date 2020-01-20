@@ -39,6 +39,7 @@ vm::run(){
     local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
     local _ignore_msr _bhyve_options _use_wired _action
+    local _nulliso_fix
 
     cmd::parse_args "$@"
     shift $?
@@ -67,6 +68,7 @@ vm::run(){
     config::get "_slot" "start_slot" "4"
     config::get "_install_slot" "install_slot" "3"
     config::get "_use_wired" "wired_memory"
+    config::get "_nulliso_fix" "nulliso_fix"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -239,7 +241,7 @@ vm::run(){
 
         # use null.iso if not an install and uefi firmware
         # old instructions but some windows versions apparently needed this present
-        [ -z "${_iso}" -a -n "${_uefi}" -a "${_loader}" != "uefi-csm" ] && \
+        [ -z "${_iso}" -a -n "${_uefi}" -a "${_loader}" != "uefi-csm" -a "${_nulliso_fix}" != "no" ] && \
             _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run

@@ -163,7 +163,7 @@ info::guest_show(){
     local _conf="${VM_DS_PATH}/${_name}/${_name}.conf"
     local _INDENT="  "
     local _RUN="0"
-    local _res_mem _b_res_mem _global_run _port _opt
+    local _res_mem _b_res_mem _global_run _port _opt _pid
 
     [ -z "${_name}" ] && return 1
     [ ! -f "${_conf}" ] && return 1
@@ -172,7 +172,7 @@ info::guest_show(){
 
     # check local and global runstate
     [ -e "/dev/vmm/${_name}" ] && _RUN="1"
-    vm::running_check "_global_run" "${_name}"
+    vm::running_check "_global_run" "_pid" "${_name}"
     _global_run=$(echo "${_global_run}" | tr '[:upper:]' '[:lower:]')
 
     echo "------------------------"
@@ -445,8 +445,10 @@ info::__find_bridge(){
 #
 info::__bytes_human(){
     local _val="$1" _int _ext
+    local _dec="$2"
     local _num=1
 
+    : ${_dec:=3}
     : ${_val:=0}
     _int=${_val%%.*}
 
@@ -465,7 +467,7 @@ info::__bytes_human(){
     esac
 
     export LC_ALL="C"
-    printf "%.3f%s" "${_val}" "${_ext}"
+    printf "%.${_dec}f%s" "${_val}" "${_ext}"
 }
 
 info::__find_iscsi() {

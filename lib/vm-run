@@ -882,13 +882,15 @@ vm::running_load(){
 #
 vm::running_check(){
     local _var="$1"
-    local _name="$2"
+    local _var2="$2"
+    local _name="$3"
     local IFS=$'\n'
     local _entry
 
     for _entry in ${VM_RUN_BHYVE}; do
         if [ "${_entry##* }" = "${_name}" ]; then
             setvar "${_var}" "Running (${_entry%% *})"
+            setvar "${_var2}" "${_entry%% *}"
             return 0
         fi
     done
@@ -896,6 +898,7 @@ vm::running_check(){
     for _entry in ${VM_RUN_LOAD}; do
         if [ "${_entry##* }" = "${_name}" ]; then
             setvar "${_var}" "Bootloader (${_entry%% *})"
+            setvar "${_var2}" "${_entry%% *}"
             return 0
         fi
     done

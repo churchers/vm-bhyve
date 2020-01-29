@@ -388,3 +388,11 @@ util::getpid(){
     [ $? -eq 0 ] || return 1
     setvar "${_var}" "${_ret}"
 }
+
+util::get_part(){
+    local _var="$1"
+    local _data="$2"
+    local _num="$3"
+
+    setvar "${_var}" $(echo "${_data}" |cut -d" " -f${_num})
+}

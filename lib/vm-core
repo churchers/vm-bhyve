@@ -29,16 +29,26 @@
 #
 core::list(){
     local _name _loader _cpu _our_host
-    local _memory _run _vm _auto _num _graphics _vnc
+    local _memory _run _vm _auto _num _graphics _vnc _pid
+    local _state _pcpu _vsz _rss
     local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
+
+    cmd::parse_args "$@"
+    shift $?
 
     _our_host=$(hostname)
 
     vm::running_load
 
+    [ -n "${VM_OPT_VERBOSE}" ] && _format="%s^%s^%s^%s^%s^%s^%s^%s^%s^%s^%s\n";
+
     # pass everything below here to column(1)
     {
-        printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
+        if [ -n "${VM_OPT_VERBOSE}" ]; then
+            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "%CPU" "VSZ" "RSS" "STATE"
+        else
+            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
+        fi
 
         for _ds in ${VM_DATASTORE_LIST}; do
             datastore::get "${_ds}" || continue
@@ -55,15 +65,33 @@ core::list(){
 
                 # defaults
                 _vnc="-"
+                _pid=""
+                _state=""
+                _pcpu="-"
+                _vsz="-"
+                _rss="-"
 
                 # check if the guest is running
-                if vm::running_check "_run" "${_name}" || \
+                if vm::running_check "_run" "_pid" "${_name}" || \
                     [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
 
                     # if running and graphics, try to get vnc port
                     if util::checkyesno "${_graphics}"; then
                         _vnc=$(grep vnc "${VM_DS_PATH}/${_name}/console" 2>/dev/null |cut -d= -f2)
                         [ -z "${_vnc}" ] && _vnc="-"
+                    fi
+                fi
+
+                if [ -n "${_pid}" -a -n "${VM_OPT_VERBOSE}" ]; then
+                    _state=$(ps -o"%cpu"= -o"vsz"= -o"rss"= -p "${_pid}")
+
+                    if [ -n "${_state}" ]; then
+                        util::get_part "_pcpu" "${_state}" 1
+                        util::get_part "_vsz" "${_state}" 2
+                        util::get_part "_rss" "${_state}" 3
+
+                        [ -n "${_vsz}" ] && _vsz=$(info::__bytes_human "${_vsz}" 1)
+                        [ -n "${_rss}" ] && _rss=$(info::__bytes_human "${_rss}" 1)
                     fi
                 fi
 
@@ -82,7 +110,11 @@ core::list(){
                     _run="Locked (${_run})"
                 fi
 
-                printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
+                if [ -n "${VM_OPT_VERBOSE}" ]; then
+                    printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_pcpu}" "${_vsz}" "${_rss}" "${_run}"
+                else
+                    printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
+                fi
             done
         done
     } | column -ts^

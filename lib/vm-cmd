@@ -67,7 +67,7 @@ cmd::parse(){
         image)     cmd::parse_image "$@" ;;
         get)       core::get "$@" ;;
         set)       core::set "$@" ;;
-        list)      core::list ;;
+        list)      core::list "$@" ;;
         create)    core::create "$@" ;;
         destroy)   core::destroy "$@" ;;
         rename)    core::rename "$@" ;;
@@ -184,12 +184,13 @@ cmd::parse_image(){
 cmd::parse_args(){
     local _opt _count
 
-    while getopts fit _opt; do
+    while getopts fitv _opt; do
         case ${_opt} in
             f) VM_OPT_FORCE="1"
                VM_OPT_FOREGROUND="1" ;;
             i) VM_OPT_INTERACTIVE="1" ;;
             t) VM_OPT_TMUX="1" ;;
+            v) VM_OPT_VERBOSE="1" ;;
         esac
     done
 

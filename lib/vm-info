@@ -446,10 +446,11 @@ info::__find_bridge(){
 info::__bytes_human(){
     local _val="$1" _int _ext
     local _dec="$2"
-    local _num=1
+    local _num="$3"
 
     : ${_dec:=3}
     : ${_val:=0}
+    : ${_num:=1}
     _int=${_val%%.*}
 
     while [ ${_int} -ge 1024 -a ${_num} -lt 5 ]; do

@@ -225,7 +225,7 @@ vm::run(){
 
         # use null.iso if not an install and uefi firmware
         # old instructions but some windows versions apparently needed this present
-        [ -z "${_iso}" -a "${_loader}" = "uefi" ] && \
+        [ -z "${_iso}" -a "${_loader}" = "uefi" ] && config::yesno "nulliso_fix" && \
             _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run

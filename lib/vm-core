@@ -30,7 +30,7 @@
 core::list(){
     local _name _loader _cpu _our_host
     local _memory _run _vm _auto _num _graphics _vnc _pid
-    local _state _pcpu _rss
+    local _state _pcpu _rss _uptime
     local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
 
     cmd::parse_args "$@"
@@ -40,14 +40,14 @@ core::list(){
 
     vm::running_load
 
-    [ -n "${VM_OPT_VERBOSE}" ] && _format="%s^%s^%s^%s^%s^%s^%s^%s^%s^%s\n";
+    [ -n "${VM_OPT_VERBOSE}" ] && _format="%s^%s^%s^%s^%s^%s^%s^%5s^%8s^%14s^%s\n";
 
     # pass everything below here to column(1)
     {
         if [ -n "${VM_OPT_VERBOSE}" ]; then
-            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "%CPU" "RSS" "STATE"
+            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTO" "%CPU" "RSZ" "UPTIME" "STATE"
         else
-            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
+            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTO" "STATE"
         fi
 
         for _ds in ${VM_DATASTORE_LIST}; do
@@ -69,6 +69,7 @@ core::list(){
                 _state=""
                 _pcpu="-"
                 _rss="-"
+                _uptime="-"
 
                 # check if the guest is running
                 if vm::running_check "_run" "_pid" "${_name}" || \
@@ -82,13 +83,15 @@ core::list(){
                 fi
 
                 if [ -n "${_pid}" -a -n "${VM_OPT_VERBOSE}" ]; then
-                    _state=$(ps -o"%cpu"= -o"rss"= -p "${_pid}")
+                    _state=$(ps -o"%cpu"= -o"rss"= -o"etime"= -p "${_pid}")
 
                     if [ -n "${_state}" ]; then
                         util::get_part "_pcpu" "${_state}" 1
                         util::get_part "_rss" "${_state}" 2
+                        util::get_part "_uptime" "${_state}" 3
 
                         [ -n "${_rss}" ] && _rss=$(info::__bytes_human "${_rss}" 1 2)
+                        _uptime=$(echo "${_uptime}" |sed 's/\-/d /')
                     fi
                 fi
 
@@ -108,7 +111,7 @@ core::list(){
                 fi
 
                 if [ -n "${VM_OPT_VERBOSE}" ]; then
-                    printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_pcpu}" "${_rss}" "${_run}"
+                    printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_pcpu}" "${_rss}" "${_uptime}" "${_run}"
                 else
                     printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
                 fi

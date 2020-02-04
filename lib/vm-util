@@ -394,5 +394,5 @@ util::get_part(){
     local _data="$2"
     local _num="$3"
 
-    setvar "${_var}" $(echo "${_data}" |cut -d" " -f${_num})
+    setvar "${_var}" $(echo "${_data}" |cut -w -f${_num})
 }

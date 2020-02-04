@@ -281,7 +281,7 @@ switch::private(){
 
     case "${_type}" in
         standard|manual|vxlan)
-            if util::checkyesno "${_priv}"; then
+            if util::yesno "${_priv}"; then
                 config::core::set "private_${_switch}" "yes"
             else
                 config::core::set "private_${_switch}" "no"
@@ -360,7 +360,7 @@ switch::is_private(){
     local _priv
 
     config::core::get "_priv" "private_${_switch}"
-    util::checkyesno "${_priv}"
+    util::yesno "${_priv}"
 }
 
 # get the bridge id for a virtual switch

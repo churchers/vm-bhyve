@@ -79,7 +79,7 @@ util::check_bhyve_support(){
     util::load_module "vmm"
 
     # don't check if user wants to bypass host checks
-    util::checkyesno "$vm_disable_host_checks" && return 0
+    util::yesno "$vm_disable_host_checks" && return 0
 
     # check sysctls
     # these only work for intel
@@ -105,7 +105,7 @@ util::check_bhyve_iommu(){
     # don't check if user wants to bypass host checks
     # think this check is fairly solid but there's probably someone somewhere
     # with iommu support that our tests fail for.
-    util::checkyesno "$vm_disable_host_checks" && return 0
+    util::yesno "$vm_disable_host_checks" && return 0
 
     _vtd=$(acpidump -t |grep DMAR)
     _amdvi=$(sysctl hw |grep 'vmm.amdvi.enable: 1')
@@ -337,7 +337,7 @@ util::confirm(){
 # @param _value the value to test
 # @return int 1 if set to "off/false/no/0", 0 otherwise
 #
-util::checkyesno(){
+util::yesno(){
     local _value="$1"
 
     [ -z "${_value}" ] && return 1

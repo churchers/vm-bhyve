@@ -35,10 +35,10 @@
 vm::run(){
     local _name _iso _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
-    local _guest_support _uefi _uuid _utc _debug _hostbridge _loader
+    local _guest_support _uefi _uuid _debug _hostbridge _loader
     local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
-    local _ignore_msr _bhyve_options _use_wired _action
+    local _bhyve_options _action
 
     cmd::parse_args "$@"
     shift $?
@@ -59,13 +59,10 @@ vm::run(){
     config::get "_hostbridge" "hostbridge" "standard"
     config::get "_comports" "comports" "com1"
     config::get "_uuid" "uuid"
-    config::get "_utc" "utctime" "yes"
     config::get "_debug" "debug" "no"
-    config::get "_ignore_msr" "ignore_bad_msr" "no"
     config::get "_bhyve_options" "bhyve_options"
     config::get "_slot" "start_slot" "4"
     config::get "_install_slot" "install_slot" "3"
-    config::get "_use_wired" "wired_memory"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -85,7 +82,6 @@ vm::run(){
       " [hostbridge: ${_hostbridge}]" \
       " [com ports: ${_comports}]" \
       " [uuid: ${_uuid}]" \
-      " [utctime: ${_utc}]" \
       " [debug mode: ${_debug}]" \
       " [primary disk: ${_bootdisk}]" \
       " [primary disk dev: ${_bootdisk_dev}]"
@@ -116,7 +112,7 @@ vm::run(){
     _opts="-AHP"
 
     # ignore access to unimplemented Model Specific Registers?
-    util::checkyesno "${_ignore_msr}" && _opts="${_opts}w"
+    config::yesno "ignore_msr" && _opts="${_opts}w"
 
     # if uefi, make sure we have bootrom, then update options for uefi support
     if [ "${_loader%-*}" = "uefi" ]; then
@@ -160,7 +156,7 @@ vm::run(){
     fi
 
     # wired memory?
-    if util::checkyesno "${_use_wired}"; then
+    if config::yesno "wired_memory"; then
         _wiredmem="1"
         _opts="${_opts} -S"
     fi
@@ -170,7 +166,7 @@ vm::run(){
     [ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
     # set utc time in opts if requested
-    if util::checkyesno "${_utc}"; then
+    if config::yesno "utctime"; then
         if [ ${VERSION_BSD} -ge 1002000 ]; then
             _opts="${_opts} -u"
         else
@@ -179,7 +175,7 @@ vm::run(){
     fi
 
     # send bhyve output to bhyve.log if debug=yes
-    util::checkyesno "${_debug}" && _logpath="${VM_DS_PATH}/${_name}/bhyve.log"
+    util::yesno "${_debug}" && _logpath="${VM_DS_PATH}/${_name}/bhyve.log"
 
     # complete the boot disk path
     [ -n "${_bootdisk}" ] && vm::get_disk_path "_bootdisk" "${_name}" "${_bootdisk}" "${_bootdisk_dev}"
@@ -529,7 +525,7 @@ vm::bhyve_device_disks(){
 # @modifies _devices _slot _taplist
 #
 vm::bhyve_device_networking(){
-    local _type _switch _mac _custom_tap _tap _sid _mtu _span
+    local _type _switch _mac _custom_tap _tap _sid _mtu
     local _num=0 _member_type _sw_type
 
     while true; do
@@ -539,7 +535,6 @@ vm::bhyve_device_networking(){
         config::get "_switch" "network${_num}_switch"
         config::get "_mac" "network${_num}_mac"
         config::get "_custom_tap" "network${_num}_device"
-        config::get "_span" "network${_num}_span"
 
         # set a static mac if we don't have one
         [ -z "${_mac}" ] && vm::generate_static_mac
@@ -572,7 +567,7 @@ vm::bhyve_device_networking(){
 
             # should this be a span member?
             _member_type="addm"
-            util::checkyesno "${_span}" && _member_type="span"
+            config::yesno "network${_num}_span" && _member_type="span"
 
             if [ -n "${_tap}" ]; then
                 util::log "guest" "${_name}" "initialising network device ${_tap}"
@@ -624,11 +619,8 @@ vm::bhyve_device_networking(){
 # @modifies _devices _slot
 #
 vm::bhyve_device_rand(){
-    local _rand
 
-    config::get "_rand" "virt_random"
-
-    if util::checkyesno "${_rand}"; then
+    if config::yesno "virt_random"; then
         _devices="${_devices} -s ${_slot}:0,virtio-rnd"
         _slot=$((_slot + 1))
     fi
@@ -637,15 +629,14 @@ vm::bhyve_device_rand(){
 # add frame buffer output
 #
 vm::bhyve_device_fbuf(){
-    local _graphics _port _listen _res _wait _pass _vga
+    local _port _listen _res _pass _vga
     local _fbuf_conf
 
     # only works in uefi mode
     [ -z "${_uefi}" ] && return 0
 
     # check graphics enabled
-    config::get "_graphics" "graphics"
-    ! util::checkyesno "${_graphics}" && return 0
+    ! config::yesno "graphics" && return 0
 
     # only available in 11+
     if [ ${VERSION_BSD} -lt 1100000 ]; then
@@ -656,7 +647,6 @@ vm::bhyve_device_fbuf(){
     config::get "_port" "graphics_port"
     config::get "_listen" "graphics_listen"
     config::get "_res" "graphics_res"
-    config::get "_wait" "graphics_wait" "auto"
     config::get "_vga" "graphics_vga"
     config::get "_pass" "vnc_password"
 
@@ -682,7 +672,7 @@ vm::bhyve_device_fbuf(){
     [ -n "${_res}" ] && _fbuf_conf="${_fbuf_conf},w=${_res%%x*},h=${_res##*x}"
     [ -n "${_vga}" ] && _fbuf_conf="${_fbuf_conf},vga=${_vga}"
     [ -n "${_pass}" ] && _fbuf_conf="${_fbuf_conf},password=${_pass}"
-    util::checkyesno "${_wait}" && _fbuf_conf="${_fbuf_conf},wait"
+    config::yesno "graphics_wait" "auto" && _fbuf_conf="${_fbuf_conf},wait"
 
     # write vnc port to console data
     echo "vnc=${_listen:-0.0.0.0}:${_port}" >> "${VM_DS_PATH}/${_name}/console"
@@ -711,13 +701,11 @@ vm::bhyve_device_fbuf_clear_wait(){
 # add a xhci mouse device
 #
 vm::bhyve_device_mouse(){
-    local _mouse
 
     [ ${VERSION_BSD} -lt 1100000 ] && return 0
-    config::get "_mouse" "xhci_mouse"
 
     # add a tablet device if enabled
-    if util::checkyesno "${_mouse}"; then
+    if config::yesno "xhci_mouse"; then
         _devices="${_devices} -s ${_slot}:0,xhci,tablet"
         _slot=$((_slot + 1))
     fi

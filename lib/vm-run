@@ -56,7 +56,6 @@ vm::run(){
     config::get "_loader" "loader"
     config::get "_bootdisk" "disk0_name"
     config::get "_bootdisk_dev" "disk0_dev" "file"
-    config::get "_uefi" "uefi"
     config::get "_hostbridge" "hostbridge" "standard"
     config::get "_comports" "comports" "com1"
     config::get "_uuid" "uuid"
@@ -76,15 +75,6 @@ vm::run(){
 
     # get cpu topology
     vm::__cpu "_cpu"
-
-    # check old uefi flag
-    if util::checkyesno "${_uefi}"; then
-        if [ "${_uefi}" = "csm" ]; then
-            _loader="uefi-csm"
-        else
-            _loader="uefi"
-        fi
-    fi
 
     util::log_rotate "guest" "${_name}"
     util::log "guest" "${_name}" \
@@ -239,7 +229,7 @@ vm::run(){
 
         # use null.iso if not an install and uefi firmware
         # old instructions but some windows versions apparently needed this present
-        [ -z "${_iso}" -a -n "${_uefi}" -a "${_loader}" != "uefi-csm" ] && \
+        [ -z "${_iso}" -a "${_loader}" = "uefi" ] && \
             _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run
@@ -247,6 +237,7 @@ vm::run(){
 
         # load guest
         if [ -z "${_uefi}" ]; then
+
             guest::load "${_iso}"
             _exit=$?
 

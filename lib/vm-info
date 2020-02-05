@@ -185,7 +185,6 @@ info::guest_show(){
     # basic guest configuration
     info::__output_config "loader" "" "none"
     info::__output_config "uuid" "" "auto"
-    info::__output_config "uefi" "" "default"
     info::__output_config "cpu"
 
     # check for a cpu topology
@@ -379,7 +378,7 @@ info::guest_networking(){
             echo "${_INDENT}bridge: ${_bridge:--}"
 
             if [ -n "${_id}" ]; then
-                _stats=$(netstat -biI "${_id}" | tail -n1 | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | awk '{print $2,$5}')
+                _stats=$(netstat -biI "${_id}" |grep '<Link#' |tail -n1 |awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' |awk '{print $2,$5}')
                 _b_in=$(info::__bytes_human "${_stats%% *}")
                 _b_out=$(info::__bytes_human "${_stats##* }")
 

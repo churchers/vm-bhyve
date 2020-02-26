@@ -189,7 +189,7 @@ disk0_dev=""
 # file              'disk0.img' -> '$vm_dir/$name/disk0.img'
 # zvol|sparse-zvol  'disk0'     -> '/dev/zvol/pool/dataset/path/guest/disk0'
 # custom            '/dev/da10' -> '/dev/da10'
-# iscsi             'tgt[/lun]' -> '/dev/daNN' (lun defaults to 0 if omitted) 
+# iscsi             'tgt[/lun]' -> '/dev/daNN' (lun defaults to 0 if omitted)
 #
 disk0_name="disk0.img"
 
@@ -205,7 +205,9 @@ disk0_opts=""
 # disk0_size
 # When a new guest is created, vm will create a 20G disk image by
 # default. This option can be used to specify a different size
-# for this disk.
+# for this disk. Make sure to include a human readable suffix
+# compatible with 'zfs create' (G for gigabytes, T terabytes,
+# etc)
 #
 # The size of the first disk (disk0) can also be overridden
 # using the -s option to 'vm create'.
@@ -216,7 +218,7 @@ disk0_opts=""
 # a new guest, all 'diskX_size' options are stripped from
 # its configuration file.
 #
-disk0_size="50"
+disk0_size="50G"
 
 # network0_type
 # This specifies the emulation type to use for the first network interface.

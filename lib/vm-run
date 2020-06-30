@@ -183,8 +183,8 @@ vm::run(){
     # build bhyve device string
     vm::bhyve_device_comports
     vm::bhyve_device_basic
-    vm::bhyve_device_disks
     vm::bhyve_device_networking
+    vm::bhyve_device_disks
     vm::bhyve_device_rand
     vm::bhyve_device_passthru
     vm::bhyve_device_fbuf

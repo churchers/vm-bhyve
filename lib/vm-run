@@ -122,6 +122,9 @@ vm::run(){
         fi
 
         case "${_loader}" in
+            uefi-devel)
+		_bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CODE-devel.fd"
+		;;
             uefi-csm)
                 _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CSM.fd"
                 ;;

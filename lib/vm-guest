@@ -51,6 +51,12 @@ guest::load(){
     local _iso="$1"
     local _args _command _timeout _grub_opt _bsd_loader
 
+    # require a boot disk
+    if [ -z "${_bootdisk}" ]; then
+        util::log "guest" "${_name}" "fatal; non-uefi loaders require a boot disk device"
+        return 15
+    fi
+
     # all loaders have same console and wired memory options
     [ -z "${VM_OPT_FOREGROUND}" ] && _args="-c ${_com}"
     [ "${_wiredmem}" = "1" ] && _args="${_args}${_args:+ }-S"

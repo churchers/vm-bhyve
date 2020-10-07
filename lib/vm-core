@@ -29,16 +29,26 @@
 #
 core::list(){
     local _name _loader _cpu _our_host
-    local _memory _run _vm _auto _num _graphics _vnc
+    local _memory _run _vm _auto _num _vnc _pid
+    local _state _pcpu _rss _uptime
     local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
+
+    cmd::parse_args "$@"
+    shift $?
 
     _our_host=$(hostname)
 
     vm::running_load
 
+    [ -n "${VM_OPT_VERBOSE}" ] && _format="%s^%s^%s^%s^%s^%s^%s^%5s^%8s^%14s^%s\n";
+
     # pass everything below here to column(1)
     {
-        printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTOSTART" "STATE"
+        if [ -n "${VM_OPT_VERBOSE}" ]; then
+            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTO" "%CPU" "RSZ" "UPTIME" "STATE"
+        else
+            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTO" "STATE"
+        fi
 
         for _ds in ${VM_DATASTORE_LIST}; do
             datastore::get "${_ds}" || continue
@@ -51,19 +61,36 @@ core::list(){
                 config::get "_loader" "loader" "none"
                 config::get "_cpu" "cpu"
                 config::get "_memory" "memory"
-                config::get "_graphics" "graphics"
 
                 # defaults
                 _vnc="-"
+                _pid=""
+                _state=""
+                _pcpu="-"
+                _rss="-"
+                _uptime="-"
 
                 # check if the guest is running
-                if vm::running_check "_run" "${_name}" || \
+                if vm::running_check "_run" "_pid" "${_name}" || \
                     [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
 
                     # if running and graphics, try to get vnc port
-                    if util::checkyesno "${_graphics}"; then
+                    if config::yesno "graphics"; then
                         _vnc=$(grep vnc "${VM_DS_PATH}/${_name}/console" 2>/dev/null |cut -d= -f2)
                         [ -z "${_vnc}" ] && _vnc="-"
+                    fi
+                fi
+
+                if [ -n "${_pid}" -a -n "${VM_OPT_VERBOSE}" ]; then
+                    _state=$(ps -o"%cpu"= -o"rss"= -o"etime"= -p "${_pid}")
+
+                    if [ -n "${_state}" ]; then
+                        util::get_part "_pcpu" "${_state}" 1
+                        util::get_part "_rss" "${_state}" 2
+                        util::get_part "_uptime" "${_state}" 3
+
+                        [ -n "${_rss}" ] && _rss=$(info::__bytes_human "${_rss}" 1 2)
+                        _uptime=$(echo "${_uptime}" |sed 's/\-/d /')
                     fi
                 fi
 
@@ -82,7 +109,11 @@ core::list(){
                     _run="Locked (${_run})"
                 fi
 
-                printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
+                if [ -n "${VM_OPT_VERBOSE}" ]; then
+                    printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_pcpu}" "${_rss}" "${_uptime}" "${_run}"
+                else
+                    printf "${_format}" "${_name}" "${_ds}" "${_loader}" "${_cpu}" "${_memory}" "${_vnc}" "${_auto}" "${_run}"
+                fi
             done
         done
     } | column -ts^
@@ -98,9 +129,9 @@ core::list(){
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img _cpu _memory _uuid
-    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file
+    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file _network_config _mac
 
-    while getopts d:t:s:i:c:m:Ck: _opt ; do
+    while getopts d:t:s:i:c:m:Ck:n: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
@@ -110,6 +141,7 @@ core::create(){
             i) _img=${OPTARG} ;;
             k) _ssh_key_file=${OPTARG} ;;
             C) _enable_cloud_init='true' ;;
+            n) _network_config=${OPTARG} ;;
 
             *) util::usage ;;
         esac
@@ -121,7 +153,7 @@ core::create(){
     [ -z "${_name}" ] && util::usage
 
     # check guest name
-    util::check_name "${_name}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_name}" 46 || util::err "invalid virtual machine name - '${_name}'"
     datastore::get_guest "${_name}" && util::err "virtual machine already exists in ${VM_DS_PATH}/${_name}"
     datastore::get "${_ds}" || util::err "unable to load datastore - '${_ds}'"
 
@@ -168,6 +200,9 @@ core::create(){
     # get any zvol options
     config::get "_zfs_opts" "zfs_zvol_opts"
 
+    # generate mac address - it's saved in _mac variable
+    vm::generate_static_mac
+
     # Optional overrides
     [ -n "${_cpu}" ] && config::set "${_name}" "cpu" "${_cpu}"
     [ -n "${_memory}" ] && config::set "${_name}" "memory" "${_memory}"
@@ -186,6 +221,8 @@ core::create(){
                 [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
                 ;;
             custom)
+                ;;
+            iscsi)
                 ;;
             *)
                 truncate -s "${_disk_size}" "${VM_DS_PATH}/${_name}/${_disk}"
@@ -208,34 +245,59 @@ core::create(){
     done
 
     if [ -n "${_enable_cloud_init}" ]; then
-        # create disk with metadata for cloud-init
-        _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
-        mkdir -p "${_cloud_init_dir}"
+        core::create_cloud_init
+    fi
 
-        cat << EOF > "${_cloud_init_dir}/meta-data"
+    exit 0
+}
+
+core::create_cloud_init(){
+    # create disk with metadata for cloud-init
+    _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
+    mkdir -p "${_cloud_init_dir}"
+
+    cat << EOF > "${_cloud_init_dir}/meta-data"
 instance-id: ${_uuid}
 local-hostname: ${_name}
 EOF
 
-        cat << EOF > "${_cloud_init_dir}/user-data"
+    cat << EOF > "${_cloud_init_dir}/user-data"
 #cloud-config
 resize_rootfs: True
 manage_etc_hosts: localhost
 EOF
-        if [ -n "${_ssh_public_key}" ]; then
-            cat << EOF >> "${_cloud_init_dir}/user-data"
+    if [ -n "${_ssh_public_key}" ]; then
+        cat << EOF >> "${_cloud_init_dir}/user-data"
 ssh_authorized_keys:
   - ${_ssh_public_key}
 EOF
-        fi
-
-        genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock "${_cloud_init_dir}/meta-data" "${_cloud_init_dir}/user-data" > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
-        config::set "${_name}" "disk${_num}_type" "ahci-cd"
-        config::set "${_name}" "disk${_num}_name" "seed.iso"
-        config::set "${_name}" "disk${_num}_dev" "file"
     fi
 
-    exit 0
+    if [ -n "${_network_config}" ]; then
+        # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
+        _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
+        _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
+        _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
+
+        cat << EOF > "${_cloud_init_dir}/network-config"
+version: 2
+ethernets:
+  id0:
+    set-name: eth0
+    match:
+      macaddress: "${_mac}"
+    addresses:
+    - ${_network_config_ipaddress}
+    gateway4: ${_network_config_gateway}
+    nameservers:
+      addresses: [${_network_config_nameservers}]
+EOF
+    fi
+
+    genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock ${_cloud_init_dir}/* > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
+    config::set "${_name}" "disk${_num}_type" "ahci-cd"
+    config::set "${_name}" "disk${_num}_name" "seed.iso"
+    config::set "${_name}" "disk${_num}_dev" "file"
 }
 
 # write cloud image to disk image
@@ -556,12 +618,10 @@ core::__start(){
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
     config::get "_cpu" "cpu"
     config::get "_memory" "memory"
-    config::get "_disk" "disk0_name"
     config::get "_loader" "loader"
-    config::get "_uefi" "uefi"
 
     # check minimum configuration
-    if [ -z "${_cpu}" -o -z "${_memory}" -o -z "${_disk}" ]; then
+    if [ -z "${_cpu}" -o -z "${_memory}" ]; then
         echo "  ! incomplete virtual machine configuration"
         return 1
     fi
@@ -571,10 +631,6 @@ core::__start(){
         echo "  ! no unrestricted guest support in cpu. only single vcpu FreeBSD guests supported"
         return 1
     fi
-
-    # check loader
-    # uefi="" deprecated in 1.3, must be set via loader in 1.4
-    [ -z "${_loader}" -a -n "${_uefi}" ] && echo "  ! uefi setting is deprecated. please set loader=\"uefi\" or loader=\"uefi-csm\""
 
     # check loader
     if [ "${_loader}" = "grub" ]; then
@@ -761,7 +817,7 @@ core::rename(){
     local _new="$2"
 
     [ -z "${_old}" -o -z "${_new}" ] && util::usage
-    util::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_new}" 46 || util::err "invalid virtual machine name - '${_name}'"
 
     datastore::get_guest "${_new}" && util::err "directory ${VM_DS_PATH}/${_new} already exists"
     datastore::get_guest "${_old}" || util::err "${_old} doesn't appear to be a valid virtual machine"

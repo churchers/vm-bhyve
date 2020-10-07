@@ -46,7 +46,7 @@ See the sections below for more in-depth details.
     8. vm switch add public em0
     9. vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/11.2/FreeBSD-11.2-RELEASE-amd64-bootonly.iso
     10. vm create myguest
-    11. vm [-f] install myguest FreeBSD-11.2-RELEASE-amd64-bootonly.iso
+    11. vm install [-f] myguest FreeBSD-11.2-RELEASE-amd64-bootonly.iso
     12. vm console myguest
 
 - [ ] Line 1

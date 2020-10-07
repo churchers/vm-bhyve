@@ -29,7 +29,13 @@
 util::setup(){
     util::load_module "nmdm"
     util::load_module "if_bridge"
-    util::load_module "if_tap"
+
+    # tap(4) & tun(4) were unified in r347241, this is closest ABI bump
+    if [ `uname -U` -ge 1300029 ]; then
+        util::load_module "if_tuntap"
+    else
+        util::load_module "if_tap"
+    fi
 
     sysctl net.link.tap.up_on_open=1 >/dev/null 2>&1
 
@@ -73,7 +79,7 @@ util::check_bhyve_support(){
     util::load_module "vmm"
 
     # don't check if user wants to bypass host checks
-    util::checkyesno "$vm_disable_host_checks" && return 0
+    util::yesno "$vm_disable_host_checks" && return 0
 
     # check sysctls
     # these only work for intel
@@ -99,7 +105,7 @@ util::check_bhyve_iommu(){
     # don't check if user wants to bypass host checks
     # think this check is fairly solid but there's probably someone somewhere
     # with iommu support that our tests fail for.
-    util::checkyesno "$vm_disable_host_checks" && return 0
+    util::yesno "$vm_disable_host_checks" && return 0
 
     _vtd=$(acpidump -t |grep DMAR)
     _amdvi=$(sysctl hw |grep 'vmm.amdvi.enable: 1')
@@ -331,7 +337,7 @@ util::confirm(){
 # @param _value the value to test
 # @return int 1 if set to "off/false/no/0", 0 otherwise
 #
-util::checkyesno(){
+util::yesno(){
     local _value="$1"
 
     [ -z "${_value}" ] && return 1
@@ -381,4 +387,12 @@ util::getpid(){
     _ret=$(pgrep -f "${_proc}")
     [ $? -eq 0 ] || return 1
     setvar "${_var}" "${_ret}"
+}
+
+util::get_part(){
+    local _var="$1"
+    local _data="$2"
+    local _num="$3"
+
+    setvar "${_var}" $(echo "${_data}" |cut -w -f${_num})
 }

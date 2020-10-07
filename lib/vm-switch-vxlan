@@ -31,7 +31,7 @@
 #
 switch::vxlan::init(){
     local _name="$1"
-    local _id _vlan _if _maddr _addr
+    local _id _vlan _if _maddr _addr _ifconf
 
     # see if the bridge already exists
     switch::standard::id "_id" "${_name}" && return 0
@@ -53,8 +53,19 @@ switch::vxlan::init(){
       vxlandev "${_if}" descr "vm-vxlan-${_switch}" group vm-vlan up >/dev/null 2>&1
     [ $? -eq 0 ] || return 1
 
+    # get the length of the switch name
+    # it's useful for other utilities to use switch name as interface name
+    # as it's static. can't do that if it's > 12 chars
+    _len=$(echo -n "${_name}" | wc -m)
+
+    if [ ${_len} -le 12 ]; then
+      _ifconf="name vm-${_name}"
+    else
+      _ifconf="descr vm-${_name}"
+    fi
+
     # create a bridge for this switch
-    _id=$(ifconfig bridge create descr "vm-${_name}" group vm-switch up 2>/dev/null)
+    _id=$(ifconfig bridge create ${_ifconf} group vm-switch up 2>/dev/null)
     [ $? -eq 0 ] || util::err "failed to create bridge interface for switch ${_name}"
 
     switch::set_viid "${_name}" "${_id}"

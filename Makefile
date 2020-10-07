@@ -11,6 +11,7 @@ RCDIR=$(DESTDIR)$(PREFIX)/etc/rc.d
 
 CP=/bin/cp
 INSTALL=/usr/bin/install
+LN=/bin/ln
 MKDIR=/bin/mkdir
 
 PROG=vm
@@ -33,6 +34,7 @@ install:
 	gzip -fk $(MAN)
 	$(INSTALL) $(MAN).gz $(MANDIR)/
 	rm -f -- $(MAN).gz
+	$(LN) -sf $(MANDIR)/$(MAN).gz $(MANDIR)/vm-bhyve.8.gz
 
 vmdir:
 	@if [ -z "${PATH}" ]; then \

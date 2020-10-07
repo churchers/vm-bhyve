@@ -69,6 +69,22 @@ config::get(){
     return 1
 }
 
+# simple wrapper to check a config setting to see if it's 
+# set to yes/no true/false etc
+#
+# @param string _key the config key to check
+# @param string _def default value if config key doesn't exist
+# @return true(0) if set to anything other than no/false/off/0
+#
+config::yesno(){
+    local _key="$1"
+    local _def="$2"
+    local _value
+
+    config::get "_value" "${_key}" "${_def}"
+    util::yesno "${_value}"
+}
+
 # set a value in guest configuration file
 # we check for newline at the end as sysrc won't add it
 # and that will mess up the new key and the existing one

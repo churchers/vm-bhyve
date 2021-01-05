@@ -314,6 +314,9 @@ core::write_img(){
     _disk_dev="${1}"
     _img="$2"
 
+    # wait a few seconds for newly created zvol device to appear
+    sleep 2
+
     # just run start with an iso
     datastore::img_find "_imgpath" "${_img}" || util::err "unable to locate img file - '${_img}'"
     qemu-img dd -O raw if="${_imgpath}" of="${_disk_dev}" bs=1M

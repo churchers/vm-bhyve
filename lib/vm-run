@@ -574,7 +574,7 @@ vm::bhyve_device_networking(){
 
             if [ -n "${_tap}" ]; then
                 util::log "guest" "${_name}" "initialising network device ${_tap}"
-                ifconfig "${_tap}" descr "vmnet-${_name}-${_num}-${_switch:-custom}" group vm-port >/dev/null 2>&1
+                ifconfig "${_tap}" descr "vmnet/${_name}/${_num}/${_switch:-custom}" group vm-port >/dev/null 2>&1
 
                 if [ -n "${_switch}" ]; then
                     switch::id "_sid" "${_switch}"

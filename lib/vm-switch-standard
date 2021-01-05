@@ -43,7 +43,7 @@ switch::standard::init(){
     if [ ${_len} -le 12 ]; then
       _ifconf="name vm-${_name}"
     else
-      _ifconf="descr vm-${_name}"
+      _ifconf="descr vm/${_name}"
     fi
 
     # create a bridge for this switch
@@ -293,7 +293,7 @@ switch::standard::__configure_port(){
             # use our id as the interface name here.
             # it should always be a valid name and interface.vlan-id is much easier to understand in ifconfig
             # than a bunch of vlanX interfaces
-            _viface=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" descr "vm-vlan-${_switch}-${_vname}" name "${_vname}" group vm-vlan up 2>/dev/null)
+            _viface=$(ifconfig vlan create vlandev "${_port}" vlan "${_vlan}" descr "vm-vlan/${_switch}/${_vname}" name "${_vname}" group vm-vlan up 2>/dev/null)
             [ $? -eq 0 ] || util::err "failed to create vlan interface for port ${_port} on switch ${_switch}"
         fi
 

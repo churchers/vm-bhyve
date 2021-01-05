@@ -40,7 +40,7 @@ switch::manual::init(){
     fi
 
     # don't rename custom bridges. user can set this in rc.conf or just stick with bridgeX
-    ifconfig "${_bridge}" descr "vm-${_name}" group vm-switch up >/dev/null 2>&1
+    ifconfig "${_bridge}" descr "vm/${_name}" group vm-switch up >/dev/null 2>&1
     switch::set_viid "${_name}" "${_bridge}"
 }
 

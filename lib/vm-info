@@ -145,7 +145,7 @@ info::switch_ports(){
     local _port _guest
 
     for _port in ${_port_list}; do
-        _guest=$(ifconfig "${_port}" |grep 'description: vmnet-' |awk '{print $2}' |cut -d'-' -f2)
+        _guest=$(ifconfig "${_port}" |grep 'description: vmnet' |awk '{print $2}' |cut -d'/' -f2)
 
         echo ""
         echo "${_INDENT}virtual-port"

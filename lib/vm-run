@@ -529,7 +529,7 @@ vm::bhyve_device_disks(){
 #
 vm::bhyve_device_networking(){
     local _type _switch _mac _custom_tap _tap _sid _mtu
-    local _num=0 _member_type _sw_type
+    local _num=0 _member_type _sw_type _iname
 
     while true; do
         config::get "_type" "network${_num}_type"
@@ -538,6 +538,7 @@ vm::bhyve_device_networking(){
         config::get "_switch" "network${_num}_switch"
         config::get "_mac" "network${_num}_mac"
         config::get "_custom_tap" "network${_num}_device"
+        config::get "_iname" "network${_num}_name"
 
         # set a static mac if we don't have one
         [ -z "${_mac}" ] && vm::generate_static_mac
@@ -564,6 +565,8 @@ vm::bhyve_device_networking(){
             # create interface
             if [ -n "${_custom_tap}" ]; then
                 _tap="${_custom_tap}"
+            elif [ -n "${_iname}" ]; then
+                _tap=$(ifconfig tap create name "${_iname}")
             else
                 _tap=$(ifconfig tap create)
             fi

@@ -247,6 +247,11 @@ network0_switch="public"
 #
 network0_device=""
 
+# network0_name
+# if specified, the interface will be given this name
+#
+network0_name="web1"
+
 # network0_mac
 # This allows you to specify a fixed mac address for this interface inside the guest.
 # When a guest is run, vm-bhyve will automatically assign a mac address for each

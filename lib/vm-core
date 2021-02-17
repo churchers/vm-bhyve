@@ -916,8 +916,9 @@ core::configure(){
 core::iso(){
     local _url _ds="default"
 
-    while getopts d:u _opt ; do
+    while getopts fd:u _opt ; do
         case $_opt in
+	    f) _force=1 ;;
             d) _ds=${OPTARG} ;;
             *) util::usage ;;
         esac
@@ -928,6 +929,14 @@ core::iso(){
 
     if [ -n "${_url}" ]; then
         datastore::get_iso "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
+        _filename=$(basename "${_url}")
+        if echo "${_filename}" | grep "\.raw" > /dev/null; then
+          if [ -z "${_force}" ]; then
+            util::err "${_filename} appears to be a raw image instead of an ISO. Use 'vm img' (or -f to force)"
+	  else
+            util::warn "${_filename} appears to be a raw image instead of an ISO . It is unlikely to boot properly."
+	  fi
+	fi
         fetch -o "${VM_DS_PATH}" "${_url}"
     else
         datastore::iso_list
@@ -967,8 +976,9 @@ core::img(){
         util::err "Error: qemu-img is required to work with cloud images! Run 'pkg install qemu-utils'."
     fi
 
-    while getopts d:u _opt ; do
+    while getopts fd:u _opt ; do
         case $_opt in
+	    f) _force=1 ;;
             d) _ds=${OPTARG} ;;
             *) util::usage ;;
         esac
@@ -980,6 +990,13 @@ core::img(){
     if [ -n "${_url}" ]; then
         datastore::get_img "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
         _filename=$(basename "${_url}")
+        if echo "${_filename}" | grep "\.iso" > /dev/null; then
+          if [ -z "${_force}" ]; then
+            util::err "${_filename} appears to be an ISO instead of a raw image. Use 'vm iso' (or -f to force)"
+	  else
+            util::warn "${_filename} appears to be an ISO instead of a raw image. It is unlikely to boot properly."
+	  fi
+	fi
         fetch -o "${VM_DS_PATH}" "${_url}"
         core::decompress "${VM_DS_PATH}/${_filename}"
     else

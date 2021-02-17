@@ -181,8 +181,8 @@ Usage: vm ...
     clone <name[@snapshot]> <new-name>
     snapshot [-f] <name[@snapshot]>
     rollback [-r] <name@snapshot>
-    iso [url]
-    img [url]
+    iso [-f] [url]
+    img [-f] [url]
     image list
     image create [-d description] [-u] <name>
     image destroy <uuid>

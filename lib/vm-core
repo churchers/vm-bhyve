@@ -31,7 +31,7 @@ core::list(){
     local _name _loader _cpu _our_host
     local _memory _run _vm _auto _num _vnc _pid
     local _state _pcpu _rss _uptime
-    local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
+    local _format _header _columns
 
     cmd::parse_args "$@"
     shift $?
@@ -40,15 +40,27 @@ core::list(){
 
     vm::running_load
 
-    [ -n "${VM_OPT_VERBOSE}" ] && _format="%s^%s^%s^%s^%s^%s^%s^%5s^%8s^%14s^%s\n";
+    if [ -n "${VM_OPT_VERBOSE}" ]; then
+	_format="%s^%s^%s^%s^%s^%s^%s^%5s^%8s^%14s^%s\n"
+        _columns="NAME DATASTORE LOADER CPU MEMORY VNC AUTO %CPU RSZ UPTIME STATE"
+    else
+	_format="%s^%s^%s^%s^%s^%s^%s^%s\n"
+	_columns="NAME DATASTORE LOADER CPU MEMORY VNC AUTO STATE"
+    fi
+
+    if [ -n "${VM_OPT_JSON}" ]; then
+	if [ ! -x /usr/local/bin/column ]; then
+	    echo "Error: JSON output requires util-linux package"
+	    exit 255
+	fi
+        column_cmd="/usr/local/bin/column -ts^ -J -n machines -N $(echo $_columns | sed -e "s# #,#g")"
+    else
+	column_cmd="/usr/bin/column -ts^"
+    fi
 
     # pass everything below here to column(1)
     {
-        if [ -n "${VM_OPT_VERBOSE}" ]; then
-            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTO" "%CPU" "RSZ" "UPTIME" "STATE"
-        else
-            printf "${_format}" "NAME" "DATASTORE" "LOADER" "CPU" "MEMORY" "VNC" "AUTO" "STATE"
-        fi
+        [ -z "${VM_JSON}" ] && printf "${_format}" $_columns
 
         for _ds in ${VM_DATASTORE_LIST}; do
             datastore::get "${_ds}" || continue
@@ -116,7 +128,7 @@ core::list(){
                 fi
             done
         done
-    } | column -ts^
+    } | $column_cmd
 }
 
 # 'vm create'
@@ -967,9 +979,10 @@ core::img(){
         util::err "Error: qemu-img is required to work with cloud images! Run 'pkg install qemu-utils'."
     fi
 
-    while getopts d:u _opt ; do
+    while getopts d:uj _opt ; do
         case $_opt in
             d) _ds=${OPTARG} ;;
+	    j) VM_OPT_JSON=1 ;;
             *) util::usage ;;
         esac
     done
@@ -983,7 +996,7 @@ core::img(){
         fetch -o "${VM_DS_PATH}" "${_url}"
         core::decompress "${VM_DS_PATH}/${_filename}"
     else
-        datastore::img_list
+        datastore::img_list "$@"
     fi
 }
 

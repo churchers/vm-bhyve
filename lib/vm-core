@@ -60,7 +60,7 @@ core::list(){
 
     # pass everything below here to column(1)
     {
-        [ -z "${VM_JSON}" ] && printf "${_format}" $_columns
+        [ -z "${VM_OPT_JSON}" ] && printf "${_format}" $_columns
 
         for _ds in ${VM_DATASTORE_LIST}; do
             datastore::get "${_ds}" || continue

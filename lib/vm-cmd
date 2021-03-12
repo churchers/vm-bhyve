@@ -26,7 +26,7 @@
 
 CMD_VALID_LIST="init,switch,datastore,image,get,set,list,create,destroy,rename,install,start,stop,restart"
 CMD_VALID_LIST="${CMD_VALID_LIST},add,reset,poweroff,startall,stopall,console,iso,img,configure,passthru,_run"
-CMD_VALID_LIST="${CMD_VALID_LIST},info,clone,snapshot,rollback,send,recv,version,usage"
+CMD_VALID_LIST="${CMD_VALID_LIST},info,clone,snapshot,rollback,migrate,version,usage"
 
 # cmd: vm ...
 #
@@ -90,8 +90,7 @@ cmd::parse(){
         clone)     zfs::clone "$@" ;;
         snapshot)  zfs::snapshot "$@" ;;
         rollback)  zfs::rollback "$@" ;;
-        send)      migration::send "$@" ;;
-        recv)      migration::recv "$@" ;;
+        migrate)   migration::run "$@" ;;
         *)         util::err "unknown command '${_user_cmd}'. please run 'vm usage' or view the manpage for help" ;;
     esac
 }

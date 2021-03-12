@@ -147,6 +147,13 @@
 .Cm rollback
 .Op Fl r
 .Ar name@snapshot
+.Nm
+.Cm migrate
+.Op Fl s12t
+.Op Fl r Ar name
+.Op Fl i Ar snapshot
+.Op Fl d Ar datastore
+.Ar guest host
 .Pp
 .Nm
 .Cm iso
@@ -916,6 +923,53 @@ option can be passed directly into
 .Cm rollback
 .Pp
 The guest must always be stopped to use this command.
+.It Xo
+.Cm migrate
+.Op Fl s12t
+.Op Fl r Ar name
+.Op Fl i Ar snapshot
+.Op Fl d Ar datastore
+.Ar guest host
+.Xc
+The migrate command allows transferring a guest from one host to another. Note that
+currently this involves shutting down the guest, and optionally restarting it once
+migration is complete.
+.Pp
+The migration process uses ssh, and works best if key-based ssh is enabled between
+your hosts without the requirement of a password. Transfer is still possible using a password,
+but you will be prompted for this several times during the transfer process.
+.Pp
+Firstly a full snapshot of the guest is sent while the guest is still running. Optionally, an intermediate
+incremental snapshot can then be sent to bring the remote guest up to date if it is expected that the full
+send may take a long time, or that a large amount of data may change during this time. Once the remote end
+is reasonably up to date, the guest is powered off so a final incremental snapshot can be sent.
+.Bl -tag -width 12n
+.It Fl r Ar name
+Allows the remote guest to be given a different name to the source.
+.It Fl d Ar datastore
+Specify the datastore to store the guest on the destination host.
+.It Fl s
+Start the guest on the remote host once migration is complete.
+.It Fl 1
+Run only the first stage of migration. This will take a full snapshot of the local guest and send it to
+the destination host.
+.It Fl 2
+Run only the second stage. This will second an incremental snapshot and then complete the migration.
+This requires the
+.Fl i
+parameter to specify the source snapshot.
+.It Fl t
+Triple snapshot mode. This will send both a full snapshot, and one incremental, before shutting the guest down
+and doing a final incremental send. This may be useful for large or busy guests where there could be a large number
+of chages during the initial full send. The idea is that the first incremental send will bring the remote guest nearly 
+up to date, sending changes that have occured during the lengthy inital full send. This should reduce the size of the
+final incremental send, minimising the amount of time the guest is powered off.
+.It Fl x
+Destroy the local guest once the migration is complete.
+.It Fl i Ar snapshot
+When running the second stage of migration, this parameter is used to specify the name of the snapshot
+to base the incremental send on. This snapshot must exist on both hosts.
+.El
 .It Cm iso Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso

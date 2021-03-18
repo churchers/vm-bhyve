@@ -49,7 +49,7 @@
 #
 guest::load(){
     local _iso="$1"
-    local _args _command _timeout _grub_opt _bsd_loader
+    local _args _command _timeout _grub_opt _bsd_loader _custom_args
 
     # require a boot disk
     if [ -z "${_bootdisk}" ]; then
@@ -68,6 +68,10 @@ guest::load(){
         bhyveload)
             _command="bhyveload"
             _args="${_args}${_args:+ }-m ${_memory} -e autoboot_delay=${_timeout}"
+
+            # look for custom bhyveload arguments
+            config::get "_custom_args" "bhyveload_args"
+            [ -n "${_custom_args}" ] && _args="${_args} ${_custom_args}"
 
             # have a custom guest loader specified?
             config::get "_bsd_loader" "bhyveload_loader"

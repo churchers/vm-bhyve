@@ -213,7 +213,7 @@ info::guest_show(){
         # show com ports
         if [ -e "${VM_DS_PATH}/${_name}/console" ]; then
             echo ""
-            echo "${_INDENT}console-ports"
+            echo "${_INDENT}console-ports:"
 
             cat "${VM_DS_PATH}/${_name}/console" | \
             while read _port; do
@@ -273,7 +273,7 @@ info::guest_zfs(){
 
    if [ -n "${_data}" ]; then
        echo ""
-       echo "  snapshots"
+       echo "  snapshots:"
        echo "${_data}"
    fi
 
@@ -281,7 +281,7 @@ info::guest_zfs(){
    [ "${_data}" = "-" ] && return 0
 
    echo ""
-   echo "  clone-origin"
+   echo "  clone-origin:"
    echo "    ${_data}"
 }
 
@@ -301,7 +301,7 @@ info::guest_disks(){
         vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 
         echo ""
-        echo "  virtual-disk"
+        echo "  virtual-disk:"
         echo "${_INDENT}number: ${_num}"
 
         info::__output_config "disk${_num}_dev" "device-type" "file"
@@ -353,7 +353,7 @@ info::guest_networking(){
         [ -z "${_int}" ] && break
 
         echo ""
-        echo "  network-interface"
+        echo "  network-interface:"
         echo "${_INDENT}number: ${_num}"
 
         # basic interface config

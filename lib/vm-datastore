@@ -30,9 +30,20 @@
 datastore::list(){
     local _format="%-15s %-11s %-25s %s"
     local _name _type _dataset _path _spec
+    local _columns="NAME TYPE PATH DATASET"
 
-    # headings
-    printf "${_format}\n" "NAME" "TYPE" "PATH" "ZFS DATASET"
+    cmd::parse_args "$@"
+    shift $?
+
+    if [ -n "${VM_OPT_JSON}" ]; then
+        if [ ! -x /usr/local/bin/column ]; then
+            echo "Error: JSON output requires util-linux package"
+	    exit 255
+	fi
+	column_cmd="/usr/local/bin/column -t -J -n datastores -N $(echo $_columns | sed -e "s# #,#g")"
+    else
+	column_cmd="/usr/bin/column -t"
+    fi
 
     # add the default datastore
     _name="default"
@@ -46,35 +57,39 @@ datastore::list(){
         _type="directory"
         _dataset="-"
     fi
-
-    printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
-
-    for _name in ${VM_DATASTORE_LIST}; do
-        [ "${_name}" = "default" ] && continue
-
-        config::core::get "_spec" "path_${_name}"
-        [ -z "${_spec}" ] && continue
-
-        if [ "${_spec%%:*}" = "zfs" ]; then
-            _type="zfs"
-            _dataset="${_spec#*:}"
-            datastore::__resolve_path "_path" "${_spec}"
-        elif [ "${_spec%%:*}" = "iso" ]; then
-            _type="iso"
-            _path="${_spec#*:}"
-            _dataset="-"
-        elif [ "${_spec%%:*}" = "img" ]; then
-            _type="img"
-            _path="${_spec#*:}"
-            _dataset="-"
-        else
-            _type="directory"
-            _path="${_spec}"
-            _dataset="-"
-        fi
+    {
+        # headings
+	[ -z "${VM_OPT_JSON}" ] && printf "${_format}\n" $_columns
 
         printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
-    done
+
+        for _name in ${VM_DATASTORE_LIST}; do
+            [ "${_name}" = "default" ] && continue
+
+            config::core::get "_spec" "path_${_name}"
+            [ -z "${_spec}" ] && continue
+
+            if [ "${_spec%%:*}" = "zfs" ]; then
+                _type="zfs"
+                _dataset="${_spec#*:}"
+                datastore::__resolve_path "_path" "${_spec}"
+            elif [ "${_spec%%:*}" = "iso" ]; then
+                _type="iso"
+                _path="${_spec#*:}"
+                _dataset="-"
+            elif [ "${_spec%%:*}" = "img" ]; then
+                _type="img"
+                _path="${_spec#*:}"
+                _dataset="-"
+            else
+                _type="directory"
+                _path="${_spec}"
+                _dataset="-"
+            fi
+    
+            printf "${_format}\n" "${_name}" "${_type}" "${_path}" "${_dataset}"
+        done
+    } | $column_cmd
 }
 
 # 'vm datastore add'
@@ -484,8 +499,23 @@ datastore::iso_list(){
 #
 datastore::img_list(){
     local _ds _spec _format="%-20s%s\n"
+    local _columns="DATASTORE FILENAME"
 
-    printf "${_format}" "DATASTORE" "FILENAME"
+    cmd::parse_args "$@"
+    shift $?
+
+   if [ -n "${VM_OPT_JSON}" ]; then
+        if [ ! -x /usr/local/bin/column ]; then
+            echo "Error: JSON output requires util-linux package"
+	    exit 255
+	fi
+	column_cmd="/usr/local/bin/column -t -J -n images -N $(echo $_columns | sed -e "s# #,#g")"
+    else
+	column_cmd="/usr/bin/column -t"
+    fi
+
+    {
+    [ -z "${VM_OPT_JSON}" ] && printf "${_format}" $_columns
 
     # look for default img location
     [ -d "${vm_dir}/.img" ] && ls -1 "${vm_dir}/.img" | awk '{printf "'${_format}'","default",$1}'
@@ -497,4 +527,5 @@ datastore::img_list(){
 
         [ -d "${_spec#*:}" ] && ls -1 ${_spec#*:} | awk '{printf "'${_format}'","'${_ds}'",$1}'
     done
+    } | $column_cmd
 }

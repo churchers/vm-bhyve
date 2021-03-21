@@ -111,7 +111,7 @@ cmd::parse_switch(){
 
     case "${_cmd}" in
         create)  switch::create "$@" ;;
-        list)    switch::list ;;
+        list)    switch::list "$@" ;;
         destroy) switch::remove "$@" ;;
         add)     switch::add_member "$@" ;;
         remove)  switch::remove_member "$@" ;;
@@ -138,7 +138,7 @@ cmd::parse_datastore(){
     shift
 
     case "${_cmd}" in
-        list)   datastore::list ;;
+        list)   datastore::list "$@" ;;
         add)    datastore::add "$@" ;;
         remove) datastore::remove "$@" ;;
         iso)    datastore::iso "$@" ;;
@@ -183,13 +183,14 @@ cmd::parse_image(){
 cmd::parse_args(){
     local _opt _count
 
-    while getopts fitv _opt; do
+    while getopts fitvj _opt; do
         case ${_opt} in
             f) VM_OPT_FORCE="1"
                VM_OPT_FOREGROUND="1" ;;
             i) VM_OPT_INTERACTIVE="1" ;;
             t) VM_OPT_TMUX="1" ;;
             v) VM_OPT_VERBOSE="1" ;;
+	    j) VM_OPT_JSON="1" ;;
         esac
     done
 

@@ -31,7 +31,7 @@ util::setup(){
     util::load_module "if_bridge"
 
     # tap(4) & tun(4) were unified in r347241, this is closest ABI bump
-    if [ `uname -U` -ge 1300029 ]; then
+    if [ `uname -K` -ge 1300029 ]; then
         util::load_module "if_tuntap"
     else
         util::load_module "if_tap"

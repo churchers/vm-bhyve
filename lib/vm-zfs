@@ -447,7 +447,7 @@ zfs::image_provision(){
         xz)  xz -dc "${vm_dir}/images/${_file}" 2>/dev/null | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
         z)   _decompress=$(sysrc -inqf "${vm_dir}/images/${_uuid}.manifest" decompress)
              [ -z "${_decompress}" ] && util::err "unable to locate decompression configuration"
-             ${_decompress} "${vm_dir}/images/${_file}" 2>/dev/null | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
+             ${_decompress} <"${vm_dir}/images/${_file}" 2>/dev/null | zfs recv "${VM_DS_ZFS_DATASET}/${_name}" ;;
         *)   util::err "unsupported guest image type - '${_type}'" ;;
     esac
 

@@ -198,7 +198,7 @@ so use the console command to connect to it and finish installation.
 
 You can also specify the foreground option to run the guest directly on your terminal:
 
-    # vm -f install testvm FreeBSD-11.2-RELEASE-amd64-disc1.iso
+    # vm install -f testvm FreeBSD-11.2-RELEASE-amd64-disc1.iso
 
 Once installation has finished, you can reboot the guest from inside the console and it will boot up into
 the new OS (assuming installation was successful). Further reboots will work as expected and

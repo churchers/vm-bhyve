@@ -124,14 +124,22 @@ core::list(){
 #
 # @param optional string (-t) _template the template to use (default = default)
 # @param optional string (-s) _size guest size (default = 20G)
+# @param optional string (-d) _ds datastore
+# @param optional string (-c) _cpu number of cpus
+# @param optional string (-m) _memory memory
+# @param optional string (-i) _img cloud image
+# @param optional string (-k) _ssh_key_file ssh key file (cloudinit)
+# @param optional string (-C) _enable_cloud_init enable cloud init
+# @param optional string (-U) _cloud_init_userdata cloud init userdata
+# @param optional string (-n) _network_config network config (cloudinit)
 # @param string _name the name of the guest to create
 #
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img _cpu _memory _uuid
-    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file _network_config _mac
+    local _enable_cloud_init _cloud_init_dir _cloud_init_userdata _ssh_public_key _ssh_key_file _network_config _mac
 
-    while getopts d:t:s:i:c:m:Ck:n: _opt ; do
+    while getopts d:t:s:i:c:m:CU:k:n: _opt ; do
         case $_opt in
             t) _template=${OPTARG} ;;
             s) _size=${OPTARG} ;;
@@ -141,6 +149,7 @@ core::create(){
             i) _img=${OPTARG} ;;
             k) _ssh_key_file=${OPTARG} ;;
             C) _enable_cloud_init='true' ;;
+            U) _cloud_init_userdata=${OPTARG} ;;
             n) _network_config=${OPTARG} ;;
 
             *) util::usage ;;
@@ -174,6 +183,14 @@ core::create(){
         if ! which genisoimage > /dev/null; then
             util::err "Error: genisoimage is required to work with cloud init! Run 'pkg install cdrkit-genisoimage'."
         fi
+    fi
+
+    # manual userdata file
+    if [ -n "${_cloud_init_userdata}" ]; then
+        [ -z "${_enable_cloud_init}" ] && util::err "cloud-init is required for userdata. Use -C to enable it."
+        [ -n "${_ssh_key_file}" ] && util::err "can't add public key if manual userdata file specified (-U)"
+        [ -n "${_network_config}" ] && util::err "can't add network config if manual userdata file specified (-U)"
+        [ ! -r "${_cloud_init_userdata}" ] && util::err "can't read userdata file (${_cloud_init_userdata})"
     fi
 
     # get ssh public key for cloud-init from file
@@ -261,25 +278,28 @@ instance-id: ${_uuid}
 local-hostname: ${_name}
 EOF
 
-    cat << EOF > "${_cloud_init_dir}/user-data"
+    if [ -n "${_cloud_init_userdata}" ]; then
+        cat "${_cloud_init_userdata}" > "${_cloud_init_dir}/user-data"
+    else
+        cat << EOF > "${_cloud_init_dir}/user-data"
 #cloud-config
 resize_rootfs: True
 manage_etc_hosts: localhost
 EOF
-    if [ -n "${_ssh_public_key}" ]; then
-        cat << EOF >> "${_cloud_init_dir}/user-data"
+        if [ -n "${_ssh_public_key}" ]; then
+            cat << EOF >> "${_cloud_init_dir}/user-data"
 ssh_authorized_keys:
   - ${_ssh_public_key}
 EOF
-    fi
+        fi
 
-    if [ -n "${_network_config}" ]; then
-        # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
-        _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
-        _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
-        _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
+        if [ -n "${_network_config}" ]; then
+            # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
+            _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
+            _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
+            _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
 
-        cat << EOF > "${_cloud_init_dir}/network-config"
+            cat << EOF > "${_cloud_init_dir}/network-config"
 version: 2
 ethernets:
   id0:
@@ -292,6 +312,7 @@ ethernets:
     nameservers:
       addresses: [${_network_config_nameservers}]
 EOF
+        fi
     fi
 
     genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock ${_cloud_init_dir}/* > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"

@@ -27,6 +27,12 @@ loader=""
 #
 bhyveload_loader=""
 
+# bhyveload_args
+# If using bhyveload, this option can be used to pass command line
+# arguments to the loader
+#
+bhyveload_args="-e machdep.hyperthreading_allowed=0"
+
 # loader_timeout
 # By default bhyveload & grub-bhyve will wait 3 seconds before booting the default
 # option. This setting allows you to either reduce the timeout to

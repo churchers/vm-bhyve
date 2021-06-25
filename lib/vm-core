@@ -315,7 +315,7 @@ core::write_img(){
     _img="$2"
 
     # wait a few seconds for newly created zvol device to appear
-    sleep 2
+    sleep 5
 
     # just run start with an iso
     datastore::img_find "_imgpath" "${_img}" || util::err "unable to locate img file - '${_img}'"

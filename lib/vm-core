@@ -254,30 +254,22 @@ core::create(){
 core::create_cloud_init(){
     # create disk with metadata for cloud-init
     _cloud_init_dir="${VM_DS_PATH}/${_name}/.cloud-init"
+    # Use VM's name as a hostname by default
+    _hostname="${_name}"
+
     mkdir -p "${_cloud_init_dir}"
-
-    cat << EOF > "${_cloud_init_dir}/meta-data"
-instance-id: ${_uuid}
-local-hostname: ${_name}
-EOF
-
-    cat << EOF > "${_cloud_init_dir}/user-data"
-#cloud-config
-resize_rootfs: True
-manage_etc_hosts: localhost
-EOF
-    if [ -n "${_ssh_public_key}" ]; then
-        cat << EOF >> "${_cloud_init_dir}/user-data"
-ssh_authorized_keys:
-  - ${_ssh_public_key}
-EOF
-    fi
 
     if [ -n "${_network_config}" ]; then
         # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
         _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
         _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
         _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
+        _network_config_hostname="$(echo "${_network_config}" | pcregrep -o "hostname=\K[^;]*")"
+
+        # Override default hostname when network config is passed to cloud-init
+        if [ ! -z "${_network_config_hostname}" ]; then
+                _hostname="${_network_config_hostname}"
+        fi
 
         cat << EOF > "${_cloud_init_dir}/network-config"
 version: 2
@@ -287,10 +279,29 @@ ethernets:
     match:
       macaddress: "${_mac}"
     addresses:
-    - ${_network_config_ipaddress}
+      - ${_network_config_ipaddress}
     gateway4: ${_network_config_gateway}
     nameservers:
+      search: []
       addresses: [${_network_config_nameservers}]
+EOF
+    fi
+
+    cat << EOF > "${_cloud_init_dir}/meta-data"
+instance-id: ${_uuid}
+local-hostname: ${_hostname}
+EOF
+
+    cat << EOF > "${_cloud_init_dir}/user-data"
+#cloud-config
+resize_rootfs: True
+manage_etc_hosts: localhost
+EOF
+
+    if [ -n "${_ssh_public_key}" ]; then
+        cat << EOF >> "${_cloud_init_dir}/user-data"
+ssh_authorized_keys:
+  - ${_ssh_public_key}
 EOF
     fi
 

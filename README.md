@@ -9,7 +9,7 @@ Some of the main features include:
 * Simple configuration file format
 * Virtual switches supporting vlans & automatic device creation
 * ZFS support
-* FreeBSD/NetBSD/OpenBSD/Linux guest support
+* FreeBSD/MidnightBSD/NetBSD/OpenBSD/Linux guest support
 * Automatic assignment of console devices to access guest console
 * Integration with rc.d startup/shutdown
 * Guest reboot handling

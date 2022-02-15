@@ -313,9 +313,18 @@ core::write_img(){
     shift $?
     _disk_dev="${1}"
     _img="$2"
+    timeout=30
+    i=0
 
     # wait a few seconds for newly created zvol device to appear
-    sleep 2
+    while [ $i -lt $timeout ]; do
+        if [ ! -r "${_disk_dev}" ]; then
+            sleep 1
+            i=$(($i+1))
+	else
+            break
+        fi
+    done
 
     # just run start with an iso
     datastore::img_find "_imgpath" "${_img}" || util::err "unable to locate img file - '${_img}'"

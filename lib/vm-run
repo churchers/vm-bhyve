@@ -192,6 +192,7 @@ vm::run(){
     vm::bhyve_device_passthru
     vm::bhyve_device_fbuf
     vm::bhyve_device_mouse
+    vm::bhyve_device_sound
     vm::bhyve_device_console
 
     vm::lock
@@ -714,6 +715,16 @@ vm::bhyve_device_mouse(){
     # add a tablet device if enabled
     if config::yesno "xhci_mouse"; then
         _devices="${_devices} -s ${_slot}:0,xhci,tablet"
+        _slot=$((_slot + 1))
+    fi
+}
+
+vm::bhyve_device_sound(){
+    local _play
+    config::get "_play" "sound_play" "/dev/dsp0"
+
+    if config::yesno "sound"; then
+        _devices="${_devices} -s ${_slot}:0,hda,play=${_play}"
         _slot=$((_slot + 1))
     fi
 }

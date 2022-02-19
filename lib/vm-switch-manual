@@ -39,8 +39,8 @@ switch::manual::init(){
         [ -z "${_bridge}" ] && return 1
     fi
 
-    # don't rename custom bridges not set a description. 
-    # user can set both in rc.conf or just stick with bridgeX
+    # don't rename custom bridges nor set a description. 
+    # manual interfaces are fully configured using rc.conf.
     ifconfig "${_bridge}" group vm-switch up >/dev/null 2>&1
     switch::set_viid "${_name}" "${_bridge}"
 }

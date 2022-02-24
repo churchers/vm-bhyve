@@ -971,7 +971,7 @@ Destroy the local guest once the migration is complete.
 When running the second stage of migration, this parameter is used to specify the name of the snapshot
 to base the incremental send on. This snapshot must exist on both hosts.
 .El
-.It Cm iso Op Ar url
+.It Cm iso Op Ar -d datastore Op Ar url
 List all the ISO files currently stored in the
 .Pa $vm_dir/.iso
 directory.
@@ -981,9 +981,11 @@ the ISO filename.
 If a
 .Sy url
 is specified, instead of listing ISO files, it attempts to download the given file using
-.Xr fetch 1 to the default datastore. The target datasource can be changed by specifying
-.Sy -d datastore with
-.Sy url
+.Xr fetch 1
+to the default datastore. The target datasource can be changed by specifying
+.Sy -d datastore 
+with
+.Sy url .
 .It Cm image list
 List available images.
 Any virtual machine can be packaged into an image, which can then be used to

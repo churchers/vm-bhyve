@@ -981,7 +981,9 @@ the ISO filename.
 If a
 .Sy url
 is specified, instead of listing ISO files, it attempts to download the given file using
-.Xr fetch 1 .
+.Xr fetch 1 to the default datastore. The target datasource can be changed by specifying
+.Sy -d datastore with
+.Sy url
 .It Cm image list
 List available images.
 Any virtual machine can be packaged into an image, which can then be used to

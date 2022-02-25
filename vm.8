@@ -1065,6 +1065,14 @@ The valid options are
 .Sy uefi-csm ,
 or
 .Sy uefi-custom .
+.It uefi_vars
+Setting this option to a true value allows the persistent storage of UEFI variables.
+This may be required for some guests that install boot firmware to a non-standard location
+and rely on UEFI variables to locate it. The version of
+.Sy uefi-firmware
+installed must provide the template data file, and support also needs to be present
+in
+.Sy bhyve
 .It bhyveload_loader
 This option allows a custom path to be used for the loader inside the guest.
 Passed to

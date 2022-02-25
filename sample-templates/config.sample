@@ -41,6 +41,13 @@ bhyveload_args="-e machdep.hyperthreading_allowed=0"
 #
 loader_timeout="3"
 
+# uefi_vars
+# set to a true value to support persistent UEFI vars
+# this relies on a version of uefi-firmware that comes with the BHYVE_UEFI_VARS.fd template,
+# and support in bhyve
+#
+uefi_vars="no"
+
 # cpu (required)
 # specify the number of cpu cores to give to the guest
 #

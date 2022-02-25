@@ -37,7 +37,7 @@ vm::run(){
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _debug _hostbridge _loader
     local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
-    local _com _comports _comstring _logpath="/dev/null" _bootrom _run=1
+    local _com _comports _comstring _logpath="/dev/null" _run=1
     local _bhyve_options _action
 
     cmd::parse_args "$@"
@@ -116,35 +116,7 @@ vm::run(){
 
     # if uefi, make sure we have bootrom, then update options for uefi support
     if [ "${_loader%-*}" = "uefi" ]; then
-        if [ ${VERSION_BSD} -lt 1002509 ]; then
-            util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
-            exit 15
-        fi
-
-        case "${_loader}" in
-            uefi-devel)
-		_bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CODE-devel.fd"
-		;;
-            uefi-csm)
-                _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CSM.fd"
-                ;;
-            uefi-custom)
-                _bootrom="${VM_DS_PATH}/.config/BHYVE_UEFI.fd"
-                ;;                
-            *)
-                _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI.fd"
-                ;;
-        esac
-
-        if [ ! -e "${_bootrom}" ]; then
-            util::log "guest" "${_name}" "fatal; unable to locate firmware ${_bootrom}"
-            exit 15
-        fi
-
-        _opts="-Hwl bootrom,${_bootrom}"
-        _uefi="yes"
-    else
-        _uefi=""
+        vm::uefi
     fi
 
     # add any custom bhyve options
@@ -296,6 +268,59 @@ vm::run(){
 
     vm::unlock
     exit ${_exit}
+}
+
+# creates options to use a uefi bootrom
+#
+# @modifies _opts _uefi
+#
+vm::uefi(){
+    local _bootrom
+
+    if [ ${VERSION_BSD} -lt 1002509 ]; then
+        util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
+        exit 15
+    fi
+
+    case "${_loader}" in
+        uefi-devel)
+            _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CODE-devel.fd"
+            ;;
+        uefi-csm)
+            _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI_CSM.fd"
+            ;;
+        uefi-custom)
+            _bootrom="${VM_DS_PATH}/.config/BHYVE_UEFI.fd"
+           ;;
+        *)
+           _bootrom="/usr/local/share/uefi-firmware/BHYVE_UEFI.fd"
+           ;;
+    esac
+
+    if [ ! -e "${_bootrom}" ]; then
+        util::log "guest" "${_name}" "fatal; unable to locate firmware ${_bootrom}"
+        exit 15
+    fi
+
+    # should we store uefi vars?
+    if config::yesno "uefi_vars"; then
+
+        # do we already have a storage file for this guest?
+        if [ -e "${VM_DS_PATH}/${_name}/uefi-vars.fd" ]; then
+            :
+        elif [ -e "/usr/local/share/uefi-firmware/BHYVE_UEFI_VARS.fd" ]; then
+            # create a copy and use
+            cp "/usr/local/share/uefi-firmware/BHYVE_UEFI_VARS.fd" "${VM_DS_PATH}/${_name}/uefi-vars.fd"
+        else
+            util::log "guest" "${_name}" "fatal; unable to locate UEFI vars database or template"
+            exit 15
+        fi
+
+        _bootrom="${_bootrom},${VM_DS_PATH}/${_name}/uefi-vars.fd"
+    fi
+
+    _opts="-Hwl bootrom,${_bootrom}"
+    _uefi="yes"
 }
 
 # decide how to handle bhyve exit code

@@ -361,7 +361,7 @@ util::check_name(){
     local _maxlen="$2"
 
     if [ ${VERSION_BSD} -ge 1300000 ]; then
-        : ${__maxlen:=229}
+        : ${_maxlen:=229}
     else
         : ${_maxlen:=30}
     fi

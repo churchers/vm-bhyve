@@ -840,7 +840,7 @@ core::rename(){
     local _new="$2"
 
     [ -z "${_old}" -o -z "${_new}" ] && util::usage
-    util::check_name "${_new}" 46 || util::err "invalid virtual machine name - '${_name}'"
+    util::check_name "${_new}" || util::err "invalid virtual machine name - '${_name}'"
 
     datastore::get_guest "${_new}" && util::err "directory ${VM_DS_PATH}/${_new} already exists"
     datastore::get_guest "${_old}" || util::err "${_old} doesn't appear to be a valid virtual machine"

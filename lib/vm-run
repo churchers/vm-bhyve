@@ -141,7 +141,7 @@ vm::run(){
     [ -n "${_uuid}" ] && _opts="${_opts} -U ${_uuid}"
 
     # set utc time in opts if requested
-    if config::yesno "utctime"; then
+    if config::yesno "utctime" yes; then
         if [ ${VERSION_BSD} -ge 1002000 ]; then
             _opts="${_opts} -u"
         else

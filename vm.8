@@ -1424,6 +1424,13 @@ If set to yes, a frame buffer is added to the guest.
 This provides a graphical console that is accessible using VNC.
 By default the console is 800x600, and will listen on
 .Sy 0.0.0.0:5900 .
+A random VNC password is generated and logged to the guest's log file if none
+is configured.  A password can be provided by specifying the
+.Sy vnc_password
+parameter in the guest's configuration file if desired.
+Automatic password generation can be disabled by specifying
+.Sy insecure_allow_no_vnc_password=yes
+in the guest's configuration file.
 If port 5900 is not available, the next available port will be used.
 The active address and port can be viewed in
 .Sy vm list

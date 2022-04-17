@@ -1,0 +1,101 @@
+#!/bin/sh
+#-------------------------------------------------------------------------+
+# Copyright (C) 2021 Benoit Chesneau (bchesneau@gmail.com)
+# All rights reserved
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted providing that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+# IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+
+# show the configuration details for a netgraph switch
+#
+# @param string _name the switch name
+# @param string _format output format
+#
+switch::netgraph::show(){
+    local _name="$1"
+    local _format="$2"
+    local _id
+
+    switch::netgraph::id "_id" "${_name}"
+    printf "${_format}" "${_name}" "netraph" "${_id}" "n/a" "n/a" "n/a" "n/a" "n/a"
+}
+
+# create a netgraph switch
+#
+# @param string _switch the name of the switch
+#
+switch::netgraph::create(){
+    config::core::set "switch_list" "${_switch}" "1"
+    config::core::set "type_${_switch}" "netgraph"
+}
+
+# remove a netgraph switch
+#
+switch::netgraph::remove(){ }
+
+# add a new interface to this switch
+# at the moment we require the user to manually
+# set up any netgraph switches
+#
+# @param string _switch name of the switch
+# @param string _if the interface to add
+#
+switch::netgraph::add_member(){
+    util::err "physical interfaces must be added to the netgraph switch manually"
+}
+
+# remove an interface
+#
+# @param string _switch name of the switch
+# @param string _if the interface to remove
+#
+switch::netgraph::remove_member(){
+    util::err "physical interfaces must be removed from the netgraph switch manually"
+}
+
+# set vlan id
+#
+# @param string _switch name of switch
+# @param int _vlan vlan id to set
+#
+switch::netgraph::vlan(){
+    util::err "vlan support is not currently implemented for netgraph switches"
+}
+# gets a unique linkname name for a ng_bridge interface
+# we need to make sure the link is unique and the last one
+#
+# @param string _var name of variable to put port name into
+# @param string _switch the name of the switch
+#
+switch::netgraph::id(){
+    local _var="$1"
+    local _switch="$2"
+
+    # Create a new interface to the bridge
+    num=2
+    while ngctl msg "${_switch}:" getstats $num > /dev/null 2>&1
+    do
+        num=$(( $num + 1 ))
+    done
+    setvar "${_var}" "netgraph,path=${_switch}:,peerhook=link$num"
+}
+

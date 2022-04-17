@@ -457,6 +457,7 @@ There are currently 4 types of virtual switch that can be created.
 These are
 .Sy standard ,
 .Sy manual ,
+.Sy netgraph ,
 .Sy vale
 and
 .Sy vxlan .
@@ -468,6 +469,9 @@ interface and bridges clients to it.
 .Sy manual
 allows you to attach guests to a bridge that you have created and configured
 manually.
+.Sy netgraph
+switches use the netgraph ng_bridg esystem to create a virtual switch connecting
+guests.
 .Sy vale
 switches use the netmap VALE system to create a virtual switch connecting
 guests.

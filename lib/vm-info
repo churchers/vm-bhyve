@@ -96,7 +96,7 @@ info::switch(){
 #
 info::switch_show(){
     local _switch="$1"
-    local _type _bridge _vale _id
+    local _type _bridge _vale _netgraph, _id
     local _INDENT="  "
 
     [ -z "${_switch}" ] && return 1
@@ -104,6 +104,8 @@ info::switch_show(){
     config::get "_type" "type_${_switch}" "standard"
     config::get "_bridge" "bridge_${_switch}"
     config::get "_vale" "vale_${_switch}"
+    config::get "_netgraph" "netgraph_${_switch}"
+
 
     echo "------------------------"
     echo "Virtual Switch: ${_switch}"
@@ -112,8 +114,8 @@ info::switch_show(){
     echo "${_INDENT}type: ${_type}"
     switch::id "_id" "${_switch}"
 
-    # we don't have a bridge for vale switches
-    [ "${_type}" != "vale" ] && _bridge="${_id}"
+    # we don't have a bridge for vale and netgraph switches
+    [ "${_type}" != "vale" ] && [ "${_type}" != "netgraph" ] && _bridge="${_id}"
 
     echo "${_INDENT}ident: ${_id:--}"
 

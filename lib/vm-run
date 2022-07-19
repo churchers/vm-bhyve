@@ -587,6 +587,15 @@ vm::bhyve_device_networking(){
             [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
             _func=$((_func + 1))
+        elif [ "${_sw_type}" = "netgraph" ]; then
+            # create a netgraph peer
+            switch::netgraph::id "_path" "${_switch}"
+
+            util::log "guest" "${_name}" "adding netgraph interface ${_path} (${_switch})"
+            _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+            [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+            _func=$((_func + 1))
         else
             # create interface
             if [ -n "${_custom_tap}" ]; then

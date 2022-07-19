@@ -26,6 +26,7 @@
 
 # switch libraries
 #
+. "${LIB}/vm-switch-netgraph"
 . "${LIB}/vm-switch-manual"
 . "${LIB}/vm-switch-standard"
 . "${LIB}/vm-switch-vale"
@@ -50,6 +51,7 @@ switch::init(){
                 vxlan)  switch::vxlan::init "${_switch}" ;;
                 manual) switch::manual::init "${_switch}" ;;
                 vale)   ;;
+                netgraph)   ;;
                 *)      switch::standard::init "${_switch}" ;;
             esac
         done
@@ -73,6 +75,7 @@ switch::list(){
                 config::core::get "_type" "type_${_switch}"
 
                 case "${_type}" in
+                    netgraph)   switch::netgraph::show "${_switch}" "${_format}" ;;
                     vale)   switch::vale::show "${_switch}" "${_format}" ;;
                     vxlan)  switch::vxlan::show "${_switch}" "${_format}" ;;
                     manual) switch::manual::show "${_switch}" "${_format}" ;;
@@ -143,6 +146,7 @@ switch::create(){
     case "${_type}" in
         standard) switch::standard::create ;;
         manual)   switch::manual::create ;;
+        netgraph) switch::netgraph:create ;;
         vale)     switch::vale::create ;;
         vxlan)    switch::vxlan::create ;;
         *)        util::err "invalid switch type - '${_type}'" ;;
@@ -166,6 +170,7 @@ switch::remove(){
     case "${_type}" in
         standard) switch::standard::remove "${_switch}" ;;
         manual)   switch::manual::remove "${_switch}" ;;
+        netgraph) switch::netgraph::remove "${_switch}" ;;
         vale)     switch::vale::remove "${_switch}" ;;
         vxlan)    switch::vxlan::remove "${_switch}" ;;
         *)        util::err "unable to remove switch of unknown type" ;;
@@ -203,6 +208,7 @@ switch::add_member(){
     case "${_type}" in
         standard) switch::standard::add_member "${_switch}" "${_if}" ;;
         manual)   switch::manual::add_member "${_switch}" "${_if}" ;;
+        netgraph) switch::netgraph::add_member "${_switch}" "${_if}" ;;
         vale)     switch::vale::add_member "${_switch}" "${_if}" ;;
         vxlan)    switch::vxlan::add_member "${_switch}" "${_if}" ;;
         *)        util::err "unable to configure switch of unknown type" ;;
@@ -227,6 +233,7 @@ switch::remove_member(){
     case "${_type}" in
         standard) switch::standard::remove_member "${_switch}" "${_if}" ;;
         manual)   switch::manual::remove_member "${_switch}" "${_if}" ;;
+        netgraph) switch::netgraph::remove_member "${_switch}" "${_if}" ;;
         vale)     switch::vale::remove_member "${_switch}" "${_if}" ;;
         vxlan)    switch::vxlan::remove_member "${_switch}" "${_if}" ;;
         *)        util::err "unable to configure switch of unknown type" ;;
@@ -256,6 +263,7 @@ switch::vlan(){
     case "${_type}" in
         standard) switch::standard::vlan "${_switch}" "${_vlan}" ;;
         manual)   switch::manual::vlan "${_switch}" "${_vlan}" ;;
+        netgraph) switch::netgraph::vlan "${_switch}" "${_vlan}" ;;
         vale)     switch::vale::vlan "${_switch}" "${_vlan}" ;;
         vxlan)    switch::vxlan::vlan "${_switch}" "${_vlan}" ;;
         *)        util::err "unable to configure switch of unknown type" ;;
@@ -286,6 +294,9 @@ switch::private(){
             else
                 config::core::set "private_${_switch}" "no"
             fi
+            ;;
+        netgraph)
+            util::err "unable to configure private mode on netgraph switches"
             ;;
         vale)
             util::err "unable to configure private mode on vale switches"
@@ -331,6 +342,7 @@ switch::address(){
     case "${_type}" in
         standard) switch::standard::address "${_switch}" "${_addr}" ;;
         manual)   ;&
+        netgraph) ;&
         vale)     ;&
         vxlan)    util::err "feature not currently supported on switches of this type" ;;
         *)        util::err "unable to configure switch of unknown type" ;;
@@ -380,6 +392,7 @@ switch::id(){
 
     case "${_type}" in
         vale)   switch::vale::id "${_var}" "${_switch}" ;;
+        netgraph)   switch::netgraph::id "${_var}" "${_switch}" ;;
         manual) switch::manual::id "${_var}" "${_switch}" ;;
         *)      switch::standard::id "${_var}" "${_switch}" ;;
     esac

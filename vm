@@ -25,9 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 # get libs
-if [ -e "./lib/vm-core" ]; then
-    LIB="./lib"
-elif [ -e "/usr/local/lib/vm-bhyve" ]; then
+if [ -e "/usr/local/lib/vm-bhyve" ]; then
     LIB="/usr/local/lib/vm-bhyve"
 else
     echo "unable to locate vm-bhyve libraries"

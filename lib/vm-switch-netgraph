@@ -99,3 +99,21 @@ switch::netgraph::id(){
     setvar "${_var}" "netgraph,path=${_switch}:,peerhook=link$num"
 }
 
+# create a netgraph interface for a guest
+# relies heavily on variables set in the main vm::run function
+#
+# @modifies _func _devices
+# @return 1 if we don't get a tap device
+#
+switch::netgraph::provision(){
+    local _ngid
+
+    # create a netgraph peer
+    switch::netgraph::id "_ngid" "${_switch}"
+
+    util::log "guest" "${_name}" "adding netgraph interface ${_ngid} (${_switch})"
+    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_ngid}"
+    [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+     _func=$((_func + 1))
+}

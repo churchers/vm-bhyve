@@ -48,11 +48,11 @@ switch::init(){
             config::core::get "_type" "type_${_switch}"
 
             case "${_type}" in
-                vxlan)  switch::vxlan::init "${_switch}" ;;
-                manual) switch::manual::init "${_switch}" ;;
-                vale)   ;;
-                netgraph)   ;;
-                *)      switch::standard::init "${_switch}" ;;
+                vxlan)    switch::vxlan::init "${_switch}" ;;
+                manual)   switch::manual::init "${_switch}" ;;
+                vale)     ;;
+                netgraph) ;;
+                *)        switch::standard::init "${_switch}" ;;
             esac
         done
     fi
@@ -75,11 +75,11 @@ switch::list(){
                 config::core::get "_type" "type_${_switch}"
 
                 case "${_type}" in
-                    netgraph)   switch::netgraph::show "${_switch}" "${_format}" ;;
-                    vale)   switch::vale::show "${_switch}" "${_format}" ;;
-                    vxlan)  switch::vxlan::show "${_switch}" "${_format}" ;;
-                    manual) switch::manual::show "${_switch}" "${_format}" ;;
-                    *)      switch::standard::show "${_switch}" "${_format}" ;;
+                    netgraph) switch::netgraph::show "${_switch}" "${_format}" ;;
+                    vale)     switch::vale::show "${_switch}" "${_format}" ;;
+                    vxlan)    switch::vxlan::show "${_switch}" "${_format}" ;;
+                    manual)   switch::manual::show "${_switch}" "${_format}" ;;
+                    *)        switch::standard::show "${_switch}" "${_format}" ;;
                 esac
             done
         fi
@@ -391,10 +391,10 @@ switch::id(){
     config::core::get "_type" "type_${_switch}"
 
     case "${_type}" in
-        vale)   switch::vale::id "${_var}" "${_switch}" ;;
-        netgraph)   switch::netgraph::id "${_var}" "${_switch}" ;;
-        manual) switch::manual::id "${_var}" "${_switch}" ;;
-        *)      switch::standard::id "${_var}" "${_switch}" ;;
+        vale)     switch::vale::id "${_var}" "${_switch}" ;;
+        netgraph) switch::netgraph::id "${_var}" "${_switch}" ;;
+        manual)   switch::manual::id "${_var}" "${_switch}" ;;
+        *)        switch::standard::id "${_var}" "${_switch}" ;;
     esac
 }
 
@@ -438,4 +438,30 @@ switch::set_viid(){
 
     switch::__viid "_viid" "${_switch}"
     ifconfig "${_iface}" group "${_viid}" >/dev/null 2>&1
+}
+
+# create a network interface for a guest
+# relies heavily on variables set in the main vm::run function
+#
+# @modifies _func _devices
+#
+switch::provision(){
+    local _switch _mac _type
+
+    config::get "_switch" "network${_num}_switch"
+    config::get "_mac" "network${_num}_mac"
+
+    # set a static mac if we don't have one
+    [ -z "${_mac}" ] && vm::generate_static_mac
+
+    switch::type "_type" "${_switch}"
+
+    case "${_type}" in
+        vale)     switch::vale::provision ;;
+        netgraph) switch::netgraph::provision ;;
+        standard) ;&
+        manual)   ;&
+        vxlan)    switch::standard::provision ;;
+        *)        util::warn "unable to configure interface ${_num}" ;;
+    esac
 }

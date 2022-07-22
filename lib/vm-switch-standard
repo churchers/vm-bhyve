@@ -342,3 +342,64 @@ switch::standard::__unconfigure_port(){
 switch::standard::id(){
     switch::find "$1" "$2"
 }
+
+# creates a standard tap interface for a guest
+# relies heavily on variables set in the main vm::run function
+#
+# @modifies _func _devices
+# @return 1 if we don't get a tap device
+#
+switch::standard::provision(){
+    local _tap _custom_tap _sid _mtu _member_type _iname
+
+    config::get "_custom_tap" "network${_num}_device"
+    config::get "_iname" "network${_num}_name"
+
+    # create interface
+    if [ -n "${_custom_tap}" ]; then
+        _tap="${_custom_tap}"
+    elif [ -n "${_iname}" ]; then
+        _tap=$(ifconfig tap create name "${_iname}")
+    else
+        _tap=$(ifconfig tap create)
+    fi
+
+    [ -z "${_tap}" ] && return 1;
+
+    util::log "guest" "${_name}" "initialising network device ${_tap}"
+    ifconfig "${_tap}" descr "vmnet/${_name}/${_num}/${_switch:-custom}" group vm-port >/dev/null 2>&1
+
+    if [ -n "${_switch}" ]; then
+        switch::id "_sid" "${_switch}"
+
+        # should this be a span member?
+        _member_type="addm"
+        config::yesno "network${_num}_span" && _member_type="span"
+
+        if [ -n "${_sid}" ]; then
+            _mtu=$(ifconfig "${_sid}" | head -n1 | awk '{print $NF}')
+
+            if [ "${_mtu}" != "1500" ]; then
+                util::log "guest" "${_name}" "setting mtu of ${_tap} to ${_mtu}"
+                ifconfig "${_tap}" mtu "${_mtu}" >/dev/null 2>&1
+            fi
+
+            util::log "guest" "${_name}" "adding ${_tap} -> ${_sid} (${_switch} ${_member_type})"
+            ifconfig "${_sid}" "${_member_type}" "${_tap}" >/dev/null 2>&1 || util::log "guest" "${_name}" "failed to add ${_tap} to ${_sid}"
+
+            util::log "guest" "${_name}" "bring up ${_tap} -> ${_sid} (${_switch} ${_member_type})"
+            ifconfig "${_tap}" up >/dev/null 2>&1 || util::log "guest" "${_name}" "failed to bring up ${_tap} in ${_sid}"
+
+            # set private if configured
+            switch::is_private "${_switch}" && ifconfig "${_sid}" "private" "${_tap}" >/dev/null 2>&1
+        else
+            util::log "guest" "${_name}" "failed to find virtual switch '${_switch}'"
+        fi
+    fi
+
+    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_tap}"
+    [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+    _func=$((_func + 1))
+    [ -z "${_custom_tap}" ] && _taplist="${_taplist}${_taplist:+ }${_tap}"
+}

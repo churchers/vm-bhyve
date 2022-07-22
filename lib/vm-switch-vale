@@ -107,3 +107,22 @@ switch::vale::id(){
         setvar "${_var}" "vale${_id_s}"
     fi
 }
+
+# create a vale interface for a guest
+# relies heavily on variables set in the main vm::run function
+#
+# @modifies _func _devices
+# @return 1 if we don't get a tap device
+#
+switch::vale::provision(){
+    local _vale_id
+
+    # create a vale port id
+    switch::vale::id "_vale_id" "${_switch}" "${_mac}"
+
+    util::log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
+    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_vale_id}"
+    [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
+
+    _func=$((_func + 1))
+}

@@ -67,7 +67,7 @@ guest::load(){
     case "${_loader}" in
         bhyveload)
             _command="bhyveload"
-            _args="${_args}${_args:+ }-m ${_memory} -e autoboot_delay=${_timeout}"
+            _args="${_args}${_args:+ }-m ${_memory} -e smbios.system.uuid=${_uuid} -e autoboot_delay=${_timeout}"
 
             # look for custom bhyveload arguments
             config::get "_custom_args" "bhyveload_args"

@@ -368,9 +368,9 @@ info::guest_networking(){
         if [ "${_RUN}" = "1" ]; then
             config::get "_switch" "network${_num}_switch"
 
-            _int=$(ifconfig | grep -B1 "vmnet-${_name}-${_num}-" | head -n1 | cut -d' ' -f1,6)
+            _int=$(ifconfig | grep -B1 "vmnet/${_name}/${_num}/" | head -n1 | cut -d' ' -f1,6)
             _id=${_int%%:*}
-            _tag=$(ifconfig | grep "vmnet-${_name}-${_num}-" | cut -d' ' -f2)
+            _tag=$(ifconfig | grep "vmnet/${_name}/${_num}/" | cut -d' ' -f2)
 
             info::__find_bridge "_bridge" "${_id}"
 

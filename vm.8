@@ -1492,6 +1492,10 @@ for details.
 .It sound_play
 Set this to the desired audio output device of the host to the guest. Defaults to
 .Sy '/dev/dsp0'
+.It sound_play
+Set this to the desired audio input device of the host to the guest. If empty
+no audio input device is configured. Defaults to
+.Sy '' (empty)
 .It virt_consoleX
 Allows the creation of up to 16 virtio-console devices in the guest. The value
 to this option can be

@@ -682,7 +682,7 @@ vm::bhyve_device_sound(){
     if config::yesno "sound"; then
         _devices="${_devices} -s ${_slot}:0,hda,play=${_play}"
 
-        if [ -n ${_rec} ]; then
+        if [ -n "${_rec}" ]; then
             _devices="${_devices},rec=${_rec}"
         fi
 

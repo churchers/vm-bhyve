@@ -675,11 +675,17 @@ vm::bhyve_device_mouse(){
 }
 
 vm::bhyve_device_sound(){
-    local _play
+    local _play _rec
     config::get "_play" "sound_play" "/dev/dsp0"
+    config::get "_rec" "sound_rec"
 
     if config::yesno "sound"; then
         _devices="${_devices} -s ${_slot}:0,hda,play=${_play}"
+
+        if [ -n "${_rec}" ]; then
+            _devices="${_devices},rec=${_rec}"
+        fi
+
         _slot=$((_slot + 1))
     fi
 }

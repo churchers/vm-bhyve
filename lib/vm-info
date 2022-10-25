@@ -96,7 +96,7 @@ info::switch(){
 #
 info::switch_show(){
     local _switch="$1"
-    local _type _bridge _vale _netgraph, _id
+    local _type _bridge _vale _netgraph _id
     local _INDENT="  "
 
     [ -z "${_switch}" ] && return 1

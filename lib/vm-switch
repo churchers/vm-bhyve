@@ -146,7 +146,7 @@ switch::create(){
     case "${_type}" in
         standard) switch::standard::create ;;
         manual)   switch::manual::create ;;
-        netgraph) switch::netgraph:create ;;
+        netgraph) switch::netgraph::create ;;
         vale)     switch::vale::create ;;
         vxlan)    switch::vxlan::create ;;
         *)        util::err "invalid switch type - '${_type}'" ;;

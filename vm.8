@@ -284,6 +284,23 @@ as required.
 # vm switch add public em0
 .Ed
 .Pp
+If a host that runs virtual machine has active firewall then bridge filtering
+needs to be disabled by adding following lines to
+.Xr sysctl.conf 5 :
+.Bd -literal -offset ident
+net.link.bridge.ipfw=0
+net.link.bridge.pfil_bridge=0
+net.link.bridge.pfil_member=0
+.Ed
+.Pp
+You can also disable bridge packet filtering at runtime with
+.Xr sysctl 8 :
+.Bd -literal -offset ident
+# sysctl net.link.bridge.ipfw=0
+# sysctl net.link.bridge.pfil_bridge=0
+# sysctl net.link.bridge.pfil_member=0
+.Ed
+.Pp
 Download an ISO file to use for installation:
 .Bd -literal -offset ident
 # vm iso ftp://ftp.freebsd.org/pub/FreeBSD/releases/ISO-IMAGES/10.1/FreeBSD-10.1-RELEASE-amd64-disc1.iso
@@ -1580,7 +1597,9 @@ Limit guest disk write iops to the specified number of operations per second.
 .Xr bhyve 8 ,
 .Xr bhyveload 8 ,
 .Xr rctl 8 ,
-.Xr zfs 8
+.Xr zfs 8 ,
+.Xr sysctl 8 ,
+.Xr sysctl.conf 5
 .\" ============ BUGS =============
 .Sh KNOWN BUGS
 If a guest is renamed, and then cloned using a snapshot taken before the

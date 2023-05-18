@@ -229,17 +229,17 @@ The first and second lines are required to enable the
 utility.
 Please see the
 .Cm startall
-command description for more information on the third and fourth settings.
+subcommand description for more information on the third and fourth settings.
 .Pp
 Now run the
 .Nm vm
 .Cm init
-command to finish initialisation.
+subcommand to finish initialisation.
 This will create subdirectories inside
 .Pa $vm_dir
 to hold configuration and templates.
 It will also load any required kernel modules.
-This command needs to be run on each boot, which is normally handled by the
+This subcommand needs to be run on each boot, which is normally handled by the
 rc.d script.
 .Pp
 Sample templates are installed to
@@ -296,7 +296,7 @@ The
 subcommand will immediately return you to your shell.
 Once started, use the
 .Ar console
-command to connect to the guest and complete the installation.
+subcommand to connect to the guest and complete the installation.
 .Bd -literal -offset ident
 # vm create my-guest
 # vm install my-guest FreeBSD-10.1-RELEASE-amd64-disc1.iso
@@ -325,7 +325,8 @@ You will also need a copy of the UEFI firmware.
 This can either be installed using the
 .Pa sysutils/uefi-edk2-bhyve
 port, or you can manually download a copy (see URL below) to
-.Pa $vm_dir/.config/BHYVE_UEFI.fd and configure a guest to use it by setting
+.Pa $vm_dir/.config/BHYVE_UEFI.fd
+and configure a guest to use it by setting
 .Sy loader="uefi-custom" .
 .Pp
 If you are running
@@ -348,7 +349,7 @@ See the configuration format documentation below for more detailed information
 on configuring graphics.
 If network drivers are required, I recommend re-running the
 .Sy vm install
-command once the guest has been installed, but providing an ISO of the
+subcommand once the guest has been installed, but providing an ISO of the
 virtio-net drivers instead.
 .Pp
 Once the installation ISO is ready, has been placed in the
@@ -388,10 +389,10 @@ Show the version number of vm-bhyve installed.
 .br
 This should be run once after each host reboot before running any other
 .Nm
-commands.
+subcommand.
 The main function of the
 .Cm init
-command is as follows:
+subcommand is as follows:
 .Pp
 o Load all necessary kernel modules if not already loaded
 .br
@@ -423,7 +424,7 @@ If the virtual switches are loaded, it also tries to display the
 .Xr bridge 4
 interface that has been assigned to each one.
 .It Cm switch info Op Ar name Op Ar ...
-This command shows detailed information about the specified virtual switch(es).
+This subcommand shows detailed information about the specified virtual switch(es).
 If no switch names are provided, information is output for all configured
 switches.
 Information displayed includes the following:
@@ -619,7 +620,7 @@ Create a new virtual machine.
 Unless specified, the
 .Pa default.conf
 template will be used and a 20GB virtual disk image is created.
-This command will create the virtual machine directory
+This subcommand will create the virtual machine directory
 .Pa $vm_dir/$name ,
 and create the configuration file and empty disk image within.
 .Bl -tag -width 12n
@@ -680,7 +681,7 @@ subcommand described below.
 By default the installation is started in the background.
 Use the
 .Ar console
-command to connect and begin the installation.
+subcommand to connect and begin the installation.
 .Pp
 After installation, the guest can be rebooted and will restart using its own
 disk image to boot.
@@ -821,7 +822,7 @@ used if the guest
 can not be shut down using normal methods.
 .It Cm startall
 Start all virtual machines configured for auto-start.
-This is the command used by the rc.d scripts to start all machines on boot.
+This subcommand is used by the rc.d scripts to start all machines on boot.
 .Pp
 The list of virtual machines should be specified using the
 .Pa $vm_list
@@ -849,14 +850,14 @@ or not.
 .It Cm configure Ar name
 The
 .Cm configure
-command simply opens the virtual machine configuration file in your default
+subcommand simply opens the virtual machine configuration file in your default
 editor, allowing you to easily make changes.
 Please note, changes do not take effect until the virtual machine is fully
 shutdown and restarted.
 .It Cm passthru
 The
 .Cm passthru
-command lists all PCI devices in the system, the device ID required for bhyve,
+subcommand lists all PCI devices in the system, the device ID required for bhyve,
 and whether the device is currently ready to be used by a guest.
 In order to make a device ready, it needs to be reserved on boot by adding the
 device ID to the
@@ -892,7 +893,7 @@ Please note that this function requires ZFS.
 .Ar name|name@snapshot
 .Xc
 Create a snapshot of the names virtual machine.
-This command is only supported with ZFS and will take a snapshot of the guest
+This subcommand is only supported with ZFS and will take a snapshot of the guest
 dataset and any descendant ZVOL devices.
 .Pp
 The guest and snapshot name can be specified in the normal
@@ -936,7 +937,7 @@ The guest must always be stopped to use this command.
 .Op Fl d Ar datastore
 .Ar guest host
 .Xc
-The migrate command allows transferring a guest from one host to another. Note that
+The migrate subcommand allows transferring a guest from one host to another. Note that
 currently this involves shutting down the guest, and optionally restarting it once
 migration is complete.
 .Pp
@@ -999,10 +1000,10 @@ List available images.
 Any virtual machine can be packaged into an image, which can then be used to
 create additional machines.
 All images have a globally unique ID (UUID) which is used to identify them.
-The list command shows the UUID, the original machine name, the date it was
+The list subcommand shows the UUID, the original machine name, the date it was
 created and a short description of the image.
 .Pp
-Please note that these commands rely on using ZFS features to package/unpackage
+Please note that these subcommands rely on using ZFS features to package/unpackage
 the images, and as such are only available when using a ZFS dataset as the
 storage location.
 .It Xo
@@ -1310,7 +1311,7 @@ will default to creating a 20G image for each disk, unless an alternative size
 is specified using this option.
 The size of the first disk can be overridden using the
 .Sy -s
-command line option.
+option.
 .Pp
 NOTE: This setting is only supported in templates.
 It has no function in real guest configuration, and is not copied over when a
@@ -1359,7 +1360,7 @@ If no install commands are specified,
 .Sy grub-bhyve
 will be run on the guests console, so you can use the standard
 .Pa vm console
-command to access the bootloader if needed.
+subcommand to access the bootloader if needed.
 .It grub_run_partition
 Specify the partition that grub should look in for the grub configuration
 files.
@@ -1376,7 +1377,7 @@ If no boot commands are specified,
 .Sy grub-bhyve
 will be run on the guests console, so you can use the standard
 .Pa vm console
-command to access the bootloader if needed.
+subcommand to access the bootloader if needed.
 .Pp
 The sample templates contain examples of how the grub configuration variables
 can be used.
@@ -1446,7 +1447,7 @@ Specify the resolution of the graphical console in
 .Pa WxH
 format.
 Please note that only a certain range of resolutions are currently supported.
-Please set
+Please see
 .Pa config.sample
 for a full up-to-date list.
 .It graphics_wait

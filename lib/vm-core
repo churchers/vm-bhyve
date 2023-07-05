@@ -28,12 +28,20 @@
 # list virtual machines
 #
 core::list(){
+    local _running_only
     local _name _loader _cpu _our_host
     local _memory _run _vm _auto _num _vnc _pid
     local _state _pcpu _rss _uptime
     local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
 
-    cmd::parse_args "$@"
+    while getopts r _opt ; do
+        case $_opt in
+            r) _running_only='true' ;;
+
+            *) util::usage ;;
+        esac
+    done
+
     shift $?
 
     _our_host=$(hostname)
@@ -107,6 +115,10 @@ core::list(){
                 if [ "${_run}" = "Stopped" -a -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
                     _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
                     _run="Locked (${_run})"
+                fi
+
+                if [ "${_run}" = "Stopped" -a -n "${_running_only}" ]; then
+                    continue
                 fi
 
                 if [ -n "${VM_OPT_VERBOSE}" ]; then

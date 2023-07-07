@@ -266,7 +266,7 @@ core::create_cloud_init(){
         _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
         _network_config_hostname="$(echo "${_network_config}" | pcregrep -o "hostname=\K[^;]*")"
         _network_ip_version="4"
-        if [[ $_network_config_ipaddress = *:* ]]; then
+        if echo $_network_config_ipaddress | grep -sqF :; then
             _network_ip_version="6"
         fi
         # Override default hostname when network config is passed to cloud-init

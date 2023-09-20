@@ -1146,6 +1146,10 @@ There are also some special cases where you may require no hostbridge at all,
 which can be achieved using the
 .Sy none
 value.
+.It hostbridge_slot
+The slot for a hostbridge for the guest. By default is 0.
+.It lpc_slot
+The slot for a LPC PCI-ISA bridge for the guest. By default is 31.
 .It comports
 This option allows you to specify which com ports to create for the guest.
 The default is to create a single
@@ -1228,6 +1232,10 @@ Set this option to
 to instruct vm-bhyve to add the virtual network interface to the switch as a
 span port on the bridge.
 The default is to add the port to the switch as an ordinary bridge member.
+.It network0_slot
+The slot for a network device for the guest. 
+If the slot is not specified - see 
+.Sy network_slot_start
 .It disk0_type
 The emulation type for the first virtual disk.
 At least one virtual disk is required.
@@ -1302,6 +1310,10 @@ Multiple options can be specified, separated by a comma.
 Please see the
 .Xr bhyve 8
 man page for more details on supported options.
+.It disk0_slot
+The slot for a disk device for the guest. 
+If the slot is not specified - see 
+.Sy disk_slot_start
 .It disk0_size
 This setting can be specified in templates to set the size of this disk.
 When creating a guest,
@@ -1315,6 +1327,17 @@ command line option.
 NOTE: This setting is only supported in templates.
 It has no function in real guest configuration, and is not copied over when a
 new machine is provisioned.
+.It install_slot
+The slot to use for an installation ISO. By default this is 3, which is the 
+first available slot with the original UEFI firmware. Using this makes sure 
+the ISO is the first device, and leaves 4-6 available for hd devices.
+.It disk_slot_start
+The slot to start creating devices at inside the guest. Note that
+we create disk devices first, and some UEFI guests require disks to
+be in slots 3-6. The default is 4, with 3 being left available for
+an installation ISO
+.It network_slot_start
+The slot to start creating network devices at inside the guest. By default is 15.
 .It ahci_device_limit
 By default, all AHCI devices are added on their own controller in a unique
 slot/function.
@@ -1413,12 +1436,16 @@ same sequence as the original device.
 Please see
 .Lk https://wiki.freebsd.org/bhyve/pci_passthru
 for more details on how this works.
+.It passthru_slot_start
+The slot to start creating passthru PCI devices at inside the guest (if the slot is not specified). Default is 20.
 .It virt_random
 Set this option to
 .Sy yes
 if you want to create a
 .Sy virtio-rnd
 device for this guest.
+.It virt_random_slot
+The slot for a virtio-rnd device for the guest. By default is 26.
 .It graphics
 If set to yes, a frame buffer is added to the guest.
 This provides a graphical console that is accessible using VNC.
@@ -1477,12 +1504,18 @@ or
 Please see the
 .Xr bhyve 8
 man page for more details on this option.
+.It vnc_password
+Password for connecting to the VNC server.
+.It fbuf_slot
+The slot for a framebuffer device for the guest. By default is 30.
 .It xhci_mouse
 Set this option to
 .Sy yes
 in order to provide an XHCI mouse device to the guest.
 This tracks much better than the default PS2 mouse in VNC settings, although
 this mouse may not supported by older guests.
+.It xhci_slot
+The slot for a XHCI device for the guest. By default is 29.
 .It sound
 Set this option to
 .Sy yes
@@ -1496,6 +1529,8 @@ Set this to the desired audio output device of the host to the guest. Defaults t
 Set this to the desired audio input device of the host to the guest. If empty
 no audio input device is configured. Defaults to
 .Sy '' (empty)
+.It sound_slot
+The slot for a audio output device for the guest. By default is 28.
 .It virt_consoleX
 Allows the creation of up to 16 virtio-console devices in the guest. The value
 to this option can be
@@ -1507,6 +1542,8 @@ name
 .Sy org.freenas.bhyve-agent
 can be useful, as it ties in with utilities written for the FreeNAS
 bhyve-agent interface.
+.It virt_console_slot
+The slot for a virt_console device for the guest. By default is 27.
 .It zfs_dataset_opts
 This allows you to specify one or more ZFS properties to set on the dataset
 when a guest is created.

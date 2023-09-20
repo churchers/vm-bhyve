@@ -397,7 +397,7 @@ switch::standard::provision(){
         fi
     fi
 
-    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_tap}"
+    _devices="${_devices} -s ${_slot_network}:${_func},${_emulation},${_tap}"
     [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
     _func=$((_func + 1))

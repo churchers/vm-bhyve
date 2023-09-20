@@ -121,7 +121,7 @@ switch::vale::provision(){
     switch::vale::id "_vale_id" "${_switch}" "${_mac}"
 
     util::log "guest" "${_name}" "adding vale interface ${_tap} (${_switch})"
-    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_vale_id}"
+    _devices="${_devices} -s ${_slot_network}:${_func},${_emulation},${_vale_id}"
     [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
     _func=$((_func + 1))

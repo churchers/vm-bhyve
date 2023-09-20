@@ -112,7 +112,7 @@ switch::netgraph::provision(){
     switch::netgraph::id "_ngid" "${_switch}"
 
     util::log "guest" "${_name}" "adding netgraph interface ${_ngid} (${_switch})"
-    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_ngid}"
+    _devices="${_devices} -s ${_slot_network}:${_func},${_emulation},${_ngid}"
     [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
      _func=$((_func + 1))

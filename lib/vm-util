@@ -161,7 +161,7 @@ Usage: vm ...
     datastore add <name> <spec>
     datastore remove <name>
     datastore add <name> <path>
-    list
+    list [-r]
     info [name] [...]
     create [-d datastore] [-t template] [-s size] [-m memory] [-c vCPUs] <name>
     install [-fi] <name> <iso>

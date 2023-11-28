@@ -83,6 +83,7 @@
 .Ar name
 .Nm
 .Cm list
+.Op Fl r
 .Nm
 .Cm info
 .Op Ar name
@@ -643,13 +644,20 @@ Unless specified, the guest image will be a sparse file 20GB in size.
 .It Cm destroy Ar name
 Removes the specified virtual machine from the system, deleting all associated
 disk images & configuration.
-.It Cm list
+.It Xo
+.Cm list
+.Op Fl r
+.Xc
 .br
 List all the virtual machines in the
 .Pa $vm_dir
 directory.
 This will show the basic configuration for each virtual machine, and whether
 they are currently running.
+.Pp
+If the
+.Ar -r
+option is specified, only running guests are listed.
 .It Cm info Op Ar name Op Ar ...
 Shows detailed information about the specified virtual machine(s).
 If no names are given, information for all virtual machines is displayed.

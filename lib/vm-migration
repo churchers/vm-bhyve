@@ -151,7 +151,7 @@ migration::run(){
     fi
 
     # has it stopped?
-    kill -0 ${_pid} >/dev/null 2>&1 && util:err_inline "failed to stop guest"
+    kill -0 ${_pid} >/dev/null 2>&1 && util::err_inline "failed to stop guest"
     echo "  * stage 2: guest powered off"
 
     # only needed if running or specifically doing a stage 2

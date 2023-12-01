@@ -3,8 +3,7 @@
 # $FreeBSD$
 
 # PROVIDE: vm
-# REQUIRE: NETWORKING SERVERS dmesg
-# BEFORE: dnsmasq ipfw pf
+# REQUIRE: DAEMON vm_net
 # KEYWORD: shutdown nojail
 
 . /etc/rc.subr
@@ -23,7 +22,6 @@ stop_cmd="${command} stopall -f"
 
 vm_start()
 {
-    env rc_force="$rc_force" ${command} init
     env rc_force="$rc_force" ${command} startall >/dev/null &
 }
 

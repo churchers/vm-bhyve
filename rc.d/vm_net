@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# $FreeBSD$
+
+# PROVIDE: vm_net
+# REQUIRE: bridge
+# BEFORE: dnsmasq ipfw pf
+# KEYWORD: nojail
+
+. /etc/rc.subr
+
+: ${vm_enable="NO"}
+
+name=vm
+desc="Start networking (bridges) for vm-bhyve guests on boot"
+rcvar=vm_enable
+
+load_rc_config $name
+
+start_cmd="${name}_start"
+
+vm_start()
+{
+    env rc_force="$rc_force" ${command} init
+}
+
+run_rc_command "$1"

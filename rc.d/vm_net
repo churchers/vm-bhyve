@@ -17,6 +17,7 @@ rcvar=vm_enable
 
 load_rc_config $name
 
+command="/usr/local/sbin/${name}"
 start_cmd="${name}_start"
 
 vm_start()

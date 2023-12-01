@@ -611,7 +611,19 @@ vm::bhyve_device_fbuf(){
     config::get "_res" "graphics_res"
     config::get "_vga" "graphics_vga"
     config::get "_pass" "vnc_password"
+    config::get "_allow_no_pass" "insecure_allow_no_vnc_password"
     config::get "_wait" "graphics_wait" "auto"
+
+    if [ -z "${_pass}" ] && ! util::yesno "${_allow_no_pass}"; then
+        # Note: The VNC protocol limits passwords 8 characters. The following
+        # pipeline reads some random data, base64 encodes it, and grabs the
+        # first 8 characters. Base64 encoding is used instead of hex encoding
+        # to increase entropy ({a-f,0-9} vs. {a-z,A-Z,0-9,+,/}). We avoid
+        # predictable "=" padding characters by grabbing only the first 8 of
+        # the 10 characters.
+        _pass="$(head -c 10 /dev/random | b64encode -r - | head -c 8)"
+        util::log "guest" "${_name}" "generated random vnc password: '${_pass}'"
+    fi
 
     # check if graphics_wait is auto
     # auto will count as yes so we need to unset it if we're not in an install.

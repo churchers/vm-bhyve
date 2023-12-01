@@ -36,9 +36,10 @@ vm::run(){
     local _name _iso _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _debug _hostbridge _loader
-    local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
+    local _opts _devices _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _run=1
     local _bhyve_options _action
+    local _slot_hostbridge _slot_install _slot_disks _slot_network _slot_passthru _slot_rand _slot_console _slot_sound _slot_xhci _slot_fbuf _slot_lpc
 
     cmd::parse_args "$@"
     shift $?
@@ -61,8 +62,17 @@ vm::run(){
     config::get "_uuid" "uuid"
     config::get "_debug" "debug" "no"
     config::get "_bhyve_options" "bhyve_options"
-    config::get "_slot" "start_slot" "4"
-    config::get "_install_slot" "install_slot" "3"
+    config::get "_slot_hostbridge" "hostbridge_slot" "0"
+    config::get "_slot_install" "install_slot" "3"
+    config::get "_slot_disks" "disk_slot_start" "4"
+    config::get "_slot_network" "network_slot_start" "15"
+    config::get "_slot_passthru" "passthru_slot_start" "20"
+    config::get "_slot_rand" "virt_random_slot" "26"
+    config::get "_slot_console" "virt_console_slot" "27"
+    config::get "_slot_sound" "sound_slot" "28"
+    config::get "_slot_xhci" "xhci_slot" "29"
+    config::get "_slot_fbuf" "fbuf_slot" "30"
+    config::get "_slot_lpc" "lpc_slot" "31"
 
     # generate a uuid if we don't have one already
     if [ -z "${_uuid}" ]; then
@@ -193,16 +203,16 @@ vm::run(){
         # add install iso or disk image
         if [ -n "${_iso}" ]; then
             if echo "${_iso}" | grep -iqs '.iso$'; then
-                _iso_dev="-s ${_install_slot}:0,ahci-cd,${_iso},ro"
+                _iso_dev="-s ${_slot_install}:0,ahci-cd,${_iso},ro"
             else
-                _iso_dev="-s ${_install_slot}:0,ahci-hd,${_iso},ro"
+                _iso_dev="-s ${_slot_install}:0,ahci-hd,${_iso},ro"
             fi
         fi
 
         # use null.iso if not an install and uefi firmware
         # old instructions but some windows versions apparently needed this present
         [ -z "${_iso}" -a "${_loader}" = "uefi" ] && config::yesno "nulliso_fix" && \
-            _iso_dev="-s ${_install_slot}:0,ahci-cd,${vm_dir}/.config/null.iso"
+            _iso_dev="-s ${_slot_install}:0,ahci-cd,${vm_dir}/.config/null.iso"
 
         # reasonably ugly hack to remove wait option after first run
         [ "${_run}" -eq "2" ] && vm::bhyve_device_fbuf_clear_wait
@@ -424,12 +434,12 @@ vm::bhyve_device_basic(){
     # add hostbridge
     case "$_hostbridge" in 
         no*) ;;
-        amd) _devices="-s 0,amd_hostbridge" ;;
-        *)   _devices="-s 0,hostbridge" ;;
+        amd) _devices="-s ${_slot_hostbridge},amd_hostbridge" ;;
+        *)   _devices="-s ${_slot_hostbridge},hostbridge" ;;
     esac
 
     # lpc
-    _devices="${_devices}${_devices:+ }-s 31,lpc"
+    _devices="${_devices}${_devices:+ }-s ${_slot_lpc},lpc"
 }
 
 # get bhyve device string for disk devices
@@ -444,12 +454,12 @@ vm::bhyve_device_basic(){
 # this can be overridden by setting the ahci_device_limit
 # guest option to an integer between 2 and 32.
 #
-# @modifies _devices _slot
+# @modifies _devices _slot_disks
 #
 vm::bhyve_device_disks(){
     local _disk _type _dev _path _opts _ahci _atype
     local _ahci_num=0 _num=0 _add _ahci_multi
-    local _ahci_limit=1
+    local _ahci_limit=1 _func=0
 
     # check if user has set a per-controller device limit
     config::get "_ahci_multi" "ahci_device_limit"
@@ -476,10 +486,16 @@ vm::bhyve_device_disks(){
 
         config::get "_dev" "disk${_num}_dev"
         config::get "_opts" "disk${_num}_opts"
+        config::get "_slot" "disk${_num}_slot"
 
-        if [ ${_func} -ge 8 ]; then
-            _func=0
-            _slot=$((_slot + 1))
+        if [ -n "${_slot}" ]; then
+             _func=0
+            _slot_disks=${_slot}
+        else
+            if [ ${_func} -ge 8 ]; then
+                _func=0
+                _slot_disks=$((_slot_disks + 1))
+            fi
         fi
 
         vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
@@ -500,7 +516,7 @@ vm::bhyve_device_disks(){
 
                     # we need to move to another controller if we get to the limit
                     if [ ${_ahci_num} -ge ${_ahci_limit} ]; then
-                        _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
+                        _devices="${_devices} -s ${_slot_disks}:${_func},ahci${_ahci}"
                         _ahci=""
                         _ahci_num=0
                         _add=1
@@ -511,7 +527,7 @@ vm::bhyve_device_disks(){
             _atype=""
         else
 
-            _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+            _devices="${_devices} -s ${_slot_disks}:${_func},${_type},${_path}"
             [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
             _add=1
         fi
@@ -519,7 +535,7 @@ vm::bhyve_device_disks(){
         # have we just added a device?
         if [ -n "${_add}" ]; then
             if [ -n "${_uefi}" ]; then
-                _slot=$((_slot + 1))
+                _slot_disks=$((_slot_disks + 1))
 
             else
                 _func=$((_func + 1))
@@ -533,15 +549,8 @@ vm::bhyve_device_disks(){
 
     # have ahci devices left?
     if [ -n "${_ahci}" ]; then
-        _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
-        [ -n "${_uefi}" ] && _slot=$((_slot + 1))
-    fi
-
-    # move to next slot if we have devices
-    # unless uefi as we already inc slot in uefi mode
-    if [ ${_num} -ge 1 -a -z "${_uefi}" ]; then
-        _slot=$((_slot + 1))
-        _func=0
+        _devices="${_devices} -s ${_slot_disks}:${_func},ahci${_ahci}"
+        [ -n "${_uefi}" ] && _slot_disks=$((_slot_disks + 1))
     fi
 }
 
@@ -551,40 +560,40 @@ vm::bhyve_device_disks(){
 # we add each tap to __taplist from vm::run which it will
 # use to desstroy them all on shutdown
 #
-# @modifies _devices _slot _taplist _func
+# @modifies _devices _slot_network _taplist
 #
 vm::bhyve_device_networking(){
-    local _emulation _num=0
+    local _emulation _num=0 _func=0
 
     while true; do
         config::get "_emulation" "network${_num}_type"
         [ -z "${_emulation}" ] && break
+        config::get "_slot" "network${_num}_slot"
 
-        # move slot if we've hit function 8
-        if [ ${_func} -ge 8 ]; then
+        if [ -n "${_slot}" ]; then
+            _slot_network=${_slot}
             _func=0
-            _slot=$((_slot + 1))
+        else
+            # move slot if we've hit function 8
+            if [ ${_func} -ge 8 ]; then
+                _func=0
+                _slot=$((_slot + 1))
+            fi
         fi
 
         switch::provision
         _num=$((_num + 1))
     done
-
-    if [ ${_num} -ge 1 ]; then
-        _slot=$((_slot + 1))
-        _func=0
-    fi
 }
 
 # check if user wants a virtio-rand device
 #
-# @modifies _devices _slot
+# @modifies _devices _slot_rand
 #
 vm::bhyve_device_rand(){
 
     if config::yesno "virt_random"; then
-        _devices="${_devices} -s ${_slot}:0,virtio-rnd"
-        _slot=$((_slot + 1))
+        _devices="${_devices} -s ${_slot_rand}:0,virtio-rnd"
     fi
 }
 
@@ -641,8 +650,7 @@ vm::bhyve_device_fbuf(){
     echo "vnc=${_listen:-0.0.0.0}:${_port}" >> "${VM_DS_PATH}/${_name}/console"
 
     # add device
-    _devices="${_devices} -s ${_slot}:0,fbuf,${_fbuf_conf}"
-    _slot=$((_slot + 1))
+    _devices="${_devices} -s ${_slot_fbuf}:0,fbuf,${_fbuf_conf}"
 }
 
 # remove wait option if we're in auto mode
@@ -669,8 +677,7 @@ vm::bhyve_device_mouse(){
 
     # add a tablet device if enabled
     if config::yesno "xhci_mouse"; then
-        _devices="${_devices} -s ${_slot}:0,xhci,tablet"
-        _slot=$((_slot + 1))
+        _devices="${_devices} -s ${_slot_xhci}:0,xhci,tablet"
     fi
 }
 
@@ -680,19 +687,17 @@ vm::bhyve_device_sound(){
     config::get "_rec" "sound_rec"
 
     if config::yesno "sound"; then
-        _devices="${_devices} -s ${_slot}:0,hda,play=${_play}"
+        _devices="${_devices} -s ${_slot_sound}:0,hda,play=${_play}"
 
         if [ -n "${_rec}" ]; then
             _devices="${_devices},rec=${_rec}"
         fi
-
-        _slot=$((_slot + 1))
     fi
 }
 
 # add virtio_console devices to the guest
 #
-# @modifies _devices _slot
+# @modifies _devices _slot_console
 #
 vm::bhyve_device_console(){
     local _console _curr=0
@@ -715,15 +720,14 @@ vm::bhyve_device_console(){
          config::get "_console" "virt_console${_curr}"
     done
 
-    _devices="${_devices} -s ${_slot}:0,virtio-console${_dev_str}"
-    _slot=$((_slot + 1))
+    _devices="${_devices} -s ${_slot_console}:0,virtio-console${_dev_str}"
 }
 
 # get any pci passthrough devices
 # FreeBSD 11 needs wired memory so update _opts in that case if
 # we have any pass through devices
 #
-# @modifies _devices _slot _opts _wiredmem
+# @modifies _devices _slot_passthru _opts _wiredmem
 #
 vm::bhyve_device_passthru(){
     local _dev _orig_slot _func=0
@@ -745,11 +749,11 @@ vm::bhyve_device_passthru(){
             # if user wants to passthru a device that has multiple functions which must stay together
             # on one slot, they should be together in configuration file
             if [ -n "${_last_orig_slot}" -a "${_last_orig_slot}" != "${_orig_slot}" ]; then
-                _slot=$((_slot + 1))
+                _slot_passthru=$((_slot_passthru + 1))
                 _func=0
             fi
 
-            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
+            _devices="${_devices} -s ${_slot_passthru}:${_func},passthru,${_dev}"
             _last_orig_slot=${_orig_slot}
             _func=$((_func + 1))
         fi
@@ -758,8 +762,6 @@ vm::bhyve_device_passthru(){
     done
 
     if [ ${_num} -ge 1 ]; then
-        _slot=$((_slot + 1))
-
         # add wired memory for 10.3+
         [ ${VERSION_BSD} -ge 1003000 ] && _opts="${_opts} -S" && _wiredmem="1"
     fi

@@ -350,7 +350,7 @@ switch::standard::id(){
 # @return 1 if we don't get a tap device
 #
 switch::standard::provision(){
-    local _tap _custom_tap _sid _mtu _member_type _iname
+    local _tap _custom_tap _taplink _sid _mtu _member_type _iname
 
     config::get "_custom_tap" "network${_num}_device"
     config::get "_iname" "network${_num}_name"
@@ -397,7 +397,11 @@ switch::standard::provision(){
         fi
     fi
 
-    _devices="${_devices} -s ${_slot}:${_func},${_emulation},${_tap}"
+    # get original tap device (user can rename it)
+    _taplink=$(readlink /dev/"${_tap}")
+    [ -z "${_taplink}" ] && _taplink=${_tap}
+
+    _devices="${_devices} -s ${_slot_network}:${_func},${_emulation},${_taplink}"
     [ -n "${_mac}" ] && _devices="${_devices},mac=${_mac}"
 
     _func=$((_func + 1))

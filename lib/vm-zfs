@@ -123,9 +123,10 @@ zfs::make_zvol(){
 
     [ ! "${VM_DS_ZFS}" = "1" ] && util::err "cannot use ZVOL storage unless ZFS support is enabled"
     [ "${_sparse}" = "1" ] && _opt="-sV"
+    [ -n "${_user_opts}" ] && _user_opts="volmode=dev"
 
     zfs::__format_options "_user_opts" "${_user_opts}"
-    zfs create ${_opt} ${_size} -o volmode=dev ${_user_opts} "${_name}"
+    zfs create ${_opt} ${_size} -o ${_user_opts} "${_name}"
     [ $? -eq 0 ] || util::err "failed to create new ZVOL ${_name}"
 }
 

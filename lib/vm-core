@@ -223,11 +223,11 @@ core::create(){
 
     # create each disk
     while [ -n "${_disk}" ]; do
-        case "${_disk_dev}" in 
+        case "${_disk_dev}" in
             zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
                 [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
-                ;;			
+                ;;
             sparse-zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
                 [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
@@ -318,7 +318,7 @@ EOF
     fi
 
     genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock ${_cloud_init_dir}/* > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
-    config::set "${_name}" "disk${_num}_type" "ahci-cd"
+    config::set "${_name}" "disk${_num}_type" "virtio-blk"
     config::set "${_name}" "disk${_num}_name" "seed.iso"
     config::set "${_name}" "disk${_num}_dev" "file"
 }
@@ -330,7 +330,7 @@ EOF
 # @param string _img the img file in $vm_dir/.img to use
 #
 core::write_img(){
-    local _disk_dev _img _imgpath
+    local _disk_dev _img _imgpath dd_status
 
     cmd::parse_args "$@"
     shift $?
@@ -339,22 +339,18 @@ core::write_img(){
     timeout=30
     i=0
 
-    # wait a few seconds for newly created zvol device to appear
-    while [ $i -lt $timeout ]; do
-        if [ ! -r "${_disk_dev}" ]; then
-            sleep 1
-            i=$(($i+1))
-	else
-            break
-        fi
-    done
-
     # just run start with an iso
     datastore::img_find "_imgpath" "${_img}" || util::err "unable to locate img file - '${_img}'"
-    qemu-img dd -O raw if="${_imgpath}" of="${_disk_dev}" bs=1M
-    if [ $? -ne 0 ]; then
-        util::err "failed to write img file with qemu-img"
-    fi
+
+    # even if the zvol is present, it might not be ready just yet (Device busy).
+    while [ $i -lt $timeout ] ; do
+        qemu-img dd -O raw if="${_imgpath}" of="${_disk_dev}" bs=1M > /dev/null 2>&1
+        dd_status=$?
+        [ $dd_status -eq 0 ] && break
+        sleep 1
+        i=$(($i+1))
+    done
+    [ $dd_status -ne 0 ] && util::err "failed to write img file with qemu-img"
 }
 
 # 'vm add'

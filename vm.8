@@ -160,6 +160,10 @@
 .Cm iso
 .Op Ar -d datastore
 .Op Ar url
+.Nm
+.Cm img
+.Op Ar -d datastore
+.Op Ar url
 .Pp
 .Nm
 .Cm image list
@@ -1000,6 +1004,25 @@ is specified, instead of listing ISO files, it attempts to download the given fi
 .Xr fetch 1
 to the default datastore. The target datasource can be changed by specifying
 .Sy -d datastore 
+with
+.Sy url .
+.Cm img
+.Op Ar -d datastore
+.Op Ar url
+.Xc
+List all the cloud-init images currently stored in the
+.Pa $vm_dir/.img
+directory.
+This is often useful during guest installation, allowing you to copy and paste
+the image filename.
+.Pp
+If a 
+.Sy url
+is specified, instead of listing the image files, it attempts to download the given file
+using
+.Xr fetch 1
+to the default datastore. The target datastore can be changed by specifying
+.Sy -d datastore
 with
 .Sy url .
 .It Cm image list

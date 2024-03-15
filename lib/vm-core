@@ -182,6 +182,12 @@ core::create(){
     # make sure template has a disk before we start creating anything
     [ -z "${_disk}" ] && util::err "template is missing disk0_name specification"
 
+    if [ -n "${_enable_cloud_init}" ]; then
+        if ! which genisoimage > /dev/null; then
+            util::err "Error: genisoimage is required to work with cloud init! Run 'pkg install cdrkit-genisoimage'."
+        fi
+    fi
+
     # get ssh public key for cloud-init from file
     if [ -n "${_ssh_key_file}" ]; then
 
@@ -311,7 +317,7 @@ ssh_authorized_keys:
 EOF
     fi
 
-    tar --format=iso --options iso9660:volume-id="cidata" -cf "${VM_DS_PATH}/${_name}/seed.iso" -C ${_cloud_init_dir} ./ || util::err "Can't write seed.iso for cloud-init"
+    genisoimage -output "${VM_DS_PATH}/${_name}/seed.iso" -volid cidata -joliet -rock ${_cloud_init_dir}/* > /dev/null 2>&1 || util::err "Can't write seed.iso for cloud-init"
     config::set "${_name}" "disk${_num}_type" "ahci-cd"
     config::set "${_name}" "disk${_num}_name" "seed.iso"
     config::set "${_name}" "disk${_num}_dev" "file"

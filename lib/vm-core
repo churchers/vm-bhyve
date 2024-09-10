@@ -80,7 +80,7 @@ core::list(){
 
                 # check if the guest is running
                 if vm::running_check "_run" "_pid" "${_name}" || \
-                    [ -e "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
+                    [ -s "${VM_DS_PATH}/${_name}/run.lock" -a "$(head -n1 ${VM_DS_PATH}/${_name}/run.lock 2>/dev/null)" = "${_our_host}" ]; then
 
                     # if running and graphics, try to get vnc port
                     if config::yesno "graphics"; then
@@ -112,7 +112,7 @@ core::list(){
                 done
 
                 # if stopped, see if it's locked by another host
-                if [ "${_run}" = "Stopped" -a -e "${VM_DS_PATH}/${_name}/run.lock" ]; then
+                if [ "${_run}" = "Stopped" -a -s "${VM_DS_PATH}/${_name}/run.lock" ]; then
                     _run=$(head -n1 "${VM_DS_PATH}/${_name}/run.lock")
                     _run="Locked (${_run})"
                 fi

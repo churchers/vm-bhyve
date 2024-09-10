@@ -220,11 +220,11 @@ core::create(){
         case "${_disk_dev}" in 
             zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
-                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
+                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}" "${_disk_dev}" "${_disk_size}"
                 ;;			
             sparse-zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
-                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}"
+                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}" "${_disk_dev}" "${_disk_size}"
                 ;;
             custom)
                 ;;
@@ -236,7 +236,7 @@ core::create(){
 
                 # make sure only owner can read the disk image
                 chmod 600 "${VM_DS_PATH}/${_name}/${_disk}"
-                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "${VM_DS_PATH}/${_name}/${_disk}" "${_img}"
+                [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "${VM_DS_PATH}/${_name}/${_disk}" "${_img}" "file" "${_disk_size}"
                 ;;
         esac
 
@@ -330,6 +330,8 @@ core::write_img(){
     shift $?
     _disk_dev="${1}"
     _img="$2"
+    _disk_type="$3"
+    _disk_size="$4"
     timeout=30
     i=0
 
@@ -348,6 +350,14 @@ core::write_img(){
     qemu-img dd -O raw if="${_imgpath}" of="${_disk_dev}" bs=1M
     if [ $? -ne 0 ]; then
         util::err "failed to write img file with qemu-img"
+    fi
+
+    # if disk type is file then we need to resize it
+    if [ "${_disk_type}" = "file" ]; then
+        qemu-img resize "${_disk_dev}" "${_disk_size}"
+        if [ $? -ne 0 ]; then
+            util::err "failed to resize img file with qemu-img"
+        fi
     fi
 }
 

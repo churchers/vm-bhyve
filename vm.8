@@ -1327,6 +1327,15 @@ detected and used by setting this option to
 and
 .Pa diskX_name
 as described above.
+.Pp
+When
+.Sy iscsi
+disks are used with auto-start, set the following in
+.Pa /etc/rc.conf
+to prevent launching vms before iscsi connections are completed:
+.Bd -literal -offset indent
+iscsictl_flags="-Aa -w 60"
+.Ed
 .It disk0_opts
 Any additional options to use for this disk device.
 Multiple options can be specified, separated by a comma.

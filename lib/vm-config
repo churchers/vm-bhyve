@@ -59,7 +59,10 @@ config::get(){
 
     for _c_line in ${VM_CONFIG}; do
         if [ "${_c_key}" = "${_c_line%%=*}" ]; then
-            setvar "${_c_var}" "${_c_line#*=}"
+            _c_line="${_c_line#*=}"
+            _c_line="${_c_line#\'}"
+            _c_line="${_c_line%\'}"
+            setvar "${_c_var}" "${_c_line}"
             return 0
         fi
     done

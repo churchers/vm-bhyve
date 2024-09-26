@@ -456,12 +456,16 @@ switch::provision(){
 
     switch::type "_type" "${_switch}"
 
-    case "${_type}" in
-        vale)     switch::vale::provision ;;
-        netgraph) switch::netgraph::provision ;;
-        standard) ;&
-        manual)   ;&
-        vxlan)    switch::standard::provision ;;
-        *)        util::warn "unable to configure interface ${_num}" ;;
-    esac
+    if [ -z ${_type} ]; then
+        switch::standard::provision
+    else
+        case "${_type}" in
+            vale)     switch::vale::provision ;;
+            netgraph) switch::netgraph::provision ;;
+            standard) ;&
+            manual)   ;&
+            vxlan)    switch::standard::provision ;;
+            *)        util::warn "unable to configure interface ${_num}" ;;
+        esac
+    fi
 }

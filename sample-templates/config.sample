@@ -94,6 +94,17 @@ wired_memory="no"
 #
 hostbridge=""
 
+# hostbridge_slot
+# The slot for a hostbridge for the guest. By default is 0.
+# This is usually configured at slot 0, and is required by most guest operating systems.
+#
+hostbridge_slot="0"
+
+# lpc_slot
+# The slot for a LPC PCI-ISA bridge for the guest. By default is 31.
+#
+lpc_slot="31"
+
 # ignore_bad_msr
 # Instruct bhyve to ignore accesses to model specific registers
 # that are not implemented in the current CPU.
@@ -215,6 +226,12 @@ disk0_name="disk0.img"
 #
 disk0_opts=""
 
+# disk0_slot
+# The slot for a disk device for the guest. 
+# If the slot is not specified - see disk_slot_start
+#
+disk0_slot="4"
+
 # disk0_size
 # When a new guest is created, vm will create a 20G disk image by
 # default. This option can be used to specify a different size
@@ -284,6 +301,12 @@ network0_mac=""
 #
 network0_span="no"
 
+# network0_slot
+# The slot for a network device for the guest. 
+# If the slot is not specified - see network_slot_start
+#
+network0_slot="11"
+
 # passthru0
 # Add a pass-through PCI device to the virtual machine. This allows the guest
 # to access a hardware device no differently than if it was running on bare
@@ -306,13 +329,19 @@ network0_span="no"
 #
 passthru0=""
 
-# start_slot
+# passthru_slot_start
+# The slot to start creating passthru PCI devices at inside the guest 
+# (if the slot is not specified). Default is 20.
+# 
+passthru_slot_start="20"
+
+# disk_slot_start
 # The slot to start creating devices at inside the guest. Note that
 # we create disk devices first, and some UEFI guests require disks to
 # be in slots 3-6. The default is 4, with 3 being left available for
 # an installation ISO
 #
-start_slot="4"
+disk_slot_start="4"
 
 # install_slot
 # The slot to use for an installation ISO. By default this is 3,
@@ -324,11 +353,22 @@ start_slot="4"
 #
 install_slot="3"
 
+# network_slot_start
+# The slot to start creating network devices at inside the guest. 
+# By default is 15.
+#
+network_slot_start="15"
+
 # virt_random
 # Set to any value other than [empty]/off/false/no/0 to create
 # a virtio-rnd device for the guest
 #
 virt_random=""
+
+# virt_random_slot
+# The slot for a virtio-rnd device for the guest. By default is 26.
+#
+virt_random_slot="26"
 
 # graphics
 # Set to a value other than [empty]/off/false/no/0 to enable
@@ -385,6 +425,16 @@ graphics_wait="auto"
 #
 graphics_vga="io"
 
+# vnc_password
+# Password for connecting to the VNC server.
+#
+vnc_password="password"
+
+# fbuf_slot
+# The slot for a framebuffer device for the guest. By default is 30.
+#
+fbuf_slot="30"
+
 # xhci_mouse
 # When graphics are enabled, a PS2 mouse is created by default. This
 # doesn't track very well, and can be replaced with an XHCI mouse
@@ -392,6 +442,34 @@ graphics_vga="io"
 # this mouse
 #
 xhci_mouse="yes"
+
+# xhci_slot
+# The slot for a xhci device for the guest. By default is 29.
+#
+xhci_slot="29"
+
+# sound
+# Set this option to yes in order to provide HD Audio Emulation to the guest.
+# Please see bhyve(8) for details.
+#
+sound="no"
+
+# sound_play
+# Set this to the desired audio output device of the host to the guest.
+# Defaults to '/dev/dsp0'
+#
+sound_play="/dev/dsp0"
+
+# sound_rec
+# Set this to the desired audio input device of the host to the guest.
+# If empty no audio input device is configured. Defaults to '' (empty)
+#
+sound_req=""
+
+# sound_slot
+# The slot for a audio output device for the guest. By default is 28.
+#
+sound_slot="28"
 
 # virt_console0
 # create up to 16 virtual console devices
@@ -405,6 +483,11 @@ xhci_mouse="yes"
 # FreeNAS bhyve-agent interface.
 #
 virt_console0="org.freenas.byhve-agent"
+
+# virt_console_slot
+# The slot for a virt_console device for the guest. By default is 27.
+#
+virt_console_slot="27"
 
 # grub_install0
 # use this to specify grub commands that should be run inside the

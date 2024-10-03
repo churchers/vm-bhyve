@@ -266,7 +266,8 @@ core::create_cloud_init(){
     mkdir -p "${_cloud_init_dir}"
 
     if [ -n "${_network_config}" ]; then
-        # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
+        # Example netconfig param: "interface=vio0;ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
+        _network_config_interface="$(echo "${_network_config}" | pcregrep -o "interface=\K[^;]*" || true)"; _network_config_interface="${_network_config_interface:-eth0}"
         _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
         _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
         _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
@@ -281,7 +282,7 @@ core::create_cloud_init(){
 version: 2
 ethernets:
   id0:
-    set-name: eth0
+    set-name: ${_network_config_interface}
     match:
       macaddress: "${_mac}"
     addresses:

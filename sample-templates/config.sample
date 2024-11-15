@@ -406,6 +406,12 @@ xhci_mouse="yes"
 #
 virt_console0="org.freenas.byhve-agent"
 
+# virt_p9
+# add P9FS filesystem mappings
+#
+virt_9p0_name=somename
+virt_9p0_path=/some/host/path
+
 # grub_install0
 # use this to specify grub commands that should be run inside the
 # guest when installing.

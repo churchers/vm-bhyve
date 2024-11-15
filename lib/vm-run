@@ -109,7 +109,7 @@ vm::run(){
     fi
 
     # default bhyve options
-    _opts="-AHP"
+    _opts="-AHPw"
 
     # ignore access to unimplemented Model Specific Registers?
     config::yesno "ignore_msr" && _opts="${_opts}w"
@@ -319,7 +319,7 @@ vm::uefi(){
         _bootrom="${_bootrom},${VM_DS_PATH}/${_name}/uefi-vars.fd"
     fi
 
-    _opts="-Hwl bootrom,${_bootrom}"
+    _opts="${_opts} -l bootrom,${_bootrom}"
     _uefi="yes"
 }
 

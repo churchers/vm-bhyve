@@ -5,7 +5,7 @@
 # PROVIDE: vm
 # REQUIRE: NETWORKING SERVERS dmesg
 # BEFORE: dnsmasq ipfw pf
-# KEYWORD: shutdown nojail
+# KEYWORD: shutdown nojailvnet
 
 . /etc/rc.subr
 

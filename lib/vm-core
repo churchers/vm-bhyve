@@ -271,7 +271,10 @@ core::create_cloud_init(){
         _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
         _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
         _network_config_hostname="$(echo "${_network_config}" | pcregrep -o "hostname=\K[^;]*")"
-
+        _network_ip_version="4"
+        if echo $_network_config_ipaddress | grep -sqF :; then
+            _network_ip_version="6"
+        fi
         # Override default hostname when network config is passed to cloud-init
         if [ ! -z "${_network_config_hostname}" ]; then
                 _hostname="${_network_config_hostname}"
@@ -286,7 +289,7 @@ ethernets:
       macaddress: "${_mac}"
     addresses:
       - ${_network_config_ipaddress}
-    gateway4: ${_network_config_gateway}
+    gateway${_network_ip_version}: ${_network_config_gateway}
     nameservers:
       search: []
       addresses: [${_network_config_nameservers}]

@@ -281,6 +281,12 @@ switch::standard::__configure_port(){
     # try to set mtu of port?
     [ -n "${_mtu}" ] && ifconfig "${_port}" mtu ${_mtu} >/dev/null 2>&1
 
+    # no vlan, but this port?
+    if [ -z "${_vlan}" -a "${_port}" != "${_port#*.}" ]; then
+        _vlan="${_port#*.}"
+        _port="${_port%.*}"
+    fi
+
     # vlan enabled?
     if [ -n "${_vlan}" ]; then
 

@@ -38,7 +38,7 @@ vm::run(){
     local _guest_support _uefi _uuid _debug _hostbridge _loader
     local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _run=1
-    local _bhyve_options _action
+    local _bhyve_options _bhyve_extra _action
 
     cmd::parse_args "$@"
     shift $?
@@ -61,6 +61,7 @@ vm::run(){
     config::get "_uuid" "uuid"
     config::get "_debug" "debug" "no"
     config::get "_bhyve_options" "bhyve_options"
+    config::get "_bhyve_extra" "bhyve_extra"
     config::get "_slot" "start_slot" "4"
     config::get "_install_slot" "install_slot" "3"
 
@@ -222,7 +223,8 @@ vm::run(){
 
         util::log "guest" "${_name}" " [bhyve options: ${_opts}]" \
           " [bhyve devices: ${_devices}]" \
-          " [bhyve console: ${_comstring}]"
+          " [bhyve console: ${_comstring}]" \
+          " [bhyve extra: ${_bhyve_extra}]"
         [ -n "${_iso_dev}" ] && util::log "guest" "${_name}" " [bhyve iso device: ${_iso_dev}]"
         util::log "guest" "${_name}" "starting bhyve (run ${_run})"
 
@@ -235,6 +237,7 @@ vm::run(){
               ${_devices} \
               ${_iso_dev} \
               ${_comstring} \
+              ${_bhyve_extra} \
               ${_name} 2> "${_logpath}"
 
         # get bhyve exit code
@@ -275,7 +278,7 @@ vm::run(){
 # @modifies _opts _uefi
 #
 vm::uefi(){
-    local _bootrom
+    local _bootrom _fwcfg
 
     if [ ${VERSION_BSD} -lt 1002509 ]; then
         util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
@@ -319,7 +322,9 @@ vm::uefi(){
         _bootrom="${_bootrom},${VM_DS_PATH}/${_name}/uefi-vars.fd"
     fi
 
-    _opts="-Hwl bootrom,${_bootrom}"
+    config::get "_fwcfg" "loader_fwcfg"
+
+    _opts="-Hwl bootrom,${_bootrom}${_fwcfg:+,fwcfg=${_fwcfg}}"
     _uefi="yes"
 }
 
@@ -726,18 +731,19 @@ vm::bhyve_device_console(){
 # @modifies _devices _slot _opts _wiredmem
 #
 vm::bhyve_device_passthru(){
-    local _dev _orig_slot _func=0
+    local _dev _options _orig_slot _func=0
     local _last_orig_slot
     local _num=0
 
     while true; do
         config::get "_dev" "passthru${_num}"
+        config::get "_options" "passthru${_num}_options"
         [ -z "${_dev}" ] && break
 
         # see if there's an = sign
         # we allow A/B/C=D:E to force D:E as the guest SLOT:FUNC
         if echo "${_dev}" | grep -qs "="; then
-            _devices="${_devices} -s ${_dev##*=},passthru,${_dev%%=*}"
+            _devices="${_devices} -s ${_dev##*=},passthru,${_dev%%=*}${_options:+,${_options}}"
         else
             _orig_slot=${_dev%%/*}
 
@@ -749,7 +755,7 @@ vm::bhyve_device_passthru(){
                 _func=0
             fi
 
-            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
+            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}${_options:+,${_options}}"
             _last_orig_slot=${_orig_slot}
             _func=$((_func + 1))
         fi

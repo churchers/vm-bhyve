@@ -726,18 +726,19 @@ vm::bhyve_device_console(){
 # @modifies _devices _slot _opts _wiredmem
 #
 vm::bhyve_device_passthru(){
-    local _dev _orig_slot _func=0
+    local _dev _options _orig_slot _func=0
     local _last_orig_slot
     local _num=0
 
     while true; do
         config::get "_dev" "passthru${_num}"
+        config::get "_options" "passthru${_num}_options"
         [ -z "${_dev}" ] && break
 
         # see if there's an = sign
         # we allow A/B/C=D:E to force D:E as the guest SLOT:FUNC
         if echo "${_dev}" | grep -qs "="; then
-            _devices="${_devices} -s ${_dev##*=},passthru,${_dev%%=*}"
+            _devices="${_devices} -s ${_dev##*=},passthru,${_dev%%=*}${_options:+,${_options}}"
         else
             _orig_slot=${_dev%%/*}
 
@@ -749,7 +750,7 @@ vm::bhyve_device_passthru(){
                 _func=0
             fi
 
-            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
+            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}${_options:+,${_options}}"
             _last_orig_slot=${_orig_slot}
             _func=$((_func + 1))
         fi

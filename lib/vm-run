@@ -275,7 +275,7 @@ vm::run(){
 # @modifies _opts _uefi
 #
 vm::uefi(){
-    local _bootrom
+    local _bootrom _fwcfg
 
     if [ ${VERSION_BSD} -lt 1002509 ]; then
         util::log "guest" "${_name}" "fatal; uefi guests can only be run on FreeBSD 10.3 or newer"
@@ -319,7 +319,9 @@ vm::uefi(){
         _bootrom="${_bootrom},${VM_DS_PATH}/${_name}/uefi-vars.fd"
     fi
 
-    _opts="-Hwl bootrom,${_bootrom}"
+    config::get "_fwcfg" "loader_fwcfg"
+
+    _opts="-Hwl bootrom,${_bootrom}${_fwcfg:+,fwcfg=${_fwcfg}}"
     _uefi="yes"
 }
 

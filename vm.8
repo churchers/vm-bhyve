@@ -1117,6 +1117,13 @@ and rely on UEFI variables to locate it. The version of
 installed must provide the template data file, and support also needs to be present
 in
 .Sy bhyve
+.It fwcfg_type 
+Setting this option will set the Fwcfg type as supported by bhyve by adding ,fwcfg=type on the bootrom.
+Bhyve added support for QEMU Firmware Configuration Device fwcfg_type="qemu".
+This may be required for some guests that use the firmware device to pass arguments to the vm.
+uefi-firmware needs to be present in 
+.Sy bhyve
+.It 
 .It bhyveload_loader
 This option allows a custom path to be used for the loader inside the guest.
 Passed to

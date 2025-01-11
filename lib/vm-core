@@ -267,10 +267,14 @@ core::create_cloud_init(){
 
     if [ -n "${_network_config}" ]; then
         # Example netconfig param: "ip=10.0.0.2/24;gateway=10.0.0.1;nameservers=1.1.1.1,8.8.8.8"
-        _network_config_ipaddress="$(echo "${_network_config}" | pcregrep -o "ip=\K[^;]*")"
-        _network_config_gateway="$(echo "${_network_config}" | pcregrep -o "gateway=\K[^;]*")"
-        _network_config_nameservers="$(echo "${_network_config}" | pcregrep -o "nameservers=\K[^;]*")"
-        _network_config_hostname="$(echo "${_network_config}" | pcregrep -o "hostname=\K[^;]*")"
+        _network_config_ipaddress="$(echo "${_network_config}" | \
+            grep -oE 'ip=[^;]*' | sed 's/^ip=//')"
+        _network_config_gateway="$(echo "${_network_config}" | \
+            grep -oE 'gateway=[^;]*' | sed 's/^gateway=//')"
+        _network_config_nameservers="$(echo "${_network_config}" | \
+            grep -oE 'nameservers=[^;]*' | sed 's/^nameservers=//')"
+        _network_config_hostname="$(echo "${_network_config}" | \
+            grep -oE 'hostname=[^;]*' | sed 's/^hostname=//')"
 
         # Override default hostname when network config is passed to cloud-init
         if [ ! -z "${_network_config_hostname}" ]; then

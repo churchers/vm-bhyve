@@ -83,7 +83,7 @@
 .Ar name
 .Nm
 .Cm list
-.Op Fl r
+.Op Fl rv
 .Nm
 .Cm info
 .Op Ar name
@@ -650,14 +650,16 @@ Removes the specified virtual machine from the system, deleting all associated
 disk images & configuration.
 .It Xo
 .Cm list
-.Op Fl r
+.Op Fl rv
 .Xc
 .br
 List all the virtual machines in the
 .Pa $vm_dir
 directory.
 This will show the basic configuration for each virtual machine, and whether
-they are currently running.
+they are currently running. Using the
+.Ar -v
+option displays additional information about each virtual machine.
 .Pp
 If the
 .Ar -r

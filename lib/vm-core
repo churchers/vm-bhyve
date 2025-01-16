@@ -34,15 +34,13 @@ core::list(){
     local _state _pcpu _rss _uptime
     local _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
 
-    while getopts r _opt ; do
-        case $_opt in
+    while getopts rv _opt ; do
+        case ${_opt} in
             r) _running_only='true' ;;
-
+            v) VM_OPT_VERBOSE="1" ;;
             *) util::usage ;;
         esac
     done
-
-    shift $?
 
     _our_host=$(hostname)
 

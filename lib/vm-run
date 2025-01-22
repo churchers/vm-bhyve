@@ -36,7 +36,7 @@ vm::run(){
     local _name _iso _iso_dev
     local _cpu _memory _bootdisk _bootdisk_dev _guest _wiredmem
     local _guest_support _uefi _uuid _debug _hostbridge _loader
-    local _opts _devices _slot _install_slot _func=0 _taplist _exit _passdev
+    local _opts _devices _slot _bus=0 _maxslots=31 _install_slot _func=0 _taplist _exit _passdev
     local _com _comports _comstring _logpath="/dev/null" _run=1
     local _bhyve_options _action
 
@@ -219,6 +219,10 @@ vm::run(){
                 break
             fi
         fi
+
+	if [ ${_bus} -ge 1 ]; then
+		_opts="${_opts} -Y"
+	fi
 
         util::log "guest" "${_name}" " [bhyve options: ${_opts}]" \
           " [bhyve devices: ${_devices}]" \
@@ -444,7 +448,7 @@ vm::bhyve_device_basic(){
 # this can be overridden by setting the ahci_device_limit
 # guest option to an integer between 2 and 32.
 #
-# @modifies _devices _slot
+# @modifies _devices _slot _bus
 #
 vm::bhyve_device_disks(){
     local _disk _type _dev _path _opts _ahci _atype
@@ -481,6 +485,11 @@ vm::bhyve_device_disks(){
             _func=0
             _slot=$((_slot + 1))
         fi
+	if [ ${_slot} -ge ${_maxslots} ]; then
+	    _slot=0
+	    _bus=$((_bus + 1))
+            _maxslots=32
+        fi
 
         vm::get_disk_path "_path" "${_name}" "${_disk}" "${_dev}"
 
@@ -500,7 +509,7 @@ vm::bhyve_device_disks(){
 
                     # we need to move to another controller if we get to the limit
                     if [ ${_ahci_num} -ge ${_ahci_limit} ]; then
-                        _devices="${_devices} -s ${_slot}:${_func},ahci${_ahci}"
+                        _devices="${_devices} -s ${_bus}:${_slot}:${_func},ahci${_ahci}"
                         _ahci=""
                         _ahci_num=0
                         _add=1
@@ -511,7 +520,7 @@ vm::bhyve_device_disks(){
             _atype=""
         else
 
-            _devices="${_devices} -s ${_slot}:${_func},${_type},${_path}"
+            _devices="${_devices} -s ${_bus}:${_slot}:${_func},${_type},${_path}"
             [ -n "${_opts}" ] && _devices="${_devices},${_opts}"
             _add=1
         fi
@@ -526,6 +535,12 @@ vm::bhyve_device_disks(){
             fi
 
             _add=""
+        fi
+
+	if [ ${_slot} -ge ${_maxslots} ]; then
+	    _slot=0
+	    _bus=$((_bus + 1))
+	    _maxslots=32
         fi
 
         _num=$((_num + 1))
@@ -543,6 +558,11 @@ vm::bhyve_device_disks(){
         _slot=$((_slot + 1))
         _func=0
     fi
+    if [ ${_slot} -ge ${_maxslots} ]; then
+	_slot=0
+	_bus=$((_bus + 1))
+	_maxslots=32
+    fi
 }
 
 # get bhyve device string for networking
@@ -551,7 +571,7 @@ vm::bhyve_device_disks(){
 # we add each tap to __taplist from vm::run which it will
 # use to desstroy them all on shutdown
 #
-# @modifies _devices _slot _taplist _func
+# @modifies _devices _slot _bus _taplist _func
 #
 vm::bhyve_device_networking(){
     local _emulation _num=0
@@ -565,6 +585,11 @@ vm::bhyve_device_networking(){
             _func=0
             _slot=$((_slot + 1))
         fi
+	if [ ${_slot} -ge ${_maxslots} ]; then
+	    _slot=0
+	    _bus=$((_bus + 1))
+	    _maxslots=32
+        fi
 
         switch::provision
         _num=$((_num + 1))
@@ -573,6 +598,11 @@ vm::bhyve_device_networking(){
     if [ ${_num} -ge 1 ]; then
         _slot=$((_slot + 1))
         _func=0
+    fi
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
     fi
 }
 
@@ -583,8 +613,13 @@ vm::bhyve_device_networking(){
 vm::bhyve_device_rand(){
 
     if config::yesno "virt_random"; then
-        _devices="${_devices} -s ${_slot}:0,virtio-rnd"
+        _devices="${_devices} -s ${_bus}:${_slot}:0,virtio-rnd"
         _slot=$((_slot + 1))
+    fi
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
     fi
 }
 
@@ -641,8 +676,13 @@ vm::bhyve_device_fbuf(){
     echo "vnc=${_listen:-0.0.0.0}:${_port}" >> "${VM_DS_PATH}/${_name}/console"
 
     # add device
-    _devices="${_devices} -s ${_slot}:0,fbuf,${_fbuf_conf}"
+    _devices="${_devices} -s ${_bus}:${_slot}:0,fbuf,${_fbuf_conf}"
     _slot=$((_slot + 1))
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
+    fi
 }
 
 # remove wait option if we're in auto mode
@@ -669,8 +709,13 @@ vm::bhyve_device_mouse(){
 
     # add a tablet device if enabled
     if config::yesno "xhci_mouse"; then
-        _devices="${_devices} -s ${_slot}:0,xhci,tablet"
+        _devices="${_devices} -s ${_bus}:${_slot}:0,xhci,tablet"
         _slot=$((_slot + 1))
+    fi
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
     fi
 }
 
@@ -680,13 +725,18 @@ vm::bhyve_device_sound(){
     config::get "_rec" "sound_rec"
 
     if config::yesno "sound"; then
-        _devices="${_devices} -s ${_slot}:0,hda,play=${_play}"
+        _devices="${_devices} -s ${_bus}:${_slot}:0,hda,play=${_play}"
 
         if [ -n "${_rec}" ]; then
             _devices="${_devices},rec=${_rec}"
         fi
 
         _slot=$((_slot + 1))
+    fi
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
     fi
 }
 
@@ -715,15 +765,20 @@ vm::bhyve_device_console(){
          config::get "_console" "virt_console${_curr}"
     done
 
-    _devices="${_devices} -s ${_slot}:0,virtio-console${_dev_str}"
+    _devices="${_devices} -s ${_bus}:${_slot}:0,virtio-console${_dev_str}"
     _slot=$((_slot + 1))
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
+    fi
 }
 
 # get any pci passthrough devices
 # FreeBSD 11 needs wired memory so update _opts in that case if
 # we have any pass through devices
 #
-# @modifies _devices _slot _opts _wiredmem
+# @modifies _devices _slot _bus _opts _wiredmem
 #
 vm::bhyve_device_passthru(){
     local _dev _orig_slot _func=0
@@ -737,7 +792,7 @@ vm::bhyve_device_passthru(){
         # see if there's an = sign
         # we allow A/B/C=D:E to force D:E as the guest SLOT:FUNC
         if echo "${_dev}" | grep -qs "="; then
-            _devices="${_devices} -s ${_dev##*=},passthru,${_dev%%=*}"
+            _devices="${_devices} -s ${_bus}:${_dev##*=},passthru,${_dev%%=*}"
         else
             _orig_slot=${_dev%%/*}
 
@@ -749,7 +804,13 @@ vm::bhyve_device_passthru(){
                 _func=0
             fi
 
-            _devices="${_devices} -s ${_slot}:${_func},passthru,${_dev}"
+        if [ ${_slot} -ge ${_maxslots} ]; then
+            _slot=0
+            _bus=$((_bus + 1))
+	    _maxslots=32
+        fi
+
+            _devices="${_devices} -s ${_bus}:${_slot}:${_func},passthru,${_dev}"
             _last_orig_slot=${_orig_slot}
             _func=$((_func + 1))
         fi
@@ -762,6 +823,11 @@ vm::bhyve_device_passthru(){
 
         # add wired memory for 10.3+
         [ ${VERSION_BSD} -ge 1003000 ] && _opts="${_opts} -S" && _wiredmem="1"
+    fi
+    if [ ${_slot} -ge ${_maxslots} ]; then
+        _slot=0
+        _bus=$((_bus + 1))
+	_maxslots=32
     fi
 }
 

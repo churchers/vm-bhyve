@@ -20,7 +20,6 @@ Some of the main features include:
 
 ** Some additional packages may be required in certain circumstances -
 
-* The port has a dependancy on ca_root_nss added by the ports maintainers to help avoid any SSL errors when downloading FreeBSD ISO files using the `vm iso` command.
 * `sysutils/grub2-bhyve` is required to run Linux or any other guests that need a Grub bootloader.
 * `sysutils/bhyve-firmware` is required to run UEFI guests
 * `sysutils/tmux` is needed to use tmux console access instead of cu/nmdm

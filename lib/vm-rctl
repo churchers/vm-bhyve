@@ -46,7 +46,15 @@ rctl::set(){
     [ -z "${_pid}" ] && return 1
 
     # check for a priority
-    [ -n "${_pri}" ] && renice ${_pri} ${_pid} >/dev/null 2>&1
+    if [ -n "${_pri}" ]; then
+        if [ "${_pri%%[0-9]*}" = "i" ]; then
+    	    idprio ${_pri#i} -${_pid} >/dev/null 2>&1
+    	elif [ "${_pri%%[0-9]*}" = "r" ]; then
+    	    rtprio ${_pri#r} -${_pid} >/dev/null 2>&1
+    	else
+    	    renice ${_pri} ${_pid} >/dev/null 2>&1
+    	fi
+    fi
 
     # return if there are no limits
     [ -z "${_pcpu}${_rbps}${_wbps}${_riops}${_wiops}" ] && return 1

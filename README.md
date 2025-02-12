@@ -43,9 +43,9 @@ See the sections below for more in-depth details.
     6. cp /usr/local/share/examples/vm-bhyve/* /mountpoint/for/pool/vm/.templates/
     7. vm switch create public
     8. vm switch add public em0
-    9. vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/11.2/FreeBSD-11.2-RELEASE-amd64-bootonly.iso
+    9. vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/14.2/FreeBSD-14.2-RELEASE-amd64-bootonly.iso
     10. vm create myguest
-    11. vm install [-f] myguest FreeBSD-11.2-RELEASE-amd64-bootonly.iso
+    11. vm install [-f] myguest FreeBSD-14.2-RELEASE-amd64-bootonly.iso
     12. vm console myguest
 
 - [ ] Line 1
@@ -187,17 +187,17 @@ example specifies the templatename.conf template, and tells vm-bhyve to create a
 
 You will need an ISO to install the guest with, so download one using the iso command:
 
-    # vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/11.2/FreeBSD-11.2-RELEASE-amd64-disc1.iso
+    # vm iso https://download.freebsd.org/ftp/releases/ISO-IMAGES/14.2/FreeBSD-14.2-RELEASE-amd64-disc1.iso
 
 To start a guest install, run the following command. vm-bhyve will run the machine in the background,
 so use the console command to connect to it and finish installation.
 
-    # vm install testvm FreeBSD-11.2-RELEASE-amd64-disc1.iso
+    # vm install testvm FreeBSD-14.2-RELEASE-amd64-disc1.iso
     # vm console testvm
 
 You can also specify the foreground option to run the guest directly on your terminal:
 
-    # vm install -f testvm FreeBSD-11.2-RELEASE-amd64-disc1.iso
+    # vm install -f testvm FreeBSD-14.2-RELEASE-amd64-disc1.iso
 
 Once installation has finished, you can reboot the guest from inside the console and it will boot up into
 the new OS (assuming installation was successful). Further reboots will work as expected and
@@ -259,8 +259,8 @@ To use this feature you'll need install qemu-tools package:
 
 To launch FreeBSD using official cloud image:
 
-    # vm img https://download.freebsd.org/ftp/releases/VM-IMAGES/11.2-RELEASE/amd64/Latest/FreeBSD-11.2-RELEASE-amd64.raw.xz
-    # vm create -t freebsd-zvol -i FreeBSD-11.2-RELEASE-amd64.raw freebsd-cloud
+    # vm img https://download.freebsd.org/ftp/releases/VM-IMAGES/14.2-RELEASE/amd64/Latest/FreeBSD-14.2-RELEASE-amd64.raw.xz
+    # vm create -t freebsd-zvol -i FreeBSD-14.2-RELEASE-amd64.raw freebsd-cloud
     # vm start freebsd-cloud
 
 To list downloaded images:
@@ -270,7 +270,7 @@ To list downloaded images:
     default             CentOS-7-x86_64-GenericCloud-20180930_02.raw
     default             debian-9-openstack-amd64.qcow2
     default             Fedora-AtomicHost-28-1.1.x86_64.raw
-    default             FreeBSD-11.2-RELEASE-amd64.raw
+    default             FreeBSD-14.2-RELEASE-amd64.raw
     default             xenial-server-cloudimg-amd64-uefi1.img
 
 ## Using cloud init

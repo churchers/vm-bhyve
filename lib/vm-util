@@ -163,7 +163,7 @@ Usage: vm ...
     datastore add <name> <path>
     list [-r]
     info [name] [...]
-    create [-d datastore] [-t template] [-s size] [-m memory] [-c vCPUs] <name>
+    create [-d datastore] [-t template] [-s size] [-m memory] [-c vCPUs] [-i vm-image] [-C -k pubkeys] <name>
     install [-fi] <name> <iso>
     start [-fi] <name> [...]
     stop <name> [...]

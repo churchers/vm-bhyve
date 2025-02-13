@@ -139,7 +139,7 @@ core::list(){
 core::create(){
     local _name _opt _size _vmdir _disk _disk_dev _num=0
     local _zfs_opts _disk_size _template="default" _ds="default" _ds_path _img _cpu _memory _uuid
-    local _enable_cloud_init _cloud_init_dir _ssh_public_key _ssh_key_file _network_config _mac
+    local _enable_cloud_init _cloud_init_dir _ssh_public_keys _ssh_public_key _ssh_key_file _network_config _mac
 
     while getopts d:t:s:i:c:m:Ck:n: _opt ; do
         case $_opt in
@@ -185,7 +185,7 @@ core::create(){
 
       [ -z "${_enable_cloud_init}" ] && util::err "cloud-init is required for injecting public key. Use -C to enable it."
       [ ! -r "${_ssh_key_file}" ] && util::err "can't read file with public key (${_ssh_key_file})"
-      _ssh_public_key="$(cat "${_ssh_key_file}")"
+      _ssh_public_keys="$(sed -e '/^$/d' -e '/^#/d' "${_ssh_key_file}")"
     fi
 
     # if we're on zfs, make a new filesystem
@@ -215,11 +215,11 @@ core::create(){
 
     # create each disk
     while [ -n "${_disk}" ]; do
-        case "${_disk_dev}" in 
+        case "${_disk_dev}" in
             zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "0" "${_zfs_opts}"
                 [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}" "${_disk_dev}" "${_disk_size}"
-                ;;			
+                ;;
             sparse-zvol)
                 zfs::make_zvol "${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_disk_size}" "1" "${_zfs_opts}"
                 [ $_num -eq 0 ] && [ ! -z "$_img" ] && core::write_img "/dev/zvol/${VM_DS_ZFS_DATASET}/${_name}/${_disk}" "${_img}" "${_disk_dev}" "${_disk_size}"
@@ -306,11 +306,15 @@ resize_rootfs: True
 manage_etc_hosts: localhost
 EOF
 
-    if [ -n "${_ssh_public_key}" ]; then
+    if [ -n "${_ssh_public_keys}" ]; then
         cat << EOF >> "${_cloud_init_dir}/user-data"
 ssh_authorized_keys:
+EOF
+        echo "${_ssh_public_keys}" | while read -r _ssh_public_key; do
+            cat << EOF >> "${_cloud_init_dir}/user-data"
   - ${_ssh_public_key}
 EOF
+        done
     fi
 
     makefs -t cd9660 -o R,L=cidata "${VM_DS_PATH}/${_name}/seed.iso" ${_cloud_init_dir} || util::err "Can't write seed.iso for cloud-init"
@@ -342,7 +346,7 @@ core::write_img(){
         if [ ! -r "${_disk_dev}" ]; then
             sleep 1
             i=$(($i+1))
-	else
+        else
             break
         fi
     done

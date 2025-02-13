@@ -273,10 +273,11 @@ To list downloaded images:
     default             FreeBSD-14.2-RELEASE-amd64.raw
     default             xenial-server-cloudimg-amd64-uefi1.img
 
-## Using cloud init
+## Using cloud-init
 
 vm-bhyve has basic support for providing cloud-init configuration to the guest. You can enable it with `-C` option
-to `vm create` command. You can also pass public SSH key to be injected into the guest with option `-k <file>`. 
+to `vm create` command. You can also pass public SSH key to be injected into the guest with option `-k <file>`.
+The public key file can contain multiple public SSH keys, one per line, in the `authorized_keys` format.
 
 Example:
 
@@ -292,7 +293,7 @@ Example:
     Are you sure you want to continue connecting (yes/no)? yes
     Warning: Permanently added '192.168.0.91' (ECDSA) to the list of known hosts.
     Welcome to Ubuntu 16.04.5 LTS (GNU/Linux 4.4.0-141-generic x86_64)
-    
+
 ## Adding custom disks
 
 Scenario: If you have a vm on one zpool and would like to add a new virtual disk to it that resides on a different zpool.

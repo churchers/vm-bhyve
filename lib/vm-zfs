@@ -140,7 +140,7 @@ zfs::__format_options(){
     local _c_opts="$2"
 
     if [ -n "${_c_opts}" ]; then
-        _c_opts=$(echo "${_c_opts}" |sed -e 's/\ / -o /')
+        _c_opts=$(echo "${_c_opts}" |sed -e 's/\ / -o /g')
         _c_opts="-o ${_c_opts}"
         setvar "${_val}" "${_c_opts}"
         return 0

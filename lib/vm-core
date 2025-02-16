@@ -954,13 +954,16 @@ core::configure(){
 # list iso images or get a new one
 #
 # @param string _url if specified, the url will be fetch'ed into $vm_dir/.iso
+# @param optional string (-d) _ds=datastore (default = "default")
+# @param optional string (-f) _filename=filename.img (default = `basename "${_url}"` )
 #
 core::iso(){
-    local _url _ds="default"
+    local _url _ds="default" _filename
 
-    while getopts d:u _opt ; do
+    while getopts d:f: _opt ; do
         case $_opt in
             d) _ds=${OPTARG} ;;
+            f) _filename=${OPTARG} ;;
             *) util::usage ;;
         esac
     done
@@ -969,8 +972,13 @@ core::iso(){
     _url=$1
 
     if [ -n "${_url}" ]; then
+        if [ -n "${_filename}" ]; then
+            _filename="${_filename}"
+        else
+            _filename=$(basename "${_url}")
+        fi
         datastore::get_iso "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
-        fetch -o "${VM_DS_PATH}" "${_url}"
+        fetch -o "${VM_DS_PATH}/${_filename}" "${_url}"
     else
         datastore::iso_list
     fi
@@ -1002,6 +1010,8 @@ core::decompress(){
 # list cloud images or get a new one
 #
 # @param string _url if specified, the url will be fetch'ed into $vm_dir/.img
+# @param optional string (-d) _ds=datastore (default = "default")
+# @param optional string (-f) _filename=filename.img (default = `basename "${_url}"` )
 #
 core::img(){
     local _url _ds="default" _filename
@@ -1009,9 +1019,10 @@ core::img(){
         util::err "Error: qemu-img is required to work with cloud images! Run 'pkg install qemu-tools'."
     fi
 
-    while getopts d:u _opt ; do
+    while getopts d:f: _opt ; do
         case $_opt in
             d) _ds=${OPTARG} ;;
+            f) _filename=${OPTARG} ;;
             *) util::usage ;;
         esac
     done
@@ -1021,8 +1032,12 @@ core::img(){
 
     if [ -n "${_url}" ]; then
         datastore::get_img "${_ds}" || util::err "unable to locate path for datastore '${_ds}'"
-        _filename=$(basename "${_url}")
-        fetch -o "${VM_DS_PATH}" "${_url}"
+        if [ -n "${_filename}" ]; then
+            _filename="${_filename}"
+        else
+            _filename=$(basename "${_url}")
+        fi
+        fetch -o "${VM_DS_PATH}/${_filename}" "${_url}"
         core::decompress "${VM_DS_PATH}/${_filename}"
     else
         datastore::img_list

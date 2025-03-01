@@ -498,7 +498,7 @@ core::add_network(){
 # @param string _iso the iso file in $vm_dir/.iso to use
 #
 core::install(){
-    local _name _iso _fulliso
+    local _name _iso _fulliso _fetched
 
     cmd::parse_args "$@"
     shift $?
@@ -508,8 +508,21 @@ core::install(){
     [ -z "${_name}" -o -z "${_iso}" ] && util::usage
 
     # just run start with an iso
-    datastore::iso_find "_fulliso" "${_iso}" || util::err "unable to locate iso file - '${_iso}'"
+    if ! datastore::iso_find "_fulliso" "${_iso}"; then
+	    util::warn "unable to locate iso file - '${_iso}', attempting fetch from URL"
+	    if ! datastore::get_iso default || ! fetch -o "${VM_DS_PATH}" "${_iso}"; then
+		    util::err "unable to fetch iso - '${_iso}'"
+	    fi
+	    _iso=$(basename "${_iso}")
+	    if ! datastore::iso_find "_fulliso" "${_iso}"; then
+		    util::err "unable to find fetched iso - '${_iso}'"
+	    fi
+	    _fetched=${_fulliso}
+    fi
     core::__start "${_name}" "${_fulliso}"
+    if [ -n "${_fetched}" ]; then
+	    rm -f "${_fetched}"
+    fi
 }
 
 # 'vm startall'

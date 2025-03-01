@@ -784,10 +784,12 @@ vm::bhyve_device_passthru(){
     local _dev _orig_slot _func=0
     local _last_orig_slot
     local _num=0
+    local _popts
 
     while true; do
         config::get "_dev" "passthru${_num}"
         [ -z "${_dev}" ] && break
+        config::get "_popts" "passthru${_num}_opts"
 
         # see if there's an = sign
         # we allow A/B/C=D:E to force D:E as the guest SLOT:FUNC
@@ -815,6 +817,7 @@ vm::bhyve_device_passthru(){
             _func=$((_func + 1))
         fi
 
+        [ -n "${_popts}" ] && _devices="${_devices},${_popts}"
         _num=$((_num + 1))
     done
 

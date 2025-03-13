@@ -1583,10 +1583,13 @@ Note that although the guest is technically stopped when this process runs, call
 will still consider the guest locked.
 .It priority
 Allows a priority to be set for a guest by using the
-.Xr nice 8
-facility. The default value is 0, and has a range from -20, which is the highest
+.Xr nice 1
+or
+.Xr rtprio 1
+facilities. The default value is 0, and has a range from -20, which is the highest
 priority, to 20. A priority of 20 will cause the guest to only run when the host
-system is idle.
+system is idle. Priority values prefixed with "r" or "i" will set realtime or idletime 
+priorities, respectively.
 .It limit_pcpu
 Limit the bhyve process to the specified cpu percentage.
 .Pp

@@ -350,7 +350,7 @@ switch::standard::id(){
 # @return 1 if we don't get a tap device
 #
 switch::standard::provision(){
-    local _tap _custom_tap _sid _mtu _member_type _iname
+    local _tap _custom_tap _sid _mtu _member_type _iname _short_uuid
 
     config::get "_custom_tap" "network${_num}_device"
     config::get "_iname" "network${_num}_name"
@@ -366,8 +366,12 @@ switch::standard::provision(){
 
     [ -z "${_tap}" ] && return 1;
 
-    util::log "guest" "${_name}" "initialising network device ${_tap}"
-    ifconfig "${_tap}" descr "vmnet/${_name}/${_num}/${_switch:-custom}" group vm-port >/dev/null 2>&1
+    # get first 8 chars from UUID
+    _short_uuid="${_uuid%${_uuid#????????}}"
+
+    # group vm-{first part of host uuid}@ and group vm-{first part of host uuid}@{device number 0-99}@
+    util::log "guest" "${_name}" "initialising network device ${_tap} group vm-${_short_uuid}@ and vm-${_short_uuid}@${_num}@"
+    ifconfig "${_tap}" descr "vmnet/${_name}/${_num}/${_switch:-custom}" group vm-port "vm-${_short_uuid}@" group "vm-${_short_uuid}@${_num}@" >/dev/null 2>&1
 
     if [ -n "${_switch}" ]; then
         switch::id "_sid" "${_switch}"

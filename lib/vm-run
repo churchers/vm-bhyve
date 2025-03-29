@@ -111,9 +111,6 @@ vm::run(){
     # default bhyve options
     _opts="-AHPw"
 
-    # ignore access to unimplemented Model Specific Registers?
-    config::yesno "ignore_msr" && _opts="${_opts}w"
-
     # if uefi, make sure we have bootrom, then update options for uefi support
     if [ "${_loader%-*}" = "uefi" ]; then
         vm::uefi

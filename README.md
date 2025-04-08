@@ -1,3 +1,10 @@
+> [!CAUTION]
+> Heads up: As of April 8, 2025, this repo is no longer maintained. After discussion in issue [#544](https://github.com/churchers/vm-bhyve/issues/544), the project has found a new home under the FreeBSD organization:
+>
+> 👉 https://github.com/freebsd/vm-bhyve
+>
+> If you’re looking to use, follow, or contribute to vm-bhyve, head over to the new repo!
+
 ## vm-bhyve
 
 Management system for FreeBSD bhyve virtual machines

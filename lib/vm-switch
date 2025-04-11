@@ -63,11 +63,25 @@ switch::init(){
 switch::list(){
     local _switchlist _switch _type
     local _id _format="%s^%s^%s^%s^%s^%s^%s^%s\n"
+    local _columns="NAME TYPE IFACE ADDRESS PRIVATE MTU VLAN PORTS"
+
+    cmd::parse_args "$@"
+    shift $?
 
     config::core::get "_switchlist" "switch_list"
 
+    if [ -n "${VM_OPT_JSON}" ]; then
+        if [ ! -x /usr/local/bin/column ]; then
+	    echo "Error: JSON output requires util-linux package"
+	    exit 255
+	fi
+	column_cmd="/usr/local/bin/column -ts^ -J -n switches -N $(echo $_columns | sed -e "s# #,#g")"
+    else
+	column_cmd="/usr/bin/column -ts^"
+    fi
+
     {
-        printf "${_format}" "NAME" "TYPE" "IFACE" "ADDRESS" "PRIVATE" "MTU" "VLAN" "PORTS"
+        [ -z "${VM_OPT_JSON}" ] && printf "${_format}" $_columns
 
         if [ -n "${_switchlist}" ]; then
             for _switch in ${_switchlist}; do
@@ -83,7 +97,7 @@ switch::list(){
                 esac
             done
         fi
-    } | column -ts^
+    } | $column_cmd
 }
 
 # create a new virtual switch

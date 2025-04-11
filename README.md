@@ -65,6 +65,7 @@ If you're not using ZFS, just create a normal directory.
 - [ ] Lines 3-4
 Enable vm-bhyve in /etc/rc.conf and set the dataset to use.
 If not using ZFS, just set `$vm_dir="/my/vm/folder"`.
+add/change ifconfig_em0=" -rxcsum" Some Intel NICs need that change to make connection to the VM working.
 
 - [ ] Line 5
 Run the `vm init` command to create the required directories under $vm_dir and load kernel modules.

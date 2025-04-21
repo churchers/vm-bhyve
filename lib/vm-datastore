@@ -96,7 +96,7 @@ datastore::add(){
 
     # check name not in use
     for _curr in ${VM_DATASTORE_LIST}; do
-        [ "${_curr}" = "${_name}" ] && util::err "datstore '${_name}' already exists!"
+        [ "${_curr}" = "${_name}" ] && util::err "datastore '${_name}' already exists!"
     done
 
     # look for zfs

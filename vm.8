@@ -81,7 +81,6 @@
 .Op Fl C k Ar pubkeys
 .Ar name
 .Nm
-.Cm
 .Cm destroy
 .Op Fl f
 .Ar name
@@ -685,15 +684,24 @@ for each virtual interface.
 .Xc
 Start a guest installation for the named virtual machine, using the specified
 ISO file or install disk image.
+.Pp
 The
 .Ar iso
-argument should be the filename of an ISO or image file already downloaded into the
+argument can be the filename of an ISO or image file already downloaded into the
 .Pa $vm_dir/.iso
 directory (or any media datastore), a full path, or a file in the current
 directory.
-ISO files in the default .iso store can be downloaded using the
+ISO files can be downloaded to the default .iso store using the
 .Ar iso
 subcommand described below.
+.Pp
+Alternately, the
+.Ar iso
+argument can be a URL specifying the location of an ISO file.
+In that case, the file will be fetched to the default media datastore,
+the install will be started, and the file will be deleted when the
+command completes.
+This is useful when you do not expect to install from the same file again.
 .Pp
 By default the installation is started in the background.
 Use the

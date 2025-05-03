@@ -54,7 +54,10 @@ vm::run(){
     config::load "${VM_DS_PATH}/${_name}/${_name}.conf"
     config::get "_memory" "memory"
     config::get "_loader" "loader"
-    config::get "_bootdisk" "disk0_name"
+    config::get "_bootdisk" "bootdisk"
+    if [ -z "${_bootdisk}" ]; then
+        config::get "_bootdisk" "disk0_name"
+    fi
     config::get "_bootdisk_dev" "disk0_dev" "file"
     config::get "_hostbridge" "hostbridge" "standard"
     config::get "_comports" "comports" "com1"

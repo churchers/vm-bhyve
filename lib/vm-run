@@ -166,6 +166,7 @@ vm::run(){
     vm::bhyve_device_mouse
     vm::bhyve_device_sound
     vm::bhyve_device_console
+    vm::bhyve_device_9p
 
     vm::lock
     util::log "guest" "${_name}" "booting"
@@ -829,6 +830,37 @@ vm::bhyve_device_passthru(){
         _bus=$((_bus + 1))
 	_maxslots=32
     fi
+}
+
+# add virtio_9p devices to the guest
+#
+# @modifies _devices _slot
+#
+vm::bhyve_device_9p(){
+    local _curr=0
+
+    # add file systems
+    while [ 1 ]; do
+	config::get "_9pname" "virt_9p${_curr}_name"
+	config::get "_9ppath" "virt_9p${_curr}_path"
+	config::get "_9pro" "virt_9p${_curr}_readonly"
+
+	if [ -z "$_9pname" -o -z "$_9ppath" ]; then
+	    break
+	fi
+
+	case "$_9pro" in
+	    [yY][eE][sS]|1|[oO][nN])
+		_9pro=",ro"
+		;;
+	    *)
+		_9pro=""
+		;;
+	esac
+        _devices="${_devices} -s ${_slot},virtio-9p,${_9pname}=${_9ppath}${_9pro}"
+	_slot=$((_slot + 1))
+	_curr=$((_curr + 1))
+    done
 }
 
 # get the path to a disk image depending on type.

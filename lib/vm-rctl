@@ -30,10 +30,12 @@
 #
 rctl::set(){
     local _pcpu _rbps _wbps _riops _wiops
-    local _pid _pri
+    local _pid _pri _hpmode _lpmode
 
     # get limit settings
     config::get "_pri" "priority"
+    config::get "_hpmode" "high_priority" "no"
+    config::get "_lpmode" "low_priority" "no"
     config::get "_pcpu" "limit_pcpu"
     config::get "_rbps" "limit_rbps"
     config::get "_wbps" "limit_wbps"
@@ -45,8 +47,14 @@ rctl::set(){
     _pid=$(pgrep -fx "bhyve[: ].* ${_name}")
     [ -z "${_pid}" ] && return 1
 
-    # check for a priority
-    [ -n "${_pri}" ] && renice ${_pri} ${_pid} >/dev/null 2>&1
+    # check for a priority; highest level of (low_|high_)?priority wins
+    if [ "${_hpmode}" = "yes" ]; then
+        rtprio 31 -${_pid} >/dev/null 2>&1
+    elif [ -n "${_pri}" ]; then
+        renice ${_pri} ${_pid} >/dev/null 2>&1
+    elif [ "${_lpmode}" = "yes" ]; then
+        idprio 0 -${_pid} >/dev/null 2>&1
+    fi
 
     # return if there are no limits
     [ -z "${_pcpu}${_rbps}${_wbps}${_riops}${_wiops}" ] && return 1
